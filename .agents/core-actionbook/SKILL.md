@@ -23,6 +23,7 @@ Pre-computed action manuals for browser automation. Agents receive structured pa
 ### Parameters
 
 **search_actions**:
+
 - `query` (required): Search keyword (e.g., "airbnb search", "google login")
 - `type`: `vector` | `fulltext` | `hybrid` (default)
 - `limit`: Max results (default: 5)
@@ -30,6 +31,7 @@ Pre-computed action manuals for browser automation. Agents receive structured pa
 - `minScore`: Minimum relevance score (0-1)
 
 **get_action_by_id**:
+
 - `id` (required): URL-based action ID (e.g., `example.com/page`)
 
 ## Example Response

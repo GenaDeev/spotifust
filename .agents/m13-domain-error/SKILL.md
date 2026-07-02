@@ -13,6 +13,7 @@ user-invocable: false
 **Who needs to handle this error, and how should they recover?**
 
 Before designing error types:
+
 - Is this user-facing or internal?
 - Is recovery possible?
 - What context is needed for debugging?
@@ -22,7 +23,7 @@ Before designing error types:
 ## Error Categorization
 
 | Error Type | Audience | Recovery | Example |
-|------------|----------|----------|---------|
+| ------------ | ---------- | ---------- | --------- |
 | User-facing | End users | Guide action | `InvalidEmail`, `NotFound` |
 | Internal | Developers | Debug info | `DatabaseError`, `ParseError` |
 | System | Ops/SRE | Monitor/alert | `ConnectionTimeout`, `RateLimited` |
@@ -64,7 +65,7 @@ To domain constraints (Layer 3):
 ```
 
 | Question | Trace To | Ask |
-|----------|----------|-----|
+| ---------- | ---------- | ----- |
 | Retry policy | domain-* | What's acceptable latency for retry? |
 | User experience | domain-* | What message should users see? |
 | Compliance | domain-* | What must be logged for audit? |
@@ -94,7 +95,7 @@ To implementation (Layer 1):
 ## Quick Reference
 
 | Recovery Pattern | When | Implementation |
-|------------------|------|----------------|
+| ------------------ | ------ | ---------------- |
 | Retry | Transient failures | exponential backoff |
 | Fallback | Degraded mode | cached/default value |
 | Circuit Breaker | Cascading failures | failsafe-rs |
@@ -149,7 +150,7 @@ where
 ## Common Mistakes
 
 | Mistake | Why Wrong | Better |
-|---------|-----------|--------|
+| --------- | ----------- | -------- |
 | Same error for all | No actionability | Categorize by audience |
 | Retry everything | Wasted resources | Only transient errors |
 | Infinite retry | DoS self | Max attempts + backoff |
@@ -161,7 +162,7 @@ where
 ## Anti-Patterns
 
 | Anti-Pattern | Why Bad | Better |
-|--------------|---------|--------|
+| -------------- | --------- | -------- |
 | String errors | No structure | thiserror types |
 | panic! for recoverable | Bad UX | Result with context |
 | Ignore errors | Silent failures | Log or propagate |
@@ -173,7 +174,7 @@ where
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Error handling basics | m06-error-handling |
 | Retry implementation | m07-concurrency |
 | Domain modeling | m09-domain |

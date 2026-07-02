@@ -13,6 +13,7 @@ user-invocable: false
 **What's the right way to think about this Rust concept?**
 
 When learning or explaining Rust:
+
 - What's the correct mental model?
 - What misconceptions should be avoided?
 - What analogies help understanding?
@@ -22,7 +23,7 @@ When learning or explaining Rust:
 ## Key Mental Models
 
 | Concept | Mental Model | Analogy |
-|---------|--------------|---------|
+| --------- | -------------- | --------- |
 | Ownership | Unique key | Only one person has the house key |
 | Move | Key handover | Giving away your key |
 | `&T` | Lending for reading | Lending a book |
@@ -37,7 +38,7 @@ When learning or explaining Rust:
 ## Coming From Other Languages
 
 | From | Key Shift |
-|------|-----------|
+| ------ | ----------- |
 | Java/C# | Values are owned, not references by default |
 | C/C++ | Compiler enforces safety rules |
 | Python/Go | No GC, deterministic destruction |
@@ -95,7 +96,7 @@ To implementation (Layer 1):
 ## Common Misconceptions
 
 | Error | Wrong Model | Correct Model |
-|-------|-------------|---------------|
+| ------- | ------------- | --------------- |
 | E0382 use after move | GC cleans up | Ownership = unique key transfer |
 | E0502 borrow conflict | Multiple writers OK | Only one writer at a time |
 | E0499 multiple mut borrows | Aliased mutation | Exclusive access for mutation |
@@ -105,7 +106,7 @@ To implementation (Layer 1):
 ## Deprecated Thinking
 
 | Deprecated | Better |
-|------------|--------|
+| ------------ | -------- |
 | "Rust is like C++" | Different ownership model |
 | "Lifetimes are GC" | Compile-time validity scope |
 | "Clone solves everything" | Restructure ownership |
@@ -159,7 +160,7 @@ After move: s1 is no longer valid
 ## Learning Path
 
 | Stage | Focus | Skills |
-|-------|-------|--------|
+| ------- | ------- | -------- |
 | Beginner | Ownership basics | m01-ownership, m14-mental-model |
 | Intermediate | Smart pointers, error handling | m02, m06 |
 | Advanced | Concurrency, unsafe | m07, unsafe-checker |
@@ -170,7 +171,7 @@ After move: s1 is no longer valid
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Ownership errors | m01-ownership |
 | Smart pointers | m02-resource |
 | Concurrency | m07-concurrency |

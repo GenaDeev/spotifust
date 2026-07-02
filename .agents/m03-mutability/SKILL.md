@@ -13,6 +13,7 @@ user-invocable: false
 **Why does this data need to change, and who can change it?**
 
 Before adding interior mutability, understand:
+
 - Is mutation essential or accidental complexity?
 - Who should control mutation?
 - Is the mutation pattern safe?
@@ -22,7 +23,7 @@ Before adding interior mutability, understand:
 ## Error → Design Question
 
 | Error | Don't Just Say | Ask Instead |
-|-------|----------------|-------------|
+| ------- | ---------------- | ------------- |
 | E0596 | "Add mut" | Should this really be mutable? |
 | E0499 | "Split borrows" | Is the data structure right? |
 | E0502 | "Separate scopes" | Why do we need both borrows? |
@@ -61,7 +62,7 @@ E0499/E0502 (borrow conflicts)
 ```
 
 | Persistent Error | Trace To | Question |
-|-----------------|----------|----------|
+| ----------------- | ---------- | ---------- |
 | Repeated borrow conflicts | m09-domain | Should data be restructured? |
 | RefCell in async | m07-concurrency | Is Send/Sync needed? |
 | Mutex deadlocks | m07-concurrency | Is the lock design right? |
@@ -101,7 +102,7 @@ Never both simultaneously.
 ## Quick Reference
 
 | Pattern | Thread-Safe | Runtime Cost | Use When |
-|---------|-------------|--------------|----------|
+| --------- | ------------- | -------------- | ---------- |
 | `&mut T` | N/A | Zero | Exclusive mutable access |
 | `Cell<T>` | No | Zero | Copy types, no refs needed |
 | `RefCell<T>` | No | Runtime check | Non-Copy, need runtime borrow |
@@ -122,7 +123,7 @@ Never both simultaneously.
 ## Interior Mutability Decision
 
 | Scenario | Choose |
-|----------|--------|
+| ---------- | -------- |
 | T: Copy, single-thread | `Cell<T>` |
 | T: !Copy, single-thread | `RefCell<T>` |
 | T: Copy, multi-thread | `AtomicXxx` |
@@ -135,7 +136,7 @@ Never both simultaneously.
 ## Anti-Patterns
 
 | Anti-Pattern | Why Bad | Better |
-|--------------|---------|--------|
+| -------------- | --------- | -------- |
 | RefCell everywhere | Runtime panics | Clear ownership design |
 | Mutex for single-thread | Unnecessary overhead | RefCell |
 | Ignore RefCell panic | Hard to debug | Handle or restructure |
@@ -146,7 +147,7 @@ Never both simultaneously.
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Smart pointer choice | m02-resource |
 | Thread safety | m07-concurrency |
 | Data structure design | m09-domain |

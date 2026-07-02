@@ -19,6 +19,7 @@ user-invocable: false
 **What's the right crate for this job, and how should it integrate?**
 
 Before adding dependencies:
+
 - Is there a standard solution?
 - What's the maintenance status?
 - What's the API stability?
@@ -28,7 +29,7 @@ Before adding dependencies:
 ## Integration Decision → Implementation
 
 | Need | Choice | Crates |
-|------|--------|--------|
+| ------ | -------- | -------- |
 | Serialization | Derive-based | serde, serde_json |
 | Async runtime | tokio or async-std | tokio (most popular) |
 | HTTP client | Ergonomic | reqwest |
@@ -72,7 +73,7 @@ To domain constraints (Layer 3):
 ```
 
 | Question | Trace To | Ask |
-|----------|----------|-----|
+| ---------- | ---------- | ----- |
 | Framework choice | domain-* | What constraints matter? |
 | Library vs build | domain-* | What's the deployment model? |
 | API design | domain-* | Who are the consumers? |
@@ -100,7 +101,7 @@ To implementation (Layer 1):
 ### Language Interop
 
 | Integration | Crate/Tool | Use Case |
-|-------------|------------|----------|
+| ------------- | ------------ | ---------- |
 | C/C++ → Rust | `bindgen` | Auto-generate bindings |
 | Rust → C | `cbindgen` | Export C headers |
 | Python ↔ Rust | `pyo3` | Python extensions |
@@ -110,7 +111,7 @@ To implementation (Layer 1):
 ### Cargo Features
 
 | Feature | Purpose |
-|---------|---------|
+| --------- | --------- |
 | `[features]` | Optional functionality |
 | `default = [...]` | Default features |
 | `feature = "serde"` | Conditional deps |
@@ -119,7 +120,7 @@ To implementation (Layer 1):
 ## Error Code Reference
 
 | Error | Cause | Fix |
-|-------|-------|-----|
+| ------- | ------- | ----- |
 | E0433 | Can't find crate | Add to Cargo.toml |
 | E0603 | Private item | Check crate docs |
 | Feature not enabled | Optional feature | Enable in `features` |
@@ -131,7 +132,7 @@ To implementation (Layer 1):
 ## Crate Selection Criteria
 
 | Criterion | Good Sign | Warning Sign |
-|-----------|-----------|--------------|
+| ----------- | ----------- | -------------- |
 | Maintenance | Recent commits | Years inactive |
 | Community | Active issues/PRs | No response |
 | Documentation | Examples, API docs | Minimal docs |
@@ -143,7 +144,7 @@ To implementation (Layer 1):
 ## Anti-Patterns
 
 | Anti-Pattern | Why Bad | Better |
-|--------------|---------|--------|
+| -------------- | --------- | -------- |
 | `extern crate` | Outdated (2018+) | Just `use` |
 | `#[macro_use]` | Global pollution | Explicit import |
 | Wildcard deps `*` | Unpredictable | Specific versions |
@@ -155,7 +156,7 @@ To implementation (Layer 1):
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Error type design | m06-error-handling |
 | Trait integration | m04-zero-cost |
 | FFI safety | unsafe-checker |

@@ -101,7 +101,7 @@ extern "C" fn good_callback(s: *const c_char) {
 ## String Type Comparison
 
 | Type | Null-terminated | Encoding | Use |
-|------|-----------------|----------|-----|
+| ------ | ----------------- | ---------- | ----- |
 | `String` | No | UTF-8 | Rust owned |
 | `&str` | No | UTF-8 | Rust borrowed |
 | `CString` | Yes | Byte | Rust-to-C owned |

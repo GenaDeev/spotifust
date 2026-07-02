@@ -13,6 +13,7 @@ user-invocable: false
 **Is this failure expected or a bug?**
 
 Before choosing error handling strategy:
+
 - Can this fail in normal operation?
 - Who should handle this failure?
 - What context does the caller need?
@@ -22,7 +23,7 @@ Before choosing error handling strategy:
 ## Error → Design Question
 
 | Pattern | Don't Just Say | Ask Instead |
-|---------|----------------|-------------|
+| --------- | ---------------- | ------------- |
 | unwrap panics | "Use ?" | Is None/Err actually possible here? |
 | Type mismatch on ? | "Use anyhow" | Are error types designed correctly? |
 | Lost error context | "Add .context()" | What does the caller need to know? |
@@ -65,7 +66,7 @@ When error strategy is unclear:
 ```
 
 | Situation | Trace To | Question |
-|-----------|----------|----------|
+| ----------- | ---------- | ---------- |
 | Too many unwraps | m09-domain | Is the data model right? |
 | Error context design | m13-domain-error | What recovery is needed? |
 | Library vs app errors | m11-ecosystem | Who are the consumers? |
@@ -98,7 +99,7 @@ From design to implementation:
 ## Quick Reference
 
 | Pattern | When | Example |
-|---------|------|---------|
+| --------- | ------ | --------- |
 | `Result<T, E>` | Recoverable error | `fn read() -> Result<String, io::Error>` |
 | `Option<T>` | Absence is normal | `fn find() -> Option<&Item>` |
 | `?` | Propagate error | `let data = file.read()?;` |
@@ -109,7 +110,7 @@ From design to implementation:
 ## Library vs Application
 
 | Context | Error Crate | Why |
-|---------|-------------|-----|
+| --------- | ------------- | ----- |
 | Library | `thiserror` | Typed errors for consumers |
 | Application | `anyhow` | Ergonomic error handling |
 | Mixed | Both | thiserror at boundaries, anyhow internally |
@@ -137,7 +138,7 @@ Use ? → Need context?
 ## Common Errors
 
 | Error | Cause | Fix |
-|-------|-------|-----|
+| ------- | ------- | ----- |
 | `unwrap()` panic | Unhandled None/Err | Use `?` or match |
 | Type mismatch | Different error types | Use `anyhow` or `From` |
 | Lost context | `?` without context | Add `.context()` |
@@ -148,7 +149,7 @@ Use ? → Need context?
 ## Anti-Patterns
 
 | Anti-Pattern | Why Bad | Better |
-|--------------|---------|--------|
+| -------------- | --------- | -------- |
 | `.unwrap()` everywhere | Panics in production | `.expect("reason")` or `?` |
 | Ignore errors silently | Bugs hidden | Handle or propagate |
 | `panic!` for expected errors | Bad UX, no recovery | Result |
@@ -159,7 +160,7 @@ Use ? → Need context?
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Domain error strategy | m13-domain-error |
 | Crate boundaries | m11-ecosystem |
 | Type-safe errors | m05-type-driven |

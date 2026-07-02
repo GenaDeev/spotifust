@@ -98,11 +98,13 @@ impl<T> MyMutex<T> {
 ## Why This Is Always UB
 
 The compiler assumes:
+
 1. `&T` means no mutation will occur
 2. Multiple `&T` can exist simultaneously
 3. Optimizations can be made based on these assumptions
 
 When you mutate through cast pointer:
+
 1. Other `&T` references see inconsistent values
 2. Compiler may cache/eliminate reads
 3. Results are unpredictable

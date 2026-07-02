@@ -98,7 +98,7 @@ fn align_up<T>(ptr: *const u8) -> *const u8 {
 ## Architecture Notes
 
 | Arch | Misaligned Access |
-|------|-------------------|
+| ------ | ------------------- |
 | x86/x64 | Works but slower |
 | ARM | UB, may trap or give wrong results |
 | RISC-V | UB, may trap |

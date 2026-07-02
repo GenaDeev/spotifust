@@ -16,6 +16,7 @@ Navigate large Rust codebases efficiently using Language Server Protocol.
 ```
 
 **Examples:**
+
 - `/rust-code-navigator parse_config` - Find definition of parse_config
 - `/rust-code-navigator MyStruct in src/lib.rs:42` - Navigate from specific location
 
@@ -35,6 +36,7 @@ LSP(
 ```
 
 **Use when:**
+
 - User asks "where is X defined?"
 - User wants to understand a type/function
 - Ctrl+click equivalent
@@ -53,6 +55,7 @@ LSP(
 ```
 
 **Use when:**
+
 - User asks "who uses X?"
 - Before refactoring/renaming
 - Understanding impact of changes
@@ -71,6 +74,7 @@ LSP(
 ```
 
 **Use when:**
+
 - User asks "what type is X?"
 - User wants documentation
 - Quick type checking
@@ -134,7 +138,7 @@ pub struct Config {
 ## Common Patterns
 
 | User Says | LSP Operation |
-|-----------|---------------|
+| ----------- | --------------- |
 | "Where is X defined?" | goToDefinition |
 | "Who uses X?" | findReferences |
 | "What type is X?" | hover |
@@ -144,7 +148,7 @@ pub struct Config {
 ## Error Handling
 
 | Error | Cause | Solution |
-|-------|-------|----------|
+| ------- | ------- | ---------- |
 | "No LSP server" | rust-analyzer not running | Suggest: `rustup component add rust-analyzer` |
 | "Symbol not found" | Typo or not in scope | Search with workspaceSymbol first |
 | "Multiple definitions" | Generics or macros | Show all and let user choose |
@@ -152,7 +156,7 @@ pub struct Config {
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Call relationships | rust-call-graph |
 | Project structure | rust-symbol-analyzer |
 | Trait implementations | rust-trait-explorer |

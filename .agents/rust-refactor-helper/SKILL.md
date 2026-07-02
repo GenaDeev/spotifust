@@ -16,12 +16,14 @@ Perform safe refactoring with comprehensive impact analysis.
 ```
 
 **Actions:**
+
 - `rename <old> <new>` - Rename symbol
 - `extract-fn <selection>` - Extract to function
 - `inline <fn>` - Inline function
 - `move <symbol> <dest>` - Move to module
 
 **Examples:**
+
 - `/rust-refactor-helper rename parse_config load_config`
 - `/rust-refactor-helper extract-fn src/main.rs:20-35`
 - `/rust-refactor-helper move UserService src/services/`
@@ -245,7 +247,7 @@ src/
 ## Safety Checks
 
 | Check | Purpose |
-|-------|---------|
+| ------- | --------- |
 | Reference completeness | Ensure all uses are found |
 | Name conflicts | Detect existing symbols with same name |
 | Visibility changes | Warn if pub/private scope changes |
@@ -266,7 +268,7 @@ This shows all changes without applying them.
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Navigate to symbol | rust-code-navigator |
 | Understand call flow | rust-call-graph |
 | Project structure | rust-symbol-analyzer |

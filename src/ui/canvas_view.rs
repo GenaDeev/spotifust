@@ -1,9 +1,8 @@
+use crate::app::{CardState, Message};
 use iced::{
-    mouse,
-    widget::canvas::{Action, Cache, Geometry, Program, Event, Path, Stroke, Frame},
-    Rectangle, Theme, Color, Point,
+    Color, Point, Rectangle, Theme, mouse,
+    widget::canvas::{Action, Cache, Event, Frame, Geometry, Path, Program, Stroke},
 };
-use crate::app::{Message, CardState};
 
 #[allow(dead_code)]
 pub struct CanvasView<'a> {
@@ -55,11 +54,9 @@ impl Program<Message> for CanvasView<'_> {
             );
 
             for card in self.cards {
-                let rect = Path::rectangle(
-                    Point::new(card.bounds.x, card.bounds.y),
-                    card.bounds.size(),
-                );
-                
+                let rect =
+                    Path::rectangle(Point::new(card.bounds.x, card.bounds.y), card.bounds.size());
+
                 // Base card color (Spotify's #181818 surface color)
                 frame.fill(&rect, Color::from_rgb8(0x18, 0x18, 0x18));
 
@@ -76,13 +73,11 @@ impl Program<Message> for CanvasView<'_> {
 
         // Dynamic hover/drag borders (NOT cached to avoid invalidating heavy layout renders)
         let mut dynamic = Frame::new(renderer, bounds.size());
-        
+
         for card in self.cards {
             if card.is_hovered || card.is_dragging {
-                let rect = Path::rectangle(
-                    Point::new(card.bounds.x, card.bounds.y),
-                    card.bounds.size(),
-                );
+                let rect =
+                    Path::rectangle(Point::new(card.bounds.x, card.bounds.y), card.bounds.size());
 
                 // Accent color: Rust's #f48264 orange
                 let border_color = if card.is_dragging {
@@ -94,9 +89,7 @@ impl Program<Message> for CanvasView<'_> {
 
                 dynamic.stroke(
                     &rect,
-                    Stroke::default()
-                        .with_color(border_color)
-                        .with_width(2.0),
+                    Stroke::default().with_color(border_color).with_width(2.0),
                 );
             }
         }

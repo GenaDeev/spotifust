@@ -60,6 +60,7 @@ fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
 ### From "Everything is a Reference" (Java/C#)
 
 Java mental model:
+
 ```java
 // Everything is implicitly a reference
 User user = new User("Alice");  // user is a reference
@@ -69,6 +70,7 @@ user.setName("Bob");  // affects the list too!
 ```
 
 Rust mental model:
+
 ```rust
 // Values are owned, sharing is explicit
 let user = User::new("Alice");  // user is owned
@@ -85,6 +87,7 @@ let user2 = Rc::clone(&user);  // explicit shared ownership
 ### From "Manual Memory Management" (C/C++)
 
 C mental model:
+
 ```c
 char* s = malloc(100);
 // ... must remember to free(s) ...
@@ -94,6 +97,7 @@ free(s);
 ```
 
 Rust mental model:
+
 ```rust
 let s = String::with_capacity(100);
 // ... use s ...
@@ -104,6 +108,7 @@ let s = String::with_capacity(100);
 ### From "Garbage Collection" (Go/Python)
 
 GC mental model:
+
 ```python
 # Create objects, GC will figure it out
 users = []
@@ -113,6 +118,7 @@ for name in names:
 ```
 
 Rust mental model:
+
 ```rust
 let users: Vec<User> = names
     .iter()
@@ -281,6 +287,7 @@ fn process(data: ???) -> ???
 5. **The compiler is your friend** - work with it, not against it
 
 When stuck:
+
 - Clone to make progress
 - Restructure to own instead of borrow
 - Ask: "What is the compiler trying to tell me?"

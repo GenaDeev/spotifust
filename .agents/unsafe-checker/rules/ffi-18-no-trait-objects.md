@@ -146,7 +146,7 @@ The sizes don't match!
 ## Alternatives to Trait Objects
 
 | Instead of | Use |
-|------------|-----|
+| ------------ | ----- |
 | `dyn Trait` | Function pointer + user_data |
 | `Box<dyn Trait>` | Boxed concrete type + trampoline |
 | `&dyn Trait` | C-compatible vtable struct |

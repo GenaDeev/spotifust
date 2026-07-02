@@ -1,9 +1,6 @@
-use iced::{
-    widget::canvas::Cache,
-    Element, Task, Point, Rectangle, Size,
-};
+use crate::audio::engine::{AudioCommand, AudioEngine};
 use crate::error::AppError;
-use crate::audio::engine::{AudioEngine, AudioCommand};
+use iced::{Element, Point, Rectangle, Size, Task, widget::canvas::Cache};
 use tokio::sync::mpsc as tokio_mpsc;
 
 #[allow(dead_code)]
@@ -89,10 +86,8 @@ impl App {
                     if card.bounds.contains(point) {
                         self.dragging_card_idx = Some(idx);
                         card.is_dragging = true;
-                        self.drag_offset = Point::new(
-                            point.x - card.bounds.x,
-                            point.y - card.bounds.y,
-                        );
+                        self.drag_offset =
+                            Point::new(point.x - card.bounds.x, point.y - card.bounds.y);
                         break;
                     }
                 }

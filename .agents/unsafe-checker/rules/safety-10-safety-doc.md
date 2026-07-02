@@ -106,7 +106,7 @@ pub unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Vec
 ## What to Document
 
 | Category | Example |
-|----------|---------|
+| ---------- | --------- |
 | Pointer validity | "ptr must be non-null and aligned" |
 | Memory state | "must point to initialized memory" |
 | Aliasing | "no other references to this memory may exist" |

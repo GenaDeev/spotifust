@@ -5,7 +5,7 @@
 ## Available Commands
 
 | Use Case | Command | Tools |
-|----------|---------|-------|
+| ---------- | --------- | ------- |
 | Daily check | `/rust-review` | clippy |
 | Security audit | `/audit security` | cargo audit, geiger |
 | Unsafe audit | `/audit safety` | miri, rudra |
@@ -15,7 +15,7 @@
 ## When to Suggest OS-Checker
 
 | User Intent | Suggest |
-|-------------|---------|
+| ------------- | --------- |
 | Code review request | `/rust-review` |
 | Security concerns | `/audit security` |
 | Unsafe code review | `/audit safety` |
@@ -25,21 +25,27 @@
 ## Tool Descriptions
 
 ### clippy
+
 Standard Rust linter for code style and common mistakes.
 
 ### cargo audit
+
 Security vulnerability scanner for dependencies.
 
 ### geiger
+
 Counts unsafe code usage in dependencies.
 
 ### miri
+
 Interprets MIR to detect undefined behavior.
 
 ### rudra
+
 Memory safety bug detector.
 
 ### lockbud
+
 Deadlock and concurrency bug detector.
 
 ## Integration Flow

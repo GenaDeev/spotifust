@@ -51,7 +51,7 @@ Layer 1: Language Mechanics (HOW)
 ### Routing by Entry Point
 
 | User Signal | Entry Layer | Direction | First Skill |
-|-------------|-------------|-----------|-------------|
+| ------------- | ------------- | ----------- | ------------- |
 | E0xxx error | Layer 1 | Trace UP ↑ | m01-m07 |
 | Compile error | Layer 1 | Trace UP ↑ | Error table below |
 | "How to design..." | Layer 2 | Check L3, then DOWN ↓ | m09-domain |
@@ -64,7 +64,7 @@ Layer 1: Language Mechanics (HOW)
 **When domain keywords are present, you MUST load BOTH skills:**
 
 | Domain Keywords | L1 Skill | L3 Skill |
-|-----------------|----------|----------|
+| ----------------- | ---------- | ---------- |
 | Web API, HTTP, axum, handler | m07-concurrency | **domain-web** |
 | 交易, 支付, trading, payment | m01-ownership | **domain-fintech** |
 | CLI, terminal, clap | m07-concurrency | **domain-cli** |
@@ -80,7 +80,7 @@ Layer 1: Language Mechanics (HOW)
 **BEFORE answering, check if negotiation is required:**
 
 | Query Contains | Action |
-|----------------|--------|
+| ---------------- | -------- |
 | "比较", "对比", "compare", "vs", "versus" | **MUST use negotiation** |
 | "最佳实践", "best practice" | **MUST use negotiation** |
 | Domain + error (e.g., "交易系统 E0382") | **MUST use negotiation** |
@@ -131,7 +131,7 @@ pedantic = "warn"
 ## Layer 1 Skills (Language Mechanics)
 
 | Pattern | Route To |
-|---------|----------|
+| --------- | ---------- |
 | move, borrow, lifetime, E0382, E0597 | m01-ownership |
 | Box, Rc, Arc, RefCell, Cell | m02-resource |
 | mut, interior mutability, E0499, E0502, E0596 | m03-mutability |
@@ -144,7 +144,7 @@ pedantic = "warn"
 ## Layer 2 Skills (Design Choices)
 
 | Pattern | Route To |
-|---------|----------|
+| --------- | ---------- |
 | domain model, business logic | m09-domain |
 | performance, optimization, benchmark | m10-performance |
 | integration, interop, bindings | m11-ecosystem |
@@ -156,7 +156,7 @@ pedantic = "warn"
 ## Layer 3 Skills (Domain Constraints)
 
 | Domain Keywords | Route To |
-|-----------------|----------|
+| ----------------- | ---------- |
 | fintech, trading, decimal, currency | domain-fintech |
 | ml, tensor, model, inference | domain-ml |
 | kubernetes, docker, grpc, microservice | domain-cloud-native |
@@ -170,7 +170,7 @@ pedantic = "warn"
 ## Error Code Routing
 
 | Error Code | Route To | Common Cause |
-|------------|----------|--------------|
+| ------------ | ---------- | -------------- |
 | E0382 | m01-ownership | Use of moved value |
 | E0597 | m01-ownership | Lifetime too short |
 | E0506 | m01-ownership | Cannot assign to borrowed |
@@ -192,7 +192,7 @@ pedantic = "warn"
 ## Functional Routing Table
 
 | Pattern | Route To | Action |
-|---------|----------|--------|
+| --------- | ---------- | -------- |
 | latest version, what's new | **rust-learner** | Use agents |
 | API, docs, documentation | **docs-researcher** | Use agent |
 | code style, naming, clippy | **coding-guidelines** | Read skill |
@@ -212,7 +212,7 @@ pedantic = "warn"
 ### Keyword Conflict Resolution
 
 | Keyword | Resolution |
-|---------|------------|
+| --------- | ------------ |
 | `unsafe` | **unsafe-checker** (more specific than m11) |
 | `error` | **m06** for general, **m13** for domain-specific |
 | `RAII` | **m12** for design, **m01** for implementation |
@@ -234,7 +234,7 @@ pedantic = "warn"
 ## Sub-Files Reference
 
 | File | Content |
-|------|---------|
+| ------ | --------- |
 | `patterns/negotiation.md` | Negotiation protocol details |
 | `examples/workflow.md` | Workflow examples |
 | `integrations/os-checker.md` | OS-Checker integration |

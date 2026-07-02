@@ -112,7 +112,7 @@ fn explicit_ownership() {
 ## Ownership Patterns
 
 | Pattern | Who Owns | Rust Drop? |
-|---------|----------|------------|
+| --------- | ---------- | ------------ |
 | Rust creates, Rust frees | Rust | Yes |
 | Rust creates, C frees | C | No |
 | C creates, C frees | C | No (use wrapper) |

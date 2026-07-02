@@ -19,7 +19,7 @@ user-invocable: false
 ## Domain Constraints → Design Implications
 
 | Domain Rule | Design Constraint | Rust Implication |
-|-------------|-------------------|------------------|
+| ------------- | ------------------- | ------------------ |
 | No heap | Stack allocation | heapless, no Box/Vec |
 | No std | Core only | #![no_std] |
 | Real-time | Predictable timing | No dynamic alloc |
@@ -80,7 +80,7 @@ From constraints to design (Layer 2):
 ## Layer Stack
 
 | Layer | Examples | Purpose |
-|-------|----------|---------|
+| ------- | ---------- | --------- |
 | PAC | stm32f4, esp32c3 | Register access |
 | HAL | stm32f4xx-hal | Hardware abstraction |
 | Framework | RTIC, Embassy | Concurrency |
@@ -89,7 +89,7 @@ From constraints to design (Layer 2):
 ## Framework Comparison
 
 | Framework | Style | Best For |
-|-----------|-------|----------|
+| ----------- | ------- | ---------- |
 | RTIC | Priority-based | Interrupt-driven apps |
 | Embassy | Async | Complex state machines |
 | Bare metal | Manual | Simple apps |
@@ -97,7 +97,7 @@ From constraints to design (Layer 2):
 ## Key Crates
 
 | Purpose | Crate |
-|---------|-------|
+| --------- | ------- |
 | Runtime (ARM) | cortex-m-rt |
 | Panic handler | panic-halt, panic-probe |
 | Collections | heapless |
@@ -108,7 +108,7 @@ From constraints to design (Layer 2):
 ## Design Patterns
 
 | Pattern | Purpose | Implementation |
-|---------|---------|----------------|
+| --------- | --------- | ---------------- |
 | no_std setup | Bare metal | `#![no_std]` + `#![no_main]` |
 | Entry point | Startup | `#[entry]` or embassy |
 | Static state | ISR access | `Mutex<RefCell<Option<T>>>` |
@@ -149,7 +149,7 @@ fn main() -> ! {
 ## Common Mistakes
 
 | Mistake | Domain Violation | Fix |
-|---------|-----------------|-----|
+| --------- | ----------------- | ----- |
 | Using Vec | Heap allocation | heapless::Vec |
 | No critical section | Race with ISR | Mutex + interrupt::free |
 | Blocking in ISR | Missed interrupts | Defer to main loop |
@@ -160,7 +160,7 @@ fn main() -> ! {
 ## Trace to Layer 1
 
 | Constraint | Layer 2 Pattern | Layer 1 Implementation |
-|------------|-----------------|------------------------|
+| ------------ | ----------------- | ------------------------ |
 | No heap | Static collections | heapless::Vec<T, N> |
 | ISR safety | Critical sections | Mutex<RefCell<T>> |
 | Hardware ownership | Singleton | take().unwrap() |
@@ -171,7 +171,7 @@ fn main() -> ! {
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Static memory | m02-resource |
 | Interior mutability | m03-mutability |
 | Interrupt patterns | m07-concurrency |

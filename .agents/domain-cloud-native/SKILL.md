@@ -11,7 +11,7 @@ user-invocable: false
 ## Domain Constraints → Design Implications
 
 | Domain Rule | Design Constraint | Rust Implication |
-|-------------|-------------------|------------------|
+| ------------- | ------------------- | ------------------ |
 | 12-Factor | Config from env | Environment-based config |
 | Observability | Metrics + traces | tracing + opentelemetry |
 | Health checks | Liveness/readiness | Dedicated endpoints |
@@ -72,7 +72,7 @@ From constraints to design (Layer 2):
 ## Key Crates
 
 | Purpose | Crate |
-|---------|-------|
+| --------- | ------- |
 | gRPC | tonic |
 | Kubernetes | kube, kube-runtime |
 | Docker | bollard |
@@ -84,7 +84,7 @@ From constraints to design (Layer 2):
 ## Design Patterns
 
 | Pattern | Purpose | Implementation |
-|---------|---------|----------------|
+| --------- | --------- | ---------------- |
 | gRPC services | Service mesh | tonic + tower |
 | K8s operators | Custom resources | kube-runtime Controller |
 | Observability | Debugging | tracing + OTEL |
@@ -137,7 +137,7 @@ async fn ready(State(db): State<Arc<DbPool>>) -> StatusCode {
 ## Common Mistakes
 
 | Mistake | Domain Violation | Fix |
-|---------|-----------------|-----|
+| --------- | ----------------- | ----- |
 | Local file state | Not stateless | External storage |
 | No SIGTERM handling | Hard kills | Graceful shutdown |
 | No tracing | Can't debug | tracing spans |
@@ -148,7 +148,7 @@ async fn ready(State(db): State<Arc<DbPool>>) -> StatusCode {
 ## Trace to Layer 1
 
 | Constraint | Layer 2 Pattern | Layer 1 Implementation |
-|------------|-----------------|------------------------|
+| ------------ | ----------------- | ------------------------ |
 | Stateless | External state | Arc<Client> for external |
 | Graceful shutdown | Signal handling | tokio::signal |
 | Tracing | Span lifecycle | tracing + OTEL |
@@ -159,7 +159,7 @@ async fn ready(State(db): State<Arc<DbPool>>) -> StatusCode {
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Async patterns | m07-concurrency |
 | HTTP endpoints | domain-web |
 | Error handling | m13-domain-error |

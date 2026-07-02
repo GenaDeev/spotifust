@@ -92,7 +92,7 @@ fn dynamic_library() -> Result<(), Box<dyn std::error::Error>> {
 ## Memory Ownership Rules
 
 | Memory Type | Owner | Safe Access |
-|-------------|-------|-------------|
+| ------------- | ------- | ------------- |
 | Stack variables | Current function | Direct |
 | Heap (Box, Vec) | Rust allocator | Through smart pointers |
 | Static | Program | With proper synchronization |

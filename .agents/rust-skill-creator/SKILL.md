@@ -15,6 +15,7 @@ agent: general-purpose
 ## When to Use
 
 This skill handles requests to create skills for:
+
 - Third-party crates (tokio, serde, axum, etc.)
 - Rust standard library (std::sync, std::marker, etc.)
 - Any Rust documentation URL
@@ -24,6 +25,7 @@ This skill handles requests to create skills for:
 **CRITICAL: Check if related commands/skills are available.**
 
 This skill relies on:
+
 - `/create-llms-for-skills` command
 - `/create-skills-via-llms` command
 
@@ -38,7 +40,7 @@ This skill relies on:
 #### 1. Identify the Target
 
 | User Request | Target Type | URL Pattern |
-|--------------|-------------|-------------|
+| -------------- | ------------- | ------------- |
 | "create tokio skill" | Third-party crate | `docs.rs/tokio/latest/tokio/` |
 | "create Send trait skill" | Std library | `doc.rust-lang.org/std/marker/trait.Send.html` |
 | "create skill from URL" + URL | Custom URL | User-provided URL |
@@ -81,7 +83,7 @@ After llms.txt is generated, use:
 ### Step 1: Identify Target and Construct URL
 
 | Target | URL Template |
-|--------|--------------|
+| -------- | -------------- |
 | Crate overview | `https://docs.rs/{crate}/latest/{crate}/` |
 | Crate module | `https://docs.rs/{crate}/latest/{crate}/{module}/` |
 | Std trait | `https://doc.rust-lang.org/std/{module}/trait.{Name}.html` |
@@ -98,6 +100,7 @@ agent-browser close
 ```
 
 **Or with WebFetch fallback:**
+
 ```
 WebFetch("<documentation_url>", "Extract API documentation including types, functions, and examples")
 ```
@@ -154,6 +157,7 @@ description: "Documentation for {crate_name} crate. Keywords: {keywords}"
 
 - [docs.rs](https://docs.rs/{crate})
 - [crates.io](https://crates.io/crates/{crate})
+
 ```
 
 ### Step 5: Generate Reference Files
@@ -180,7 +184,7 @@ cat ~/.claude/skills/{crate_name}/SKILL.md
 ## URL Construction Helper
 
 | Target | URL Template |
-|--------|--------------|
+| -------- | -------------- |
 | Crate overview | `https://docs.rs/{crate}/latest/{crate}/` |
 | Crate module | `https://docs.rs/{crate}/latest/{crate}/{module}/` |
 | Std trait | `https://doc.rust-lang.org/std/{module}/trait.{Name}.html` |
@@ -190,7 +194,7 @@ cat ~/.claude/skills/{crate_name}/SKILL.md
 ## Common Std Library Paths
 
 | Item | Path |
-|------|------|
+| ------ | ------ |
 | Send, Sync, Copy, Clone | `std/marker/trait.{Name}.html` |
 | Arc, Mutex, RwLock | `std/sync/struct.{Name}.html` |
 | Rc, Weak | `std/rc/struct.{Name}.html` |
@@ -258,7 +262,7 @@ All generated skills are saved to: `~/.claude/skills/`
 ## Error Handling
 
 | Error | Cause | Solution |
-|-------|-------|----------|
+| ------- | ------- | ---------- |
 | Commands not found | Skills-only install | Use inline mode |
 | URL not found | Invalid crate/module | Verify crate exists on crates.io |
 | Empty documentation | API changed | Use alternative selectors |

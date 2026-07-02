@@ -12,7 +12,7 @@ user-invocable: false
 ## Domain Constraints → Design Implications
 
 | Domain Rule | Design Constraint | Rust Implication |
-|-------------|-------------------|------------------|
+| ------------- | ------------------- | ------------------ |
 | Stateless HTTP | No request-local globals | State in extractors |
 | Concurrency | Handle many connections | Async, Send + Sync |
 | Latency SLA | Fast response | Efficient ownership |
@@ -72,7 +72,7 @@ From constraints to design (Layer 2):
 ## Framework Comparison
 
 | Framework | Style | Best For |
-|-----------|-------|----------|
+| ----------- | ------- | ---------- |
 | axum | Functional, tower | Modern APIs |
 | actix-web | Actor-based | High performance |
 | warp | Filter composition | Composable APIs |
@@ -81,7 +81,7 @@ From constraints to design (Layer 2):
 ## Key Crates
 
 | Purpose | Crate |
-|---------|-------|
+| --------- | ------- |
 | HTTP server | axum, actix-web |
 | HTTP client | reqwest |
 | JSON | serde_json |
@@ -93,7 +93,7 @@ From constraints to design (Layer 2):
 ## Design Patterns
 
 | Pattern | Purpose | Implementation |
-|---------|---------|----------------|
+| --------- | --------- | ---------------- |
 | Extractors | Request parsing | `State(db)`, `Json(payload)` |
 | Error response | Unified errors | `impl IntoResponse` |
 | Middleware | Cross-cutting | Tower layers |
@@ -127,7 +127,7 @@ impl IntoResponse for AppError {
 ## Common Mistakes
 
 | Mistake | Domain Violation | Fix |
-|---------|-----------------|-----|
+| --------- | ----------------- | ----- |
 | Blocking in handler | Latency spike | spawn_blocking |
 | Rc in state | Not Send + Sync | Use Arc |
 | No validation | Security risk | Type-safe extractors |
@@ -138,7 +138,7 @@ impl IntoResponse for AppError {
 ## Trace to Layer 1
 
 | Constraint | Layer 2 Pattern | Layer 1 Implementation |
-|------------|-----------------|------------------------|
+| ------------ | ----------------- | ------------------------ |
 | Async handlers | Async/await | tokio runtime |
 | Thread-safe state | Shared state | Arc<T>, Arc<RwLock<T>> |
 | Request lifecycle | Extractors | Ownership via From<Request> |
@@ -149,7 +149,7 @@ impl IntoResponse for AppError {
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Async patterns | m07-concurrency |
 | State management | m02-resource |
 | Error handling | m06-error-handling |

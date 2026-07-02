@@ -13,6 +13,7 @@ user-invocable: false
 **What ownership pattern does this resource need?**
 
 Before choosing a smart pointer, understand:
+
 - Is ownership single or shared?
 - Is access single-threaded or multi-threaded?
 - Are there potential cycles?
@@ -22,7 +23,7 @@ Before choosing a smart pointer, understand:
 ## Error → Design Question
 
 | Error | Don't Just Say | Ask Instead |
-|-------|----------------|-------------|
+| ------- | ---------------- | ------------- |
 | "Need heap allocation" | "Use Box" | Why can't this be on stack? |
 | Rc memory leak | "Use Weak" | Is the cycle necessary in design? |
 | RefCell panic | "Use try_borrow" | Is runtime check the right approach? |
@@ -61,7 +62,7 @@ When pointer choice is unclear, trace to design:
 ```
 
 | Situation | Trace To | Question |
-|-----------|----------|----------|
+| ----------- | ---------- | ---------- |
 | Rc vs Arc confusion | m07-concurrency | What's the concurrency model? |
 | RefCell panics | m03-mutability | Is interior mutability right here? |
 | Memory leaks | m12-lifecycle | Where should cleanup happen? |
@@ -95,7 +96,7 @@ From design to implementation:
 ## Quick Reference
 
 | Type | Ownership | Thread-Safe | Use When |
-|------|-----------|-------------|----------|
+| ------ | ----------- | ------------- | ---------- |
 | `Box<T>` | Single | Yes | Heap allocation, recursive types |
 | `Rc<T>` | Shared | No | Single-thread shared ownership |
 | `Arc<T>` | Shared | Yes | Multi-thread shared ownership |
@@ -130,7 +131,7 @@ Need interior mutability?
 ## Common Errors
 
 | Problem | Cause | Fix |
-|---------|-------|-----|
+| --------- | ------- | ----- |
 | Rc cycle leak | Mutual strong refs | Use Weak for one direction |
 | RefCell panic | Borrow conflict at runtime | Use try_borrow or restructure |
 | Arc overhead | Atomic ops in hot path | Consider Rc if single-threaded |
@@ -141,7 +142,7 @@ Need interior mutability?
 ## Anti-Patterns
 
 | Anti-Pattern | Why Bad | Better |
-|--------------|---------|--------|
+| -------------- | --------- | -------- |
 | Arc everywhere | Unnecessary atomic overhead | Use Rc for single-thread |
 | RefCell everywhere | Runtime panics | Design clear ownership |
 | Box for small types | Unnecessary allocation | Stack allocation |
@@ -152,7 +153,7 @@ Need interior mutability?
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Ownership errors | m01-ownership |
 | Interior mutability details | m03-mutability |
 | Multi-thread context | m07-concurrency |

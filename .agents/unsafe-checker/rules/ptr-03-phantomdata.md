@@ -14,6 +14,7 @@ When a struct contains raw pointers but logically owns or borrows the pointed-to
 ## Rationale
 
 Raw pointers don't carry ownership or lifetime information. `PhantomData` lets you:
+
 - Indicate ownership (for `Drop` check)
 - Control variance (covariant, contravariant, invariant)
 - Participate in lifetime elision
@@ -80,7 +81,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
 ## PhantomData Patterns
 
 | Phantom Type | Meaning | Variance |
-|--------------|---------|----------|
+| -------------- | --------- | ---------- |
 | `PhantomData<T>` | Owns T | Covariant |
 | `PhantomData<&'a T>` | Borrows T for 'a | Covariant in T, covariant in 'a |
 | `PhantomData<&'a mut T>` | Mutably borrows T | Invariant in T, covariant in 'a |

@@ -8,7 +8,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/GenaDeev/spotifust/ci.yml?branch=main&label=CI)](https://github.com/GenaDeev/spotifust/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/GenaDeev/spotifust)](https://github.com/GenaDeev/spotifust/releases)
-[![License](https://img.shields.io/github/license/GenaDeev/spotifust)](./LICENSE)
+[![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
 
 [![Rust](https://img.shields.io/badge/Rust-1.78%2B-DEA584?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![MSRV](https://img.shields.io/badge/MSRV-1.78-blue)](https://www.rust-lang.org/)

@@ -408,7 +408,7 @@ fn test_macro_expansion() {
 ## Quick Reference
 
 | Anti-Pattern | Better Alternative |
-|--------------|-------------------|
+| -------------- | ------------------- |
 | Clone everywhere | Borrow when possible |
 | Unwrap everywhere | Propagate with `?` |
 | `String` parameters | `&str` parameters |

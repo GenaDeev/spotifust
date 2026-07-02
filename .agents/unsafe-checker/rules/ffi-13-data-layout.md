@@ -126,7 +126,7 @@ fn verify_layout() {
 ## repr Options
 
 | Attribute | Effect |
-|-----------|--------|
+| ----------- | -------- |
 | `#[repr(C)]` | C-compatible layout |
 | `#[repr(C, packed)]` | C layout, no padding |
 | `#[repr(C, align(N))]` | C layout, minimum align N |

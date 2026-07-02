@@ -63,12 +63,17 @@ impl AudioEngine {
 
         // 2. OS Audio Thread (rodio Sink)
         std::thread::spawn(move || {
-            let (_stream, stream_handle) = OutputStream::try_default().expect("Failed to open audio output");
+            let (_stream, stream_handle) =
+                OutputStream::try_default().expect("Failed to open audio output");
             let sink = Sink::try_new(&stream_handle).expect("Failed to create sink");
-            
-            let source = PcmSource { rx: pcm_rx, current_chunk: vec![], index: 0 };
+
+            let source = PcmSource {
+                rx: pcm_rx,
+                current_chunk: vec![],
+                index: 0,
+            };
             sink.append(source);
-            
+
             sink.sleep_until_end();
         });
 
@@ -105,8 +110,16 @@ impl Iterator for PcmSource {
 }
 
 impl Source for PcmSource {
-    fn current_frame_len(&self) -> Option<usize> { None }
-    fn channels(&self) -> u16 { 2 }
-    fn sample_rate(&self) -> u32 { 44100 }
-    fn total_duration(&self) -> Option<Duration> { None }
+    fn current_frame_len(&self) -> Option<usize> {
+        None
+    }
+    fn channels(&self) -> u16 {
+        2
+    }
+    fn sample_rate(&self) -> u32 {
+        44100
+    }
+    fn total_duration(&self) -> Option<Duration> {
+        None
+    }
 }

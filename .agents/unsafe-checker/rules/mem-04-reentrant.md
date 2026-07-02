@@ -97,7 +97,7 @@ fn best_random() -> u32 {
 ## Common Non-Reentrant Functions
 
 | Non-Reentrant | Reentrant | Rust Alternative |
-|---------------|-----------|------------------|
+| --------------- | ----------- | ------------------ |
 | `strtok` | `strtok_r` | `str::split` |
 | `localtime` | `localtime_r` | `chrono` crate |
 | `gmtime` | `gmtime_r` | `chrono` crate |

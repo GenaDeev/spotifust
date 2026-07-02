@@ -11,7 +11,7 @@ user-invocable: false
 ## Domain Constraints → Design Implications
 
 | Domain Rule | Design Constraint | Rust Implication |
-|-------------|-------------------|------------------|
+| ------------- | ------------------- | ------------------ |
 | Audit trail | Immutable records | Arc<T>, no mutation |
 | Precision | No floating point | rust_decimal |
 | Consistency | Transaction boundaries | Clear ownership |
@@ -71,7 +71,7 @@ From constraints to design (Layer 2):
 ## Key Crates
 
 | Purpose | Crate |
-|---------|-------|
+| --------- | ------- |
 | Decimal math | rust_decimal |
 | Date/time | chrono, time |
 | UUID | uuid |
@@ -81,7 +81,7 @@ From constraints to design (Layer 2):
 ## Design Patterns
 
 | Pattern | Purpose | Implementation |
-|---------|---------|----------------|
+| --------- | --------- | ---------------- |
 | Currency newtype | Type safety | `struct Amount(Decimal);` |
 | Transaction | Atomic operations | Event sourcing |
 | Audit log | Traceability | Structured logging with trace IDs |
@@ -117,7 +117,7 @@ impl Amount {
 ## Common Mistakes
 
 | Mistake | Domain Violation | Fix |
-|---------|-----------------|-----|
+| --------- | ----------------- | ----- |
 | Using f64 | Precision loss | rust_decimal |
 | Mutable transaction | Audit trail broken | Immutable + events |
 | String for amount | No validation | Validated newtype |
@@ -128,7 +128,7 @@ impl Amount {
 ## Trace to Layer 1
 
 | Constraint | Layer 2 Pattern | Layer 1 Implementation |
-|------------|-----------------|------------------------|
+| ------------ | ----------------- | ------------------------ |
 | Immutable records | Event sourcing | Arc<T>, Clone |
 | Transaction scope | Aggregate | Owned children |
 | Precision | Value Object | rust_decimal newtype |
@@ -139,7 +139,7 @@ impl Amount {
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Value Object design | m09-domain |
 | Ownership for immutable | m01-ownership |
 | Arc for sharing | m02-resource |

@@ -5,7 +5,7 @@
 ### Memory Management
 
 | Aspect | Rust | C++ |
-|--------|------|-----|
+| -------- | ------ | ----- |
 | Default | Move semantics | Copy semantics (pre-C++11) |
 | Move | `let b = a;` (a invalidated) | `auto b = std::move(a);` (a valid but unspecified) |
 | Copy | `let b = a.clone();` | `auto b = a;` |
@@ -28,7 +28,7 @@ let b = a;  // a moved
 ### Smart Pointers
 
 | Rust | C++ | Purpose |
-|------|-----|---------|
+| ------ | ----- | --------- |
 | `Box<T>` | `std::unique_ptr<T>` | Unique ownership |
 | `Rc<T>` | `std::shared_ptr<T>` | Shared ownership |
 | `Arc<T>` | `std::shared_ptr<T>` + atomic | Thread-safe shared |
@@ -41,7 +41,7 @@ let b = a;  // a moved
 ### Memory Model
 
 | Aspect | Rust | Go |
-|--------|------|-----|
+| -------- | ------ | ----- |
 | Memory | Stack + heap, explicit | GC manages all |
 | Ownership | Enforced at compile-time | None (GC handles) |
 | Null | `Option<T>` | `nil` for pointers |
@@ -74,12 +74,12 @@ std::thread::spawn(move || {
 
 ---
 
-## Rust vs Java/C#
+## Rust vs Java/C #
 
 ### Reference Semantics
 
 | Aspect | Rust | Java/C# |
-|--------|------|---------|
+| -------- | ------ | --------- |
 | Objects | Owned by default | Reference by default |
 | Null | `Option<T>` | `null` (nullable) |
 | Immutability | Default | Must use `final`/`readonly` |
@@ -111,7 +111,7 @@ process(numbers);
 ### Memory Model
 
 | Aspect | Rust | Python |
-|--------|------|--------|
+| -------- | ------ | -------- |
 | Typing | Static, compile-time | Dynamic, runtime |
 | Memory | Ownership-based | Reference counting + GC |
 | Mutability | Default immutable | Default mutable |
@@ -149,7 +149,7 @@ for item in &items {
 ### Learning Curve Areas
 
 | Concept | Coming From | Key Insight |
-|---------|-------------|-------------|
+| --------- | ------------- | ------------- |
 | Ownership | GC languages | Think about who "owns" data |
 | Borrowing | C/C++ | Like references but checked |
 | Lifetimes | Any | Explicit scope of validity |
@@ -167,6 +167,7 @@ After:  "I explicitly decide who owns data and when it's freed"
 ```
 
 Key shifts:
+
 - Think about ownership at design time
 - Returning references requires lifetime thinking
 - No more `null` - use `Option<T>`
@@ -179,6 +180,7 @@ After:  "Compiler enforces correctness, I fight the borrow checker"
 ```
 
 Key shifts:
+
 - Trust the compiler's errors
 - Move is the default (unlike C++ copy)
 - Smart pointers are idiomatic, not overhead
@@ -191,6 +193,7 @@ After:  "Mutability is explicit, ownership prevents aliasing"
 ```
 
 Key shifts:
+
 - Mutability is safe because of ownership rules
 - No persistent data structures needed (usually)
 - Performance characteristics are explicit
@@ -200,7 +203,7 @@ Key shifts:
 ## Performance Trade-offs
 
 | Language | Memory Overhead | Latency | Throughput |
-|----------|-----------------|---------|------------|
+| ---------- | ----------------- | --------- | ------------ |
 | Rust | Minimal (no GC) | Predictable | Excellent |
 | C++ | Minimal | Predictable | Excellent |
 | Go | GC overhead | GC pauses | Good |

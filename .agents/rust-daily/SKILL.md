@@ -18,7 +18,7 @@ Fetch Rust community updates, filtered by time range.
 ## Data Sources
 
 | Category | Sources |
-|----------|---------|
+| ---------- | --------- |
 | Ecosystem | Reddit r/rust, This Week in Rust |
 | Official | blog.rust-lang.org, Inside Rust |
 | Foundation | rustfoundation.org (news, blog, events) |
@@ -65,11 +65,13 @@ agent-browser close
 ```
 
 **Or with WebFetch fallback:**
+
 ```
 WebFetch("https://www.reddit.com/r/rust/hot/", "Extract top 10 posts with scores and titles")
 ```
 
 **Parse output into:**
+
 | Score | Title | Link |
 |-------|-------|------|
 
@@ -87,6 +89,7 @@ agent-browser close
 ```
 
 **Parse output into:**
+
 - Issue #{number} ({date}): highlights
 
 ### 3. Rust Blog (Official)
@@ -98,11 +101,13 @@ agent-browser close
 ```
 
 **Or with WebFetch fallback:**
+
 ```
 WebFetch("https://blog.rust-lang.org/", "Extract latest 5 blog posts with dates and titles")
 ```
 
 **Parse output into:**
+
 | Date | Title | Summary |
 |------|-------|---------|
 
@@ -115,6 +120,7 @@ agent-browser close
 ```
 
 **Or with WebFetch fallback:**
+
 ```
 WebFetch("https://blog.rust-lang.org/inside-rust/", "Extract latest 3 posts with dates and titles")
 ```
@@ -143,7 +149,7 @@ agent-browser close
 After fetching all sources, filter by time range:
 
 | Range | Filter |
-|-------|--------|
+| ------- | -------- |
 | day | Last 24 hours |
 | week | Last 7 days |
 | month | Last 30 days |
@@ -159,6 +165,7 @@ After fetching all sources, combine into the output format below.
 Both modes use the same tool chain order:
 
 1. **actionbook MCP** - Check for cached/pre-fetched content first
+
    ```
    mcp__actionbook__search_actions("rust news {date}")
    mcp__actionbook__search_actions("this week in rust")
@@ -166,6 +173,7 @@ Both modes use the same tool chain order:
    ```
 
 2. **agent-browser CLI** - For dynamic web content
+
    ```bash
    agent-browser open "<url>"
    agent-browser get text "<selector>"
@@ -175,13 +183,14 @@ Both modes use the same tool chain order:
 3. **WebFetch** - Fallback if agent-browser unavailable
 
 | Source | Primary Tool | Fallback |
-|--------|--------------|----------|
+| -------- | -------------- | ---------- |
 | Reddit | agent-browser | WebFetch |
 | TWIR | actionbook → agent-browser | WebFetch |
 | Rust Blog | actionbook → WebFetch | - |
 | Foundation | actionbook → WebFetch | - |
 
 **DO NOT use:**
+
 - Chrome MCP directly
 - WebSearch for fetching news pages
 
@@ -226,7 +235,7 @@ Both modes use the same tool chain order:
 ## Error Handling
 
 | Error | Cause | Solution |
-|-------|-------|----------|
+| ------- | ------- | ---------- |
 | Agent file not found | Skills-only install | Use inline mode |
 | agent-browser unavailable | CLI not installed | Use WebFetch |
 | Site timeout | Network issues | Retry once, then skip source |

@@ -126,7 +126,7 @@ pub extern "C" fn get_error_message(buf: *mut c_char, len: usize) -> c_int {
 ## Error Handling Patterns
 
 | Pattern | Usage |
-|---------|-------|
+| --------- | ------- |
 | Return code | Simple success/failure |
 | Return code + out param | Return value on success |
 | errno | POSIX-style APIs |

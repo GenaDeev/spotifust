@@ -16,6 +16,7 @@ Generate ASCII art visualizations of your Rust project's dependency tree.
 ```
 
 **Options:**
+
 - `--depth N`: Limit tree depth (default: 3)
 - `--features`: Show feature flags
 
@@ -62,9 +63,10 @@ cargo tree --depth=${DEPTH:-3} ${FEATURES:+--features} 2>/dev/null
 **Step 3:** Format as ASCII art tree
 
 Use these box-drawing characters:
+
 - `├──` for middle items
 - `└──` for last items
-- `│   ` for continuation lines
+- `│` for continuation lines
 
 ## Visual Enhancements
 
@@ -108,7 +110,7 @@ my-project v0.1.0
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Crate selection advice | m11-ecosystem |
 | Workspace management | m11-ecosystem |
 | Feature flag decisions | m11-ecosystem |

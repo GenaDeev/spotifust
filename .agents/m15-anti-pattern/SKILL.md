@@ -13,6 +13,7 @@ user-invocable: false
 **Is this pattern hiding a design problem?**
 
 When reviewing code:
+
 - Is this solving the symptom or the cause?
 - Is there a more idiomatic approach?
 - Does this fight or flow with Rust?
@@ -22,7 +23,7 @@ When reviewing code:
 ## Anti-Pattern → Better Pattern
 
 | Anti-Pattern | Why Bad | Better |
-|--------------|---------|--------|
+| -------------- | --------- | -------- |
 | `.clone()` everywhere | Hides ownership issues | Proper references or ownership |
 | `.unwrap()` in production | Runtime panics | `?`, `expect`, or handling |
 | `Rc` when single owner | Unnecessary overhead | Simple ownership |
@@ -65,7 +66,7 @@ To design understanding:
 ```
 
 | Anti-Pattern | Trace To | Question |
-|--------------|----------|----------|
+| -------------- | ---------- | ---------- |
 | Clone everywhere | m01-ownership | Who should own this data? |
 | Unwrap everywhere | m06-error-handling | What's the error strategy? |
 | Rc everywhere | m09-domain | Is ownership clear? |
@@ -92,7 +93,7 @@ To implementation (Layer 1):
 ## Top 5 Beginner Mistakes
 
 | Rank | Mistake | Fix |
-|------|---------|-----|
+| ------ | --------- | ----- |
 | 1 | Clone to escape borrow checker | Use references |
 | 2 | Unwrap in production | Propagate with `?` |
 | 3 | String for everything | Use `&str` |
@@ -102,7 +103,7 @@ To implementation (Layer 1):
 ## Code Smell → Refactoring
 
 | Smell | Indicates | Refactoring |
-|-------|-----------|-------------|
+| ------- | ----------- | ------------- |
 | Many `.clone()` | Ownership unclear | Clarify data flow |
 | Many `.unwrap()` | Error handling missing | Add proper handling |
 | Many `pub` fields | Encapsulation broken | Private + accessors |
@@ -115,7 +116,7 @@ To implementation (Layer 1):
 ## Common Error Patterns
 
 | Error | Anti-Pattern Cause | Fix |
-|-------|-------------------|-----|
+| ------- | ------------------- | ----- |
 | E0382 use after move | Cloning vs ownership | Proper references |
 | Panic in production | Unwrap everywhere | ?, matching |
 | Slow performance | String for all text | &str, Cow |
@@ -127,7 +128,7 @@ To implementation (Layer 1):
 ## Deprecated → Better
 
 | Deprecated | Better |
-|------------|--------|
+| ------------ | -------- |
 | Index-based loops | `.iter()`, `.enumerate()` |
 | `collect::<Vec<_>>()` then iterate | Chain iterators |
 | Manual unsafe cell | `Cell`, `RefCell` |
@@ -153,7 +154,7 @@ To implementation (Layer 1):
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Ownership patterns | m01-ownership |
 | Error handling | m06-error-handling |
 | Mental models | m14-mental-model |

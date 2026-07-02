@@ -16,6 +16,7 @@ Discover trait implementations and understand polymorphic designs.
 ```
 
 **Examples:**
+
 - `/rust-trait-explorer Handler` - Find all implementors of Handler trait
 - `/rust-trait-explorer MyStruct` - Find all traits implemented by MyStruct
 
@@ -35,6 +36,7 @@ LSP(
 ```
 
 **Use when:**
+
 - Trait name is known
 - Want to find all implementors
 - Understanding polymorphic code
@@ -232,7 +234,7 @@ The following blanket impls may apply to your types:
 ## Common Patterns
 
 | User Says | Action |
-|-----------|--------|
+| ----------- | -------- |
 | "Who implements X?" | goToImplementation on trait |
 | "What traits does Y impl?" | Grep for `impl * for Y` |
 | "Show trait hierarchy" | Find super-traits recursively |
@@ -241,7 +243,7 @@ The following blanket impls may apply to your types:
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Navigate to impl | rust-code-navigator |
 | Call relationships | rust-call-graph |
 | Project structure | rust-symbol-analyzer |

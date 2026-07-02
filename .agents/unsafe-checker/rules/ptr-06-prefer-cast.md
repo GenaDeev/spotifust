@@ -72,7 +72,7 @@ fn good_provenance(ptr: *const u8, new_addr: usize) -> *const u8 {
 ## Pointer Method Reference
 
 | Method | From | To | Notes |
-|--------|------|-----|-------|
+| -------- | ------ | ----- | ------- |
 | `.cast::<U>()` | `*T` | `*U` | Changes pointee type |
 | `.cast_mut()` | `*const T` | `*mut T` | Removes const |
 | `.cast_const()` | `*mut T` | `*const T` | Adds const |

@@ -72,7 +72,7 @@ struct PointerSized {
 ## Type Mapping Reference
 
 | C Type | Rust Type | Notes |
-|--------|-----------|-------|
+| -------- | ----------- | ------- |
 | `char` | `c_char` | May be signed or unsigned! |
 | `signed char` | `i8` | |
 | `unsigned char` | `u8` | |

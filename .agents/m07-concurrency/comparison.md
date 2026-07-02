@@ -5,7 +5,7 @@
 ### Concurrency Model
 
 | Aspect | Rust | Go |
-|--------|------|-----|
+| -------- | ------ | ----- |
 | Model | Ownership + Send/Sync | CSP (Communicating Sequential Processes) |
 | Primitives | Arc, Mutex, channels | goroutines, channels |
 | Safety | Compile-time | Runtime (race detector) |
@@ -61,7 +61,7 @@ tokio::spawn(async move {
 ### Thread Safety Model
 
 | Aspect | Rust | Java |
-|--------|------|------|
+| -------- | ------ | ------ |
 | Safety | Compile-time (Send/Sync) | Runtime (synchronized, volatile) |
 | Null | No null (Option) | NullPointerException risk |
 | Locks | RAII (drop releases) | try-finally or try-with-resources |
@@ -111,7 +111,7 @@ let sum: i32 = (0..1000)
 ### Safety Guarantees
 
 | Aspect | Rust | C++ |
-|--------|------|-----|
+| -------- | ------ | ----- |
 | Data races | Prevented at compile-time | Undefined behavior |
 | Deadlocks | Not prevented (same as C++) | Not prevented |
 | Thread safety | Send/Sync traits | Convention only |
@@ -169,7 +169,7 @@ impl SafeCounter {
 ## Async Models Comparison
 
 | Language | Model | Runtime |
-|----------|-------|---------|
+| ---------- | ------- | --------- |
 | Rust | async/await, zero-cost | tokio, async-std (bring your own) |
 | Go | goroutines | Built-in scheduler |
 | JavaScript | async/await, Promises | Event loop (single-threaded) |
@@ -226,7 +226,7 @@ async fn main() {
 No other mainstream language has compile-time thread safety markers:
 
 | Trait | Meaning | Auto-impl |
-|-------|---------|-----------|
+| ------- | --------- | ----------- |
 | `Send` | Safe to transfer between threads | Most types |
 | `Sync` | Safe to share `&T` between threads | Types with thread-safe `&` |
 | `!Send` | Must stay on one thread | Rc, raw pointers |
@@ -255,7 +255,7 @@ std::thread::spawn(move || {
 ## Performance Characteristics
 
 | Aspect | Rust | Go | Java | C++ |
-|--------|------|-----|------|-----|
+| -------- | ------ | ----- | ------ | ----- |
 | Thread overhead | System threads or M:N | M:N (goroutines) | System or virtual | System threads |
 | Context switch | OS-level or cooperative | Cheap (goroutines) | OS-level | OS-level |
 | Memory | Predictable (no GC) | GC pauses | GC pauses | Predictable |
@@ -264,7 +264,7 @@ std::thread::spawn(move || {
 ### When to Use What
 
 | Scenario | Best Choice |
-|----------|-------------|
+| ---------- | ------------- |
 | CPU-bound parallelism | Rust (rayon), C++ |
 | I/O-bound concurrency | Rust (tokio), Go, Node.js |
 | Low latency required | Rust, C++ |
@@ -283,6 +283,7 @@ After:  "Explicitly declare what can be shared and how"
 ```
 
 Key shifts:
+
 - `Arc<Mutex<T>>` instead of implicit sharing
 - Compiler enforces thread safety
 - Async needs explicit runtime
@@ -295,6 +296,7 @@ After:  "Types encode thread safety, compiler enforces"
 ```
 
 Key shifts:
+
 - No need for synchronized keyword
 - Mutex contains data, not separate
 - No GC pauses in critical sections
@@ -307,6 +309,7 @@ After:  "Compiler catches data races, trust the type system"
 ```
 
 Key shifts:
+
 - Send/Sync replace convention
 - RAII locks are mandatory, not optional
 - Much harder to write incorrect concurrent code

@@ -13,6 +13,7 @@ user-invocable: false
 **What's the bottleneck, and is optimization worth it?**
 
 Before optimizing:
+
 - Have you measured? (Don't guess)
 - What's the acceptable performance?
 - Will optimization add complexity?
@@ -22,7 +23,7 @@ Before optimizing:
 ## Performance Decision → Implementation
 
 | Goal | Design Choice | Implementation |
-|------|---------------|----------------|
+| ------ | --------------- | ---------------- |
 | Reduce allocations | Pre-allocate, reuse | `with_capacity`, object pools |
 | Improve cache | Contiguous data | `Vec`, `SmallVec` |
 | Parallelize | Data parallelism | `rayon`, threads |
@@ -65,7 +66,7 @@ To domain constraints (Layer 3):
 ```
 
 | Question | Trace To | Ask |
-|----------|----------|-----|
+| ---------- | ---------- | ----- |
 | Latency requirements | domain-* | What's acceptable response time? |
 | Throughput needs | domain-* | How many requests per second? |
 | Memory constraints | domain-* | What's the memory budget? |
@@ -95,7 +96,7 @@ To implementation (Layer 1):
 ## Quick Reference
 
 | Tool | Purpose |
-|------|---------|
+| ------ | --------- |
 | `cargo bench` | Micro-benchmarks |
 | `criterion` | Statistical benchmarks |
 | `perf` / `flamegraph` | CPU profiling |
@@ -115,7 +116,7 @@ To implementation (Layer 1):
 ## Common Techniques
 
 | Technique | When | How |
-|-----------|------|-----|
+| ----------- | ------ | ----- |
 | Pre-allocation | Known size | `Vec::with_capacity(n)` |
 | Avoid cloning | Hot paths | Use references or `Cow<T>` |
 | Batch operations | Many small ops | Collect then process |
@@ -127,7 +128,7 @@ To implementation (Layer 1):
 ## Common Mistakes
 
 | Mistake | Why Wrong | Better |
-|---------|-----------|--------|
+| --------- | ----------- | -------- |
 | Optimize without profiling | Wrong target | Profile first |
 | Benchmark in debug mode | Meaningless | Always `--release` |
 | Use LinkedList | Cache unfriendly | `Vec` or `VecDeque` |
@@ -139,7 +140,7 @@ To implementation (Layer 1):
 ## Anti-Patterns
 
 | Anti-Pattern | Why Bad | Better |
-|--------------|---------|--------|
+| -------------- | --------- | -------- |
 | Clone to avoid lifetimes | Performance cost | Proper ownership |
 | Box everything | Indirection cost | Stack when possible |
 | HashMap for small sets | Overhead | Vec with linear search |
@@ -150,7 +151,7 @@ To implementation (Layer 1):
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Reducing clones | m01-ownership |
 | Concurrency options | m07-concurrency |
 | Smart pointer choice | m02-resource |

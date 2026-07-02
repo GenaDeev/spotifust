@@ -12,7 +12,7 @@ user-invocable: false
 ## Domain Constraints → Design Implications
 
 | Domain Rule | Design Constraint | Rust Implication |
-|-------------|-------------------|------------------|
+| ------------- | ------------------- | ------------------ |
 | User ergonomics | Clear help, errors | clap derive macros |
 | Config precedence | CLI > env > file | Layered config loading |
 | Exit codes | Non-zero on error | Proper Result handling |
@@ -72,7 +72,7 @@ From constraints to design (Layer 2):
 ## Key Crates
 
 | Purpose | Crate |
-|---------|-------|
+| --------- | ------- |
 | Argument parsing | clap |
 | Interactive prompts | dialoguer |
 | Progress bars | indicatif |
@@ -84,7 +84,7 @@ From constraints to design (Layer 2):
 ## Design Patterns
 
 | Pattern | Purpose | Implementation |
-|---------|---------|----------------|
+| --------- | --------- | ---------------- |
 | Args struct | Type-safe args | `#[derive(Parser)]` |
 | Subcommands | Command hierarchy | `#[derive(Subcommand)]` |
 | Config layers | Override precedence | CLI > env > file |
@@ -132,7 +132,7 @@ fn main() -> anyhow::Result<()> {
 ## Common Mistakes
 
 | Mistake | Domain Violation | Fix |
-|---------|-----------------|-----|
+| --------- | ----------------- | ----- |
 | Errors to stdout | Breaks piping | eprintln! |
 | No help text | Poor UX | #[arg(help = "...")] |
 | Panic on error | Bad exit code | Result + proper handling |
@@ -143,7 +143,7 @@ fn main() -> anyhow::Result<()> {
 ## Trace to Layer 1
 
 | Constraint | Layer 2 Pattern | Layer 1 Implementation |
-|------------|-----------------|------------------------|
+| ------------ | ----------------- | ------------------------ |
 | Type-safe args | Derive macros | clap Parser |
 | Error handling | Result propagation | anyhow + exit codes |
 | User feedback | Progress RAII | indicatif ProgressBar |
@@ -154,7 +154,7 @@ fn main() -> anyhow::Result<()> {
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Error handling | m06-error-handling |
 | Type-driven args | m05-type-driven |
 | Progress lifecycle | m12-lifecycle |

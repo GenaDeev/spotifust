@@ -112,7 +112,7 @@ unsafe {
 ## Type Selection Guide
 
 | Scenario | Type |
-|----------|------|
+| ---------- | ------ |
 | Create string for C | `CString` |
 | Borrow string from C | `&CStr` |
 | File paths | `OsString`, `Path` |

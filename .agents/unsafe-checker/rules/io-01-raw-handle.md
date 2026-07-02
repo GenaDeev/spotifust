@@ -118,7 +118,7 @@ mod good_example {
 ## I/O Safety Types (Rust 1.63+)
 
 | Type | Meaning |
-|------|---------|
+| ------ | --------- |
 | `OwnedFd` | Owns a file descriptor, closes on drop |
 | `BorrowedFd<'a>` | Borrows a fd for lifetime 'a |
 | `RawFd` | Raw integer, no safety guarantees |

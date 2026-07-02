@@ -11,7 +11,7 @@ user-invocable: false
 ## Domain Constraints → Design Implications
 
 | Domain Rule | Design Constraint | Rust Implication |
-|-------------|-------------------|------------------|
+| ------------- | ------------------- | ------------------ |
 | Unreliable network | Offline-first | Local buffering |
 | Power constraints | Efficient code | Sleep modes, minimal alloc |
 | Resource limits | Small footprint | no_std where needed |
@@ -72,7 +72,7 @@ From constraints to design (Layer 2):
 ## Environment Comparison
 
 | Environment | Stack | Crates |
-|-------------|-------|--------|
+| ------------- | ------- | -------- |
 | Linux gateway | tokio + std | rumqttc, reqwest |
 | MCU device | embassy + no_std | embedded-hal |
 | Hybrid | Split workloads | Both |
@@ -80,7 +80,7 @@ From constraints to design (Layer 2):
 ## Key Crates
 
 | Purpose | Crate |
-|---------|-------|
+| --------- | ------- |
 | MQTT (std) | rumqttc, paho-mqtt |
 | Embedded | embedded-hal, embassy |
 | Async (std) | tokio |
@@ -91,7 +91,7 @@ From constraints to design (Layer 2):
 ## Design Patterns
 
 | Pattern | Purpose | Implementation |
-|---------|---------|----------------|
+| --------- | --------- | ---------------- |
 | Pub/Sub | Device comms | MQTT topics |
 | Edge compute | Local processing | Filter before upload |
 | OTA updates | Firmware upgrade | Signed + rollback |
@@ -139,7 +139,7 @@ async fn run_mqtt() -> anyhow::Result<()> {
 ## Common Mistakes
 
 | Mistake | Domain Violation | Fix |
-|---------|-----------------|-----|
+| --------- | ----------------- | ----- |
 | No retry logic | Lost data | Exponential backoff |
 | Always-on radio | Battery drain | Sleep between sends |
 | Unencrypted MQTT | Security risk | TLS |
@@ -150,7 +150,7 @@ async fn run_mqtt() -> anyhow::Result<()> {
 ## Trace to Layer 1
 
 | Constraint | Layer 2 Pattern | Layer 1 Implementation |
-|------------|-----------------|------------------------|
+| ------------ | ----------------- | ------------------------ |
 | Offline-first | Store & forward | Local queue + flush |
 | Power efficiency | Sleep patterns | Timer-based wake |
 | Network reliability | Retry | tokio-retry, backoff |
@@ -161,7 +161,7 @@ async fn run_mqtt() -> anyhow::Result<()> {
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Embedded patterns | domain-embedded |
 | Async patterns | m07-concurrency |
 | Error recovery | m13-domain-error |

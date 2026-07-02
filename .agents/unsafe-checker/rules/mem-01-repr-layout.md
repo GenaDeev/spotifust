@@ -18,7 +18,7 @@ Rust's default layout is unspecified and may change between compiler versions. F
 ## Repr Attributes
 
 | Attribute | Use Case |
-|-----------|----------|
+| ----------- | ---------- |
 | `#[repr(C)]` | C-compatible layout, stable field order |
 | `#[repr(transparent)]` | Single-field struct with same layout as field |
 | `#[repr(packed)]` | No padding (alignment = 1), careful with references! |

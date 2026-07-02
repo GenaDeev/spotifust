@@ -127,7 +127,7 @@ fn use_bitvec() {
 ## Recommended Crates
 
 | Crate | Use Case | Features |
-|-------|----------|----------|
+| ------- | ---------- | ---------- |
 | `bitflags` | Flag sets (like C enums) | Type-safe, const, derives |
 | `modular-bitfield` | Packed struct fields | Proc macro, repr(C) |
 | `bitvec` | Arbitrary bit arrays | Slicing, iteration |

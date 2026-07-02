@@ -112,7 +112,7 @@ struct SingleThreadHandle {
 ## Synchronization Patterns
 
 | Pattern | Use Case |
-|---------|----------|
+| --------- | ---------- |
 | `AtomicT` | Simple counters, flags |
 | `Mutex<T>` | Complex shared state |
 | `RwLock<T>` | Read-heavy shared state |

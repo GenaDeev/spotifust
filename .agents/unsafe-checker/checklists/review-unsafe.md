@@ -61,7 +61,7 @@ For each pointer dereference:
 ## 8. Red Flags (Require Extra Scrutiny)
 
 | Pattern | Concern |
-|---------|---------|
+| --------- | --------- |
 | `transmute` | Type compatibility, provenance |
 | `as` on pointers | Alignment, type punning |
 | `static mut` | Data races |
@@ -76,6 +76,7 @@ For each pointer dereference:
 ## 9. Verification Questions
 
 Ask the author:
+
 - "What would happen if [X invariant] was violated?"
 - "How do you know [pointer/reference] is valid here?"
 - "What if this panics at [specific line]?"
@@ -91,7 +92,7 @@ Ask the author:
 ## Review Severity Guide
 
 | Severity | Requires |
-|----------|----------|
+| ---------- | ---------- |
 | `transmute` | Two reviewers, Miri test |
 | Manual `Send`/`Sync` | Thread safety expert review |
 | FFI | Documentation of C interface |

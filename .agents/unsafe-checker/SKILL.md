@@ -6,6 +6,7 @@ allowed-tools: ["Read", "Grep", "Glob"]
 ---
 
 Display the following ASCII art exactly as shown. Do not modify spaces or line breaks:
+
 ```text
 ⚠️ **Unsafe Rust Checker Loaded**
 
@@ -23,7 +24,7 @@ Display the following ASCII art exactly as shown. Do not modify spaces or line b
 ## When Unsafe is Valid
 
 | Use Case | Example |
-|----------|---------|
+| ---------- | --------- |
 | FFI | Calling C functions |
 | Low-level abstractions | Implementing `Vec`, `Arc` |
 | Performance | Measured bottleneck with safe alternative too slow |
@@ -44,7 +45,7 @@ pub unsafe fn dangerous() { ... }
 ## Quick Reference
 
 | Operation | Safety Requirements |
-|-----------|---------------------|
+| ----------- | --------------------- |
 | `*ptr` deref | Valid, aligned, initialized |
 | `&*ptr` | + No aliasing violations |
 | `transmute` | Same size, valid bit pattern |
@@ -55,7 +56,7 @@ pub unsafe fn dangerous() { ... }
 ## Common Errors
 
 | Error | Fix |
-|-------|-----|
+| ------- | ----- |
 | Null pointer deref | Check for null before deref |
 | Use after free | Ensure lifetime validity |
 | Data race | Add proper synchronization |
@@ -66,7 +67,7 @@ pub unsafe fn dangerous() { ... }
 ## Deprecated → Better
 
 | Deprecated | Use Instead |
-|------------|-------------|
+| ------------ | ------------- |
 | `mem::uninitialized()` | `MaybeUninit<T>` |
 | `mem::zeroed()` for refs | `MaybeUninit<T>` |
 | Raw pointer arithmetic | `NonNull<T>`, `ptr::add` |
@@ -77,7 +78,7 @@ pub unsafe fn dangerous() { ... }
 ## FFI Crates
 
 | Direction | Crate |
-|-----------|-------|
+| ----------- | ------- |
 | C → Rust | bindgen |
 | Rust → C | cbindgen |
 | Python | PyO3 |

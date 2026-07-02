@@ -96,6 +96,7 @@ fn good_exclusive() {
 ## When Raw Pointers Across Threads Are Valid
 
 Only with proper synchronization:
+
 - Through `AtomicPtr` with appropriate memory orderings
 - Protected by a `Mutex` (don't share the pointer, share the Mutex)
 - Using lock-free algorithms with careful memory ordering

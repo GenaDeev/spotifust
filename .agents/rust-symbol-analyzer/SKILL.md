@@ -16,6 +16,7 @@ Analyze project structure by examining symbols across your Rust codebase.
 ```
 
 **Examples:**
+
 - `/rust-symbol-analyzer` - Analyze entire project
 - `/rust-symbol-analyzer src/lib.rs` - Analyze single file
 - `/rust-symbol-analyzer --type trait` - List all traits in project
@@ -193,7 +194,7 @@ user.rs
 ## Symbol Types
 
 | Type | Icon | LSP Kind |
-|------|------|----------|
+| ------ | ------ | ---------- |
 | Module | 📦 | Module |
 | Struct | 🏗️ | Struct |
 | Enum | 🔢 | Enum |
@@ -206,7 +207,7 @@ user.rs
 ## Common Queries
 
 | User Says | Analysis |
-|-----------|----------|
+| ----------- | ---------- |
 | "What structs are in this project?" | workspaceSymbol + filter |
 | "Show me src/lib.rs structure" | documentSymbol |
 | "Find all async functions" | workspaceSymbol + async filter |
@@ -215,7 +216,7 @@ user.rs
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Navigate to symbol | rust-code-navigator |
 | Call relationships | rust-call-graph |
 | Trait implementations | rust-trait-explorer |

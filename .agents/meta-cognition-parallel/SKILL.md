@@ -47,6 +47,7 @@ Domain-Correct Architectural Solution
 ```
 
 **Example:**
+
 ```
 /meta-parallel 我的交易系统报 E0382 错误，应该用 clone 吗？
 ```
@@ -56,6 +57,7 @@ Domain-Correct Architectural Solution
 **CRITICAL: Check agent file availability first to determine execution mode.**
 
 Try to read layer analyzer files:
+
 - `../../agents/layer1-analyzer.md`
 - `../../agents/layer2-analyzer.md`
 - `../../agents/layer3-analyzer.md`
@@ -69,6 +71,7 @@ Try to read layer analyzer files:
 ### Step 1: Parse User Query
 
 Extract from `$ARGUMENTS`:
+
 - The original question
 - Any code snippets
 - Domain hints (trading, web, embedded, etc.)
@@ -143,6 +146,7 @@ Analyze the Rust language mechanics involved:
 ```
 
 **Focus areas:**
+
 - Ownership rules (move, copy, borrow)
 - Lifetime annotations
 - Borrowing rules (shared vs mutable)
@@ -173,6 +177,7 @@ Analyze the design patterns and trade-offs:
 ```
 
 **Focus areas:**
+
 - Smart pointer choices (Box, Rc, Arc)
 - Interior mutability patterns (Cell, RefCell, Mutex)
 - Ownership transfer vs sharing
@@ -207,6 +212,7 @@ Analyze domain-specific requirements:
 ```
 
 **Focus areas:**
+
 - Industry requirements (FinTech regulations, web scalability, etc.)
 - Performance constraints
 - Safety and correctness requirements
@@ -282,11 +288,13 @@ Both modes produce the same output format:
 
 ### Reasoning Chain
 ```
+
 L3 Domain: [Constraint]
     ↓ implies
 L2 Design: [Pattern]
     ↓ implemented via
 L1 Mechanism: [Feature]
+
 ```
 
 ### Final Recommendation
@@ -303,6 +311,7 @@ L1 Mechanism: [Feature]
 ---
 
 *Analysis performed by meta-cognition-parallel v0.2.0 (experimental)*
+
 ```
 
 ---
@@ -311,21 +320,27 @@ L1 Mechanism: [Feature]
 
 ### Test 1: Trading System E0382
 ```
+
 /meta-parallel 交易系统报 E0382，trade record 被 move 了
+
 ```
 
 Expected: L3 identifies FinTech constraints → L2 suggests shared immutable → L1 recommends Arc<T>
 
 ### Test 2: Web API Concurrency
 ```
+
 /meta-parallel Web API 中多个 handler 需要共享数据库连接池
+
 ```
 
 Expected: L3 identifies Web constraints → L2 suggests connection pooling → L1 recommends Arc<Pool>
 
 ### Test 3: CLI Tool Config
 ```
+
 /meta-parallel CLI 工具如何处理配置文件和命令行参数的优先级
+
 ```
 
 Expected: L3 identifies CLI constraints → L2 suggests config precedence pattern → L1 recommends builder pattern

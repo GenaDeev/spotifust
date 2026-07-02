@@ -113,7 +113,7 @@ impl From<Option<u32>> for OptionalU32 {
 ## Stable Types for FFI
 
 | Use Instead Of | Stable Type |
-|----------------|-------------|
+| ---------------- | ------------- |
 | `Vec<T>` | `*mut T` + `len` + `cap` |
 | `String` | `*const c_char` or `*mut c_char` + `len` |
 | `&[T]` | `*const T` + `len` |

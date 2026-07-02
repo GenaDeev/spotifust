@@ -13,6 +13,7 @@ user-invocable: false
 **How can the type system prevent invalid states?**
 
 Before reaching for runtime checks:
+
 - Can the compiler catch this error?
 - Can invalid states be unrepresentable?
 - Can the type encode the invariant?
@@ -22,7 +23,7 @@ Before reaching for runtime checks:
 ## Error → Design Question
 
 | Pattern | Don't Just Say | Ask Instead |
-|---------|----------------|-------------|
+| --------- | ---------------- | ------------- |
 | Primitive obsession | "It's just a string" | What does this value represent? |
 | Boolean flags | "Add an is_valid flag" | Can states be types? |
 | Optional everywhere | "Check for None" | Is absence really possible? |
@@ -63,7 +64,7 @@ When type design is unclear:
 ```
 
 | Situation | Trace To | Question |
-|-----------|----------|----------|
+| ----------- | ---------- | ---------- |
 | What types to create | m09-domain | What's the domain model? |
 | State machine design | m09-domain | What are valid transitions? |
 | Marker trait usage | m04-zero-cost | Static or dynamic dispatch? |
@@ -96,7 +97,7 @@ From design to implementation:
 ## Quick Reference
 
 | Pattern | Purpose | Example |
-|---------|---------|---------|
+| --------- | --------- | --------- |
 | Newtype | Type safety | `struct UserId(u64);` |
 | Type State | State machine | `Connection<Connected>` |
 | PhantomData | Variance/lifetime | `PhantomData<&'a T>` |
@@ -143,7 +144,7 @@ impl Connection<Connected> {
 ## Decision Guide
 
 | Need | Pattern |
-|------|---------|
+| ------ | --------- |
 | Type safety for primitives | Newtype |
 | Compile-time state validation | Type State |
 | Lifetime/variance markers | PhantomData |
@@ -157,7 +158,7 @@ impl Connection<Connected> {
 ## Anti-Patterns
 
 | Anti-Pattern | Why Bad | Better |
-|--------------|---------|--------|
+| -------------- | --------- | -------- |
 | Boolean flags for states | Runtime errors | Type state |
 | String for semantic types | No type safety | Newtype |
 | Option for uninitialized | Unclear invariant | Builder |
@@ -168,7 +169,7 @@ impl Connection<Connected> {
 ## Related Skills
 
 | When | See |
-|------|-----|
+| ------ | ----- |
 | Domain modeling | m09-domain |
 | Trait design | m04-zero-cost |
 | Error handling in constructors | m06-error-handling |

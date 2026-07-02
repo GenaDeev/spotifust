@@ -120,5 +120,5 @@ impl ValidInteriorMut {
 
 ## Related Rules
 
-- `ptr-05`: Don't manually convert *const to *mut
+- `ptr-05`: Don't manually convert *const to*mut
 - `safety-02`: Verify safety invariants

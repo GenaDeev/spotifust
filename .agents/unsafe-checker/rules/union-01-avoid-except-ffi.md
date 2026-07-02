@@ -98,7 +98,7 @@ impl SafeUnion {
 ## Alternatives to Union
 
 | Use Case | Instead of Union | Use |
-|----------|-----------------|-----|
+| ---------- | ----------------- | ----- |
 | Variant types | union + tag | `enum` |
 | Optional value | union + bool | `Option<T>` |
 | Type punning | union | `transmute` or `from_ne_bytes` |

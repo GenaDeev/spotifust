@@ -9,6 +9,7 @@ allowed-tools: ["Task", "Read", "Glob", "mcp__actionbook__*", "Bash"]
 > **Version:** 2.1.0 | **Last Updated:** 2025-01-27
 
 You are an expert at fetching Rust and crate information. Help users by:
+
 - **Version queries**: Get latest Rust/crate versions
 - **API documentation**: Fetch docs from docs.rs
 - **Changelog**: Get Rust version features from releases.rs
@@ -22,7 +23,7 @@ You are an expert at fetching Rust and crate information. Help users by:
 Try to read the agent file for your query type. The execution mode depends on whether the file exists:
 
 | Query Type | Agent File Path |
-|------------|-----------------|
+| ------------ | ----------------- |
 | Crate info/version | `../../agents/crate-researcher.md` |
 | Rust version features | `../../agents/rust-changelog.md` |
 | Std library docs | `../../agents/std-docs-researcher.md` |
@@ -53,7 +54,7 @@ Task(
 ### Agent Routing Table
 
 | Query Type | Agent File | Source |
-|------------|------------|--------|
+| ------------ | ------------ | -------- |
 | Rust version features | `../../agents/rust-changelog.md` | releases.rs |
 | Crate info/version | `../../agents/crate-researcher.md` | lib.rs, crates.io |
 | **Std library docs** (Send, Sync, Arc, etc.) | `../../agents/std-docs-researcher.md` | doc.rust-lang.org |
@@ -63,6 +64,7 @@ Task(
 ### Agent Mode Examples
 
 **Crate Version Query:**
+
 ```
 User: "tokio latest version"
 
@@ -74,6 +76,7 @@ Claude:
 ```
 
 **Rust Changelog Query:**
+
 ```
 User: "What's new in Rust 1.85?"
 
@@ -103,6 +106,7 @@ Claude:
 ```
 
 **Output Format:**
+
 ```markdown
 ## {Crate Name}
 
@@ -129,6 +133,7 @@ Claude:
 ```
 
 **Output Format:**
+
 ```markdown
 ## Rust 1.{version}
 
@@ -160,8 +165,9 @@ Claude:
 ```
 
 **Common Std Library Paths:**
+
 | Item | Path |
-|------|------|
+| ------ | ------ |
 | Send, Sync, Copy, Clone | `std/marker/trait.{Name}.html` |
 | Arc, Mutex, RwLock | `std/sync/struct.{Name}.html` |
 | Rc, Weak | `std/rc/struct.{Name}.html` |
@@ -171,6 +177,7 @@ Claude:
 | String | `std/string/struct.String.html` |
 
 **Output Format:**
+
 ```markdown
 ## std::{path}::{Name}
 
@@ -183,20 +190,24 @@ Claude:
 {description}
 
 **Examples:**
+
 ```rust
 {example_code}
 ```
+
 ```
 
 ### Third-Party Crate Docs (tokio, serde, etc.)
 
 ```
-1. Construct URL: "https://docs.rs/{crate}/latest/{crate}/{path}"
+
+1. Construct URL: "<https://docs.rs/{crate}/latest/{crate}/{path}>"
 2. agent-browser CLI (or WebFetch fallback):
    - open <url>
    - get text ".docblock"
    - close
 3. Parse and format output
+
 ```
 
 **Output Format:**
@@ -212,20 +223,24 @@ Claude:
 {description}
 
 **Examples:**
+
 ```rust
 {example_code}
 ```
+
 ```
 
 ### Clippy Lints
 
 ```
+
 1. agent-browser CLI (or WebFetch fallback):
-   - open "https://rust-lang.github.io/rust-clippy/stable/"
+   - open "<https://rust-lang.github.io/rust-clippy/stable/>"
    - search for lint name in page
    - get text ".lint-doc" for matching lint
    - close
 2. Parse and format output
+
 ```
 
 **Output Format:**
@@ -244,9 +259,11 @@ Claude:
 ```
 
 **Example (Good):**
+
 ```rust
 {good_code}
 ```
+
 ```
 
 ---
@@ -266,7 +283,7 @@ Both modes use the same tool chain order:
    agent-browser close
    ```
 
-3. **WebFetch** - Last resort only if agent-browser unavailable
+1. **WebFetch** - Last resort only if agent-browser unavailable
 
 ### Fallback Principle (CRITICAL)
 
@@ -275,6 +292,7 @@ actionbook → agent-browser → WebFetch (only if agent-browser unavailable)
 ```
 
 **DO NOT:**
+
 - Skip agent-browser because it's slower
 - Use WebFetch as primary when agent-browser is available
 - Block on WebFetch without trying agent-browser first
@@ -284,7 +302,7 @@ actionbook → agent-browser → WebFetch (only if agent-browser unavailable)
 ## Deprecated Patterns
 
 | Deprecated | Use Instead | Reason |
-|------------|-------------|--------|
+| ------------ | ------------- | -------- |
 | WebSearch for crate info | Task + agent or inline mode | Structured data |
 | Direct WebFetch | actionbook + agent-browser | Pre-computed selectors |
 | Guessing version numbers | Always fetch from source | Prevents misinformation |
@@ -292,7 +310,7 @@ actionbook → agent-browser → WebFetch (only if agent-browser unavailable)
 ## Error Handling
 
 | Error | Cause | Solution |
-|-------|-------|----------|
+| ------- | ------- | ---------- |
 | Agent file not found | Skills-only install | Use inline mode |
 | actionbook unavailable | MCP not configured | Fall back to WebFetch |
 | agent-browser not found | CLI not installed | Fall back to WebFetch |
@@ -302,6 +320,7 @@ actionbook → agent-browser → WebFetch (only if agent-browser unavailable)
 ## Proactive Triggering
 
 This skill triggers AUTOMATICALLY when:
+
 - Any Rust crate name mentioned (tokio, serde, axum, sqlx, etc.)
 - Questions about "latest", "new", "version", "changelog"
 - API documentation requests

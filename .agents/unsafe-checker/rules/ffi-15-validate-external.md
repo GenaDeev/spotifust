@@ -124,7 +124,7 @@ fn good_size(ptr: *const u8, len: usize) -> Result<Vec<u8>, ValidationError> {
 ## Validation Patterns
 
 | External Data | Validation |
-|---------------|------------|
+| --------------- | ------------ |
 | Enum discriminant | Match against valid values |
 | String | Check UTF-8 or use lossy conversion |
 | Size/length | Check against maximum |
