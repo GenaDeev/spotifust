@@ -16,7 +16,7 @@ iced = { version = "0.14.0", features = ["wgpu", "canvas", "tokio", "image"] }
 image = "0.25.9"
 keyring = "4.1.2"
 librespot = { git = "https://github.com/librespot-org/librespot", version = "0.8.0" }
-rodio = "0.22.2"
+rodio = "0.19.0"
 rspotify = { version = "0.16.1", features = ["client-reqwest", "reqwest-rustls-tls"] }
 thiserror = "2.0.18"
 tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "sync", "net"] }

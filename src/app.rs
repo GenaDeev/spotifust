@@ -3,6 +3,8 @@ use iced::{
     Element, Task, Point, Rectangle, Size,
 };
 use crate::error::AppError;
+use crate::audio::engine::{AudioEngine, AudioCommand};
+use tokio::sync::mpsc as tokio_mpsc;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -18,6 +20,8 @@ pub struct App {
     pub canvas_cache: Cache,
     pub dragging_card_idx: Option<usize>,
     pub drag_offset: Point,
+    #[allow(dead_code)]
+    pub audio_tx: tokio_mpsc::Sender<AudioCommand>,
 }
 
 #[allow(dead_code)]
@@ -31,6 +35,9 @@ pub enum Message {
 
 impl App {
     pub fn new() -> (Self, Task<Message>) {
+        let audio_tx = AudioEngine::spawn();
+        let _ = audio_tx.try_send(AudioCommand::Play); // Auto-play the test sine wave
+
         (
             Self {
                 cards: vec![
@@ -50,6 +57,7 @@ impl App {
                 canvas_cache: Cache::default(),
                 dragging_card_idx: None,
                 drag_offset: Point::ORIGIN,
+                audio_tx,
             },
             Task::none(),
         )
