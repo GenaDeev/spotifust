@@ -106,6 +106,16 @@ export SPOTIFY_CLIENT_SECRET="your_client_secret"
 
 ---
 
+## 🧪 Testing and CI
+
+To ensure your code meets the quality standards of the project, we provide a unified test script `testing.sh`. This script will format the code, run the linter (clippy), run tests, and optionally perform dependency audits and typo checks if you have the respective tools installed.
+
+To use it, simply run:
+```bash
+./testing.sh
+```
+
+---
 ## 🗺️ Roadmap
 
 Read [TODO.md](./TODO.md) for the current roadmap and backlog.
