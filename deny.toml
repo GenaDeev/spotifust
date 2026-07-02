@@ -1,6 +1,4 @@
 [licenses]
-unlicensed = "deny"
-copyleft = "allow"
 allow = [
     "MIT",
     "Apache-2.0",

@@ -23,7 +23,7 @@ If a PR violates one of these, it'll bounce back for rework rather than get merg
 You don't have to write Rust to help:
 
 - **Bug reports.** Precise repro steps beat a big writeup. Include your OS, audio backend (`rodio` vs `cpal`), and whether it reproduces in `--release` or only in debug.
-- **Feature requests.** Open an issue before a PR for anything non-trivial — see [Architectural decisions](#architectural-decisions---please-discuss-first) below.
+- **Feature requests.** Open an issue before a PR for anything non-trivial — see [Architectural decisions](#architectural-decisions) below.
 - **Documentation.** README clarity, this file, code-level docs — always welcome, always lower-stakes to review than engine code.
 - **Testing on platforms you own.** Windows, macOS, and Linux all touch different audio backends. If you can test on a platform the maintainer doesn't have, that's genuinely valuable signal.
 - **Code.** See the workflow below.
@@ -57,7 +57,7 @@ Full prerequisites and environment variables are in the README's [Getting Starte
 
 ---
 
-## Architectural decisions — please discuss first
+## Architectural decisions
 
 Some choices are deliberately left open in `AGENTS.md` §6 rather than decided unilaterally by whoever gets there first:
 
