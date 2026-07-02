@@ -62,6 +62,15 @@ impl Program<Message> for CanvasView<'_> {
                 
                 // Base card color (Spotify's #181818 surface color)
                 frame.fill(&rect, Color::from_rgb8(0x18, 0x18, 0x18));
+
+                // Draw title
+                frame.fill_text(canvas::Text {
+                    content: card.title.clone(),
+                    position: Point::new(card.bounds.x + 15.0, card.bounds.y + 15.0),
+                    color: Color::WHITE,
+                    size: iced::Pixels(16.0),
+                    ..Default::default()
+                });
             }
         });
 
