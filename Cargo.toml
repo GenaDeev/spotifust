@@ -3,6 +3,8 @@ name = "spotifust"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
+description = "A native, fast, and light Spotify desktop client"
+license = "GPL-3.0-only"
 
 [lints.rust]
 unsafe_code = "warn"

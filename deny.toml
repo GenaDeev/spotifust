@@ -21,6 +21,9 @@ allow = [
     "BSL-1.0",
     "OpenSSL",
     "MIT-0",
+    "NCSA",
+    "MPL-2.0",
+    "CDLA-Permissive-2.0",
 ]
 exceptions = []
 

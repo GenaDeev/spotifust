@@ -14,4 +14,4 @@ jobs:
       - name: Link Checker
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --cache --max-cache-age 1d --exclude-loopback --exclude "spotify.*localhost" --verbose '**/*.md'
+          args: --cache --max-cache-age 1d --exclude-loopback --exclude "spotify.*localhost" --exclude-path .agents --verbose '**/*.md'
