@@ -144,6 +144,7 @@ Before declaring an atomic task complete, confirm all of the following — don't
 3. The diff contains none of the patterns in §5.
 4. `TODO.md` reflects the completed item as `[x]` and any newly discovered work is logged under Architectural Debt.
 5. If the task touched `src/audio/` or `src/api/`, re-confirm the channel is bounded (§5.B) and no secret is written to disk in plaintext.
+6. If any `.md` files were modified, ensure they strictly follow `markdownlint` rules (e.g., blank lines around fenced code blocks and headings). Do not introduce any formatting violations.
 
 ---
 
