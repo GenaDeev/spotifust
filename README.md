@@ -14,7 +14,7 @@
 [![MSRV](https://img.shields.io/badge/MSRV-1.78-blue)](https://www.rust-lang.org/)
 [![iced](https://img.shields.io/badge/GUI-iced%200.12-6574CD?logo=rust&logoColor=white)](https://github.com/iced-rs/iced)
 [![wgpu](https://img.shields.io/badge/Renderer-wgpu-orange)](https://wgpu.rs/)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-informational)]()
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-informational)
 
 [![Last Commit](https://img.shields.io/github/last-commit/GenaDeev/spotifust)](https://github.com/GenaDeev/spotifust/commits/main)
 [![Repo Size](https://img.shields.io/github/repo-size/GenaDeev/spotifust)](https://github.com/GenaDeev/spotifust)
