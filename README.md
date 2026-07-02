@@ -102,4 +102,4 @@ PRs are welcome. If you're planning to touch the audio core or the canvas engine
 
 ## 📄 License
 
-This project is licensed under [MIT](./LICENSE) (swap this for whatever license you actually use).
+This project is licensed under [GPLv3](./LICENSE).
