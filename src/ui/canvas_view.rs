@@ -1,7 +1,7 @@
 use crate::app::{CardState, Message};
 use iced::{
     Color, Point, Rectangle, Theme, mouse,
-    widget::canvas::{Action, Cache, Event, Frame, Geometry, Path, Program, Stroke},
+    widget::canvas::{Action, Cache, Event, Frame, Geometry, Path, Program, Stroke, Text},
 };
 
 #[allow(dead_code)]
@@ -61,7 +61,7 @@ impl Program<Message> for CanvasView<'_> {
                 frame.fill(&rect, Color::from_rgb8(0x18, 0x18, 0x18));
 
                 // Draw title
-                frame.fill_text(canvas::Text {
+                frame.fill_text(Text {
                     content: card.title.clone(),
                     position: Point::new(card.bounds.x + 15.0, card.bounds.y + 15.0),
                     color: Color::WHITE,
