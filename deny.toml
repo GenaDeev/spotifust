@@ -6,8 +6,21 @@ allow = [
     "Zlib",
     "0BSD",
     "Unicode-3.0",
+    "Unicode-DFS-2016",
     "GPL-3.0-only",
     "GPL-3.0-or-later",
+    "GPL-2.0-only",
+    "GPL-2.0-or-later",
+    "LGPL-3.0-only",
+    "LGPL-3.0-or-later",
+    "LGPL-2.1-only",
+    "LGPL-2.1-or-later",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "BSL-1.0",
+    "OpenSSL",
+    "MIT-0",
 ]
 exceptions = []
 
@@ -15,6 +28,5 @@ exceptions = []
 ignore = [
     "RUSTSEC-2023-0071",
     "RUSTSEC-2024-0436",
-    "RUSTSEC-2026-0173",
     "RUSTSEC-2026-0192",
 ]
