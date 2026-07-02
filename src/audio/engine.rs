@@ -1,4 +1,4 @@
-use rodio::{OutputStream, Sink, Source};
+use rodio::{OutputStreamBuilder, Sink, Source};
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
 
@@ -63,9 +63,9 @@ impl AudioEngine {
 
         // 2. OS Audio Thread (rodio Sink)
         std::thread::spawn(move || {
-            let (_stream, stream_handle) =
-                OutputStream::try_default().expect("Failed to open audio output");
-            let sink = Sink::try_new(&stream_handle).expect("Failed to create sink");
+            let stream =
+                OutputStreamBuilder::open_default_stream().expect("Failed to open audio output");
+            let sink = Sink::connect_new(stream.mixer());
 
             let source = PcmSource {
                 rx: pcm_rx,
@@ -110,7 +110,7 @@ impl Iterator for PcmSource {
 }
 
 impl Source for PcmSource {
-    fn current_frame_len(&self) -> Option<usize> {
+    fn current_span_len(&self) -> Option<usize> {
         None
     }
     fn channels(&self) -> u16 {
