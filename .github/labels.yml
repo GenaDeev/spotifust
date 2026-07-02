@@ -1,0 +1,66 @@
+- name: bug
+  color: d73a4a
+  description: Something isn't working
+- name: enhancement
+  color: a2eeef
+  description: New feature or request
+- name: performance
+  color: e99695
+  description: Performance improvement
+- name: documentation
+  color: 0075ca
+  description: Improvements or additions to documentation
+- name: refactor
+  color: c5def5
+  description: Code restructuring
+- name: dependencies
+  color: 0366d6
+  description: Pull requests that update a dependency file
+- name: good first issue
+  color: 7057ff
+  description: Good for newcomers
+- name: help wanted
+  color: 008672
+  description: Extra attention is needed
+- name: invalid
+  color: e4e669
+  description: This doesn't seem right
+- name: duplicate
+  color: cfd3d7
+  description: This issue or pull request already exists
+- name: question
+  color: d876e3
+  description: Further information is requested
+- name: discussion
+  color: d4c5f9
+  description: Discussing ideas and features
+- name: breaking change
+  color: d93f0b
+  description: Introduces a breaking API change
+- name: security
+  color: 9e0618
+  description: Security vulnerability
+- name: ci
+  color: 5319e7
+  description: Continuous Integration
+- name: github
+  color: cccccc
+  description: GitHub infrastructure
+- name: release
+  color: 1d76db
+  description: Release engineering
+- name: ui
+  color: fbca04
+  description: User Interface
+- name: audio
+  color: f9d0c4
+  description: Audio and playback backend
+- name: api
+  color: 0052cc
+  description: Spotify or external API
+- name: canvas
+  color: bfddb2
+  description: Canvas layout engine
+- name: backend
+  color: d4c5f9
+  description: App architecture

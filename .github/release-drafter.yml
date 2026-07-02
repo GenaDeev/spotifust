@@ -1,0 +1,31 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+categories:
+  - title: '🚀 Features'
+    labels:
+      - 'enhancement'
+      - 'feature'
+  - title: '⚡ Performance'
+    labels:
+      - 'performance'
+  - title: '📚 Documentation'
+    labels:
+      - 'documentation'
+  - title: '🛠 Refactor'
+    labels:
+      - 'refactor'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'bug'
+  - title: '⬆️ Dependencies'
+    labels:
+      - 'dependencies'
+  - title: '🧱 Internal'
+    labels:
+      - 'internal'
+      - 'ci'
+      - 'github'
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+template: |
+  ## Changes
+  $CHANGES

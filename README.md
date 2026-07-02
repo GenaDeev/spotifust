@@ -6,13 +6,32 @@
 
 **A multi-platform, ultra-lightweight Spotify client built entirely from scratch in Rust.**
 
+[![CI](https://img.shields.io/github/actions/workflow/status/GenaDeev/spotifust/ci.yml?branch=main&label=CI)](https://github.com/GenaDeev/spotifust/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/GenaDeev/spotifust)](https://github.com/GenaDeev/spotifust/releases)
+[![License](https://img.shields.io/github/license/GenaDeev/spotifust)](./LICENSE)
+
 [![Rust](https://img.shields.io/badge/Rust-1.78%2B-DEA584?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![iced](https://img.shields.io/badge/GUI-iced%20v0.12-6574CD?logo=rust&logoColor=white)](https://github.com/iced-rs/iced)
+[![MSRV](https://img.shields.io/badge/MSRV-1.78-blue)](https://www.rust-lang.org/)
+[![iced](https://img.shields.io/badge/GUI-iced%200.12-6574CD?logo=rust&logoColor=white)](https://github.com/iced-rs/iced)
 [![wgpu](https://img.shields.io/badge/Renderer-wgpu-orange)](https://wgpu.rs/)
-[![License](https://img.shields.io/github/license(/GenaDeev)/spotifust)](./LICENSE)
-[![Build Status](https://img.shields.io/github/actions/workflow/status(/GenaDeev)/spotifust/ci.yml?branch=main)](https://github.com(/GenaDeev)/spotifust/actions)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-informational)]()
+
+[![Last Commit](https://img.shields.io/github/last-commit/GenaDeev/spotifust)](https://github.com/GenaDeev/spotifust/commits/main)
+[![Repo Size](https://img.shields.io/github/repo-size/GenaDeev/spotifust)](https://github.com/GenaDeev/spotifust)
+[![Issues](https://img.shields.io/github/issues/GenaDeev/spotifust)](https://github.com/GenaDeev/spotifust/issues)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+> ⚡ Single process
+>
+> 🦀 100% Rust
+>
+> 🎨 GPU accelerated (wgpu)
+>
+> 🎵 Embedded librespot
+>
+> 🖥️ Windows • macOS • Linux
+>
+> 📦 No Electron • No Chromium • No Node.js
 
 </div>
 
@@ -63,7 +82,7 @@ Unlike traditional applications, Spotifust does not run separate sidecar process
 Clone the repo and build in release mode (Rust's debug mode with wgpu performs noticeably worse, so go straight to release if you want to actually test the player):
 
 ```bash
-git clone https://github.com/your-username/spotifust.git
+git clone https://github.com/GenaDee/spotifust.git
 cd spotifust
 cargo build --release
 ```

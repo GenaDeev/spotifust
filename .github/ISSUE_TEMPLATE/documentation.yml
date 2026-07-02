@@ -1,0 +1,26 @@
+name: 📚 Documentation
+description: Report a documentation issue
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: input
+    id: section
+    attributes:
+      label: Section
+      description: Which file or section needs improvement?
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is wrong with the current documentation?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggestion
+      description: How can we improve it?
+    validations:
+      required: true

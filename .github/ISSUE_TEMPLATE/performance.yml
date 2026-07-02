@@ -1,0 +1,24 @@
+name: ⚡ Performance
+description: Report a performance issue or improvement
+title: "[Perf]: "
+labels: ["performance"]
+body:
+  - type: textarea
+    id: benchmark
+    attributes:
+      label: Benchmark
+      description: How did you measure this performance issue?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected improvement
+      description: What is the expected performance improvement?
+    validations:
+      required: true
+  - type: textarea
+    id: profiler
+    attributes:
+      label: Profiler
+      description: Please attach profiler output or flamegraphs if available.
