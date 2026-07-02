@@ -1,21 +1,13 @@
 use iced::{
     mouse,
-    widget::canvas::{self, Action, Cache, Geometry, Program},
-    Rectangle, Theme,
+    widget::canvas::{Action, Cache, Geometry, Program, Event, Path, Stroke, Frame},
+    Rectangle, Theme, Color, Point,
 };
-use crate::app::Message;
-
-#[allow(dead_code)]
-pub struct CardLayout {
-    pub bounds: Rectangle,
-    pub is_hovered: bool,
-    pub is_dragging: bool,
-    pub title: String,
-}
+use crate::app::{Message, CardState};
 
 #[allow(dead_code)]
 pub struct CanvasView<'a> {
-    pub cards: &'a [CardLayout],
+    pub cards: &'a [CardState],
     pub cache: &'a Cache,
 }
 
@@ -25,11 +17,24 @@ impl Program<Message> for CanvasView<'_> {
     fn update(
         &self,
         _state: &mut Self::State,
-        _event: &canvas::Event,
-        _bounds: Rectangle,
-        _cursor: mouse::Cursor,
+        event: &Event,
+        bounds: Rectangle,
+        cursor: mouse::Cursor,
     ) -> Option<Action<Message>> {
-        None
+        let cursor_position = cursor.position_in(bounds)?;
+
+        match event {
+            Event::Mouse(mouse::Event::CursorMoved { .. }) => {
+                Some(Action::publish(Message::CursorMoved(cursor_position)))
+            }
+            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
+                Some(Action::publish(Message::CursorPressed(cursor_position)))
+            }
+            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+                Some(Action::publish(Message::CursorReleased))
+            }
+            _ => None,
+        }
     }
 
     fn draw(
@@ -40,10 +45,53 @@ impl Program<Message> for CanvasView<'_> {
         bounds: Rectangle,
         _cursor: mouse::Cursor,
     ) -> Vec<Geometry> {
-        let geometry = self.cache.draw(renderer, bounds.size(), |_frame| {
-            // Draw cards
+        // Static cached layout geometry
+        let background = self.cache.draw(renderer, bounds.size(), |frame| {
+            // Dark theme background
+            frame.fill_rectangle(
+                Point::ORIGIN,
+                bounds.size(),
+                Color::from_rgb8(0x12, 0x12, 0x12),
+            );
+
+            for card in self.cards {
+                let rect = Path::rectangle(
+                    Point::new(card.bounds.x, card.bounds.y),
+                    card.bounds.size(),
+                );
+                
+                // Base card color (Spotify's #181818 surface color)
+                frame.fill(&rect, Color::from_rgb8(0x18, 0x18, 0x18));
+            }
         });
+
+        // Dynamic hover/drag borders (NOT cached to avoid invalidating heavy layout renders)
+        let mut dynamic = Frame::new(renderer, bounds.size());
         
-        vec![geometry]
+        for card in self.cards {
+            if card.is_hovered || card.is_dragging {
+                let rect = Path::rectangle(
+                    Point::new(card.bounds.x, card.bounds.y),
+                    card.bounds.size(),
+                );
+
+                // Accent color: Rust's #f48264 orange
+                let border_color = if card.is_dragging {
+                    Color::from_rgb8(0xF4, 0x82, 0x64)
+                } else {
+                    // Dimmer on hover
+                    Color::from_rgba8(0xF4, 0x82, 0x64, 0.7)
+                };
+
+                dynamic.stroke(
+                    &rect,
+                    Stroke::default()
+                        .with_color(border_color)
+                        .with_width(2.0),
+                );
+            }
+        }
+
+        vec![background, dynamic.into_geometry()]
     }
 }

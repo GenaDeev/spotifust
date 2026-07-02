@@ -1,7 +1,7 @@
 # Project State Machine
 
 ## Current Focus
-- [ ] Implement bounding-box tracking struct for responsive cards
+- [ ] Spawn librespot session on tokio::spawn, bridged via mpsc → iced::Subscription
 
 ## Development Backlog
 
@@ -11,9 +11,9 @@
 - [x] Set up base Model-View-Update loop in `src/app.rs`
 
 ### Phase 2: Custom Canvas Layout Engine
-- [ ] Implement bounding-box tracking struct for responsive cards
-- [ ] Handle PointerPressed / Moved / Released inside `canvas::Program::update`
-- [ ] Wire `canvas::Cache` invalidation to interaction messages only
+- [x] Implement bounding-box tracking struct for responsive cards
+- [x] Handle PointerPressed / Moved / Released inside `canvas::Program::update`
+- [x] Wire `canvas::Cache` invalidation to interaction messages only
 
 ### Phase 3: Audio & Session Pipeline
 - [ ] Spawn librespot session on tokio::spawn, bridged via mpsc → iced::Subscription

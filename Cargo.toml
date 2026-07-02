@@ -12,7 +12,8 @@ all = "warn"
 pedantic = "warn"
 
 [dependencies]
-iced = { version = "0.14.0", features = ["wgpu", "canvas", "tokio"] }
+iced = { version = "0.14.0", features = ["wgpu", "canvas", "tokio", "image"] }
+image = "0.25.9"
 keyring = "4.1.2"
 librespot = { git = "https://github.com/librespot-org/librespot", version = "0.8.0" }
 rodio = "0.22.2"
