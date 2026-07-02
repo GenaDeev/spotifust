@@ -108,10 +108,7 @@ export SPOTIFY_CLIENT_SECRET="your_client_secret"
 
 ## 🗺️ Roadmap
 
-- [ ] Synchronized lyrics support
-- [ ] Custom theming system on top of the canvas
-- [ ] Real-time equalizer
-- [ ] Native packaging (AppImage / MSI / DMG)
+Read [TODO.md](./TODO.md) for the current roadmap and backlog.
 
 ---
 
