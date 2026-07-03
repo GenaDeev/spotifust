@@ -1,3 +1,4 @@
+use crate::error::AppError;
 use librespot::core::authentication::Credentials;
 use librespot::core::config::SessionConfig;
 use librespot::core::session::Session;
@@ -6,9 +7,9 @@ use librespot::playback::mixer::{NoOpVolume, VolumeGetter};
 use librespot::playback::player::{Player, PlayerEvent};
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use crate::error::AppError;
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct AudioSession {
     pub player: Arc<Player>,
     pub events: Arc<tokio::sync::Mutex<mpsc::Receiver<PlayerEvent>>>,
@@ -26,7 +27,8 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
     let session_config = SessionConfig::default();
 
     let session = Session::new(session_config, None);
-    session.connect(credentials, false)
+    session
+        .connect(credentials, false)
         .await
         .map_err(|e| AppError::Playback(format!("Librespot login failed: {e}")))?;
 
@@ -34,7 +36,7 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
 
     // Create the bounded audio pipeline channel
     let (audio_tx, audio_rx) = mpsc::channel::<Vec<f32>>(256);
-    
+
     // Spawn the rodio consumer thread
     crate::audio::sink::spawn_rodio_thread(audio_rx);
 
@@ -57,5 +59,8 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
         }
     });
 
-    Ok(AudioSession { player, events: Arc::new(tokio::sync::Mutex::new(rx)) })
+    Ok(AudioSession {
+        player,
+        events: Arc::new(tokio::sync::Mutex::new(rx)),
+    })
 }

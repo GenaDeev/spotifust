@@ -1,9 +1,9 @@
-use librespot::playback::audio_backend::{Sink, SinkResult, SinkError};
-use librespot::playback::decoder::AudioPacket;
+use librespot::playback::audio_backend::{Sink, SinkError, SinkResult};
 use librespot::playback::convert::Converter;
-use tokio::sync::mpsc;
-use rodio::buffer::SamplesBuffer;
+use librespot::playback::decoder::AudioPacket;
 use rodio::Sink as RodioSink;
+use rodio::buffer::SamplesBuffer;
+use tokio::sync::mpsc;
 
 pub struct MpscSink {
     sender: mpsc::Sender<Vec<f32>>,
@@ -25,11 +25,15 @@ impl Sink for MpscSink {
     }
 
     fn write(&mut self, packet: AudioPacket, converter: &mut Converter) -> SinkResult<()> {
-        let samples = packet.samples().map_err(|e| SinkError::OnWrite(e.to_string()))?;
+        let samples = packet
+            .samples()
+            .map_err(|e| SinkError::OnWrite(e.to_string()))?;
         let f32_samples: &[f32] = &converter.f64_to_f32(samples);
-        
+
         let vec_samples = f32_samples.to_vec();
-        self.sender.blocking_send(vec_samples).map_err(|e| SinkError::OnWrite(format!("Channel closed: {e}")))?;
+        self.sender
+            .blocking_send(vec_samples)
+            .map_err(|e| SinkError::OnWrite(format!("Channel closed: {e}")))?;
         Ok(())
     }
 }

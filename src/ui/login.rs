@@ -1,12 +1,13 @@
-use iced::{
-    widget::{Button, Column, Container, Text, Image},
-    Length, Element, Alignment, Background, Color, Theme, Border, Shadow, Vector,
-};
 use crate::app::Message;
+use iced::{
+    Alignment, Background, Border, Color, Element, Length, Shadow, Theme, Vector,
+    widget::{Button, Column, Container, Image, Text},
+};
 
 // We use the same logo byte array used for the window icon
 const LOGO_BYTES: &[u8] = include_bytes!("../../assets/spotifust.png");
 
+#[allow(clippy::too_many_lines)]
 pub fn view<'a>(
     _username: &'a str,
     _password: &'a str,
@@ -20,7 +21,10 @@ pub fn view<'a>(
 
     let title = Text::new("Spotifust")
         .size(56)
-        .font(iced::Font { weight: iced::font::Weight::Bold, ..Default::default() })
+        .font(iced::Font {
+            weight: iced::font::Weight::Bold,
+            ..Default::default()
+        })
         .color(Color::WHITE);
 
     let subtitle = Text::new("Connect your Spotify account to continue")
@@ -36,17 +40,17 @@ pub fn view<'a>(
 
     if let Some(err) = error {
         inner_col = inner_col.push(
-            Container::new(Text::new(err).color(iced::color!(0xFF5555)).size(14))
+            Container::new(Text::new(err).color(iced::color!(0x00FF_5555)).size(14))
                 .padding([10, 20])
                 .style(|_theme: &Theme| iced::widget::container::Style {
                     background: Some(Background::Color(Color::from_rgba8(255, 85, 85, 0.1))),
                     border: Border {
-                        color: iced::color!(0xFF5555),
+                        color: iced::color!(0x00FF_5555),
                         width: 1.0,
                         radius: 8.0.into(),
                     },
                     ..Default::default()
-                })
+                }),
         );
     }
 
@@ -54,14 +58,17 @@ pub fn view<'a>(
         inner_col = inner_col.push(
             Text::new("Awaiting browser login...")
                 .size(16)
-                .color(Color::from_rgb8(150, 150, 150))
+                .color(Color::from_rgb8(150, 150, 150)),
         );
     } else {
         let login_btn = Button::new(
             Text::new("Login with Spotify")
                 .size(18)
-                .font(iced::Font { weight: iced::font::Weight::Bold, ..Default::default() })
-                .align_x(iced::alignment::Horizontal::Center)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .align_x(iced::alignment::Horizontal::Center),
         )
         .on_press(Message::LoginRequested)
         .padding([16, 48])
@@ -80,7 +87,7 @@ pub fn view<'a>(
                 },
                 ..Default::default()
             };
-            
+
             match status {
                 iced::widget::button::Status::Hovered => iced::widget::button::Style {
                     background: Some(Background::Color(Color::from_rgb8(30, 215, 96))),
@@ -104,9 +111,12 @@ pub fn view<'a>(
             }
         });
 
-        inner_col = inner_col.push(
-            Container::new(login_btn).padding(iced::Padding { top: 20.0, right: 0.0, bottom: 0.0, left: 0.0 })
-        );
+        inner_col = inner_col.push(Container::new(login_btn).padding(iced::Padding {
+            top: 20.0,
+            right: 0.0,
+            bottom: 0.0,
+            left: 0.0,
+        }));
     }
 
     let card = Container::new(inner_col)

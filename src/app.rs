@@ -1,9 +1,9 @@
 use crate::audio::engine::{AudioCommand, AudioEngine};
 use crate::error::AppError;
-use iced::{Element, Point, Rectangle, Size, Task, widget::canvas::Cache};
-use tokio::sync::mpsc as tokio_mpsc;
 use crate::ui::login;
+use iced::{Element, Point, Rectangle, Size, Task, widget::canvas::Cache};
 use rspotify::clients::BaseClient;
+use tokio::sync::mpsc as tokio_mpsc;
 
 #[derive(Debug, Clone)]
 pub struct CardState {
@@ -23,7 +23,7 @@ pub enum AppState {
         canvas_cache: Cache,
         dragging_card_idx: Option<usize>,
         drag_offset: Point,
-    }
+    },
 }
 
 pub struct App {
@@ -40,7 +40,7 @@ pub enum Message {
     LoginRequested,
     CheckLogin,
     CheckLoginFailed,
-    LoginSuccess(rspotify::AuthCodePkceSpotify),
+    LoginSuccess(Box<rspotify::AuthCodePkceSpotify>),
     LoginFailed(String),
     // Audio Messages
     AudioSessionConnected(crate::audio::session::AudioSession),
@@ -66,18 +66,18 @@ impl App {
             Task::perform(
                 async { crate::api::auth::check_existing_login().await },
                 |res| match res {
-                    Ok(spotify) => Message::LoginSuccess(spotify),
+                    Ok(spotify) => Message::LoginSuccess(Box::new(spotify)),
                     Err(_) => Message::LoginFailed("No token".to_string()),
-                }
-            )
+                },
+            ),
         )
     }
 
     pub fn subscription(&self) -> iced::Subscription<Message> {
         match &self.state {
-            AppState::Login { is_loading: true, .. } => {
-                iced::time::every(std::time::Duration::from_secs(2)).map(|_| Message::CheckLogin)
-            }
+            AppState::Login {
+                is_loading: true, ..
+            } => iced::time::every(std::time::Duration::from_secs(2)).map(|_| Message::CheckLogin),
             _ => iced::Subscription::none(),
         }
     }
@@ -92,26 +92,24 @@ impl App {
             Message::LoginRequested => {
                 if let AppState::Login { is_loading, .. } = &mut self.state {
                     *is_loading = true;
-                    
+
                     return Task::perform(
                         async { crate::api::auth::do_login_flow().await },
                         |res| match res {
-                            Ok(spotify) => Message::LoginSuccess(spotify),
+                            Ok(spotify) => Message::LoginSuccess(Box::new(spotify)),
                             Err(e) => Message::LoginFailed(e.to_string()),
-                        }
+                        },
                     );
                 }
                 Task::none()
             }
-            Message::CheckLogin => {
-                Task::perform(
-                    async { crate::api::auth::check_existing_login().await },
-                    |res| match res {
-                        Ok(spotify) => Message::LoginSuccess(spotify),
-                        Err(_) => Message::CheckLoginFailed,
-                    }
-                )
-            }
+            Message::CheckLogin => Task::perform(
+                async { crate::api::auth::check_existing_login().await },
+                |res| match res {
+                    Ok(spotify) => Message::LoginSuccess(Box::new(spotify)),
+                    Err(_) => Message::CheckLoginFailed,
+                },
+            ),
             Message::CheckLoginFailed => {
                 // Do nothing, keep polling
                 Task::none()
@@ -126,7 +124,10 @@ impl App {
                             title: "Playlist 1".to_string(),
                         },
                         CardState {
-                            bounds: Rectangle::new(Point::new(300.0, 50.0), Size::new(200.0, 150.0)),
+                            bounds: Rectangle::new(
+                                Point::new(300.0, 50.0),
+                                Size::new(200.0, 150.0),
+                            ),
                             is_hovered: false,
                             is_dragging: false,
                             title: "Playlist 2".to_string(),
@@ -137,7 +138,7 @@ impl App {
                     drag_offset: Point::ORIGIN,
                 };
 
-                return Task::perform(
+                Task::perform(
                     async move {
                         let token_mutex = spotify.get_token();
                         let token_guard = token_mutex.lock().await.unwrap();
@@ -147,8 +148,8 @@ impl App {
                     |res| match res {
                         Ok(audio_session) => Message::AudioSessionConnected(audio_session),
                         Err(e) => Message::ErrorEncountered(e),
-                    }
-                );
+                    },
+                )
             }
             Message::AudioSessionConnected(_session) => {
                 // Here we can store the session inside AppState::Main in the future
@@ -156,7 +157,10 @@ impl App {
                 Task::none()
             }
             Message::LoginFailed(err) => {
-                if let AppState::Login { is_loading, error, .. } = &mut self.state {
+                if let AppState::Login {
+                    is_loading, error, ..
+                } = &mut self.state
+                {
                     *is_loading = false;
                     if err != "No token" {
                         *error = Some(err);
@@ -165,7 +169,13 @@ impl App {
                 Task::none()
             }
             Message::CursorMoved(point) => {
-                if let AppState::Main { cards, canvas_cache, dragging_card_idx, drag_offset } = &mut self.state {
+                if let AppState::Main {
+                    cards,
+                    canvas_cache,
+                    dragging_card_idx,
+                    drag_offset,
+                } = &mut self.state
+                {
                     if let Some(idx) = *dragging_card_idx {
                         cards[idx].bounds.x = point.x - drag_offset.x;
                         cards[idx].bounds.y = point.y - drag_offset.y;
@@ -182,7 +192,13 @@ impl App {
                 Task::none()
             }
             Message::CursorPressed(point) => {
-                if let AppState::Main { cards, dragging_card_idx, drag_offset, .. } = &mut self.state {
+                if let AppState::Main {
+                    cards,
+                    dragging_card_idx,
+                    drag_offset,
+                    ..
+                } = &mut self.state
+                {
                     for (idx, card) in cards.iter_mut().enumerate().rev() {
                         if card.bounds.contains(point) {
                             *dragging_card_idx = Some(idx);
@@ -196,7 +212,12 @@ impl App {
                 Task::none()
             }
             Message::CursorReleased => {
-                if let AppState::Main { cards, dragging_card_idx, .. } = &mut self.state {
+                if let AppState::Main {
+                    cards,
+                    dragging_card_idx,
+                    ..
+                } = &mut self.state
+                {
                     if let Some(idx) = dragging_card_idx.take() {
                         cards[idx].is_dragging = false;
                     }
@@ -211,9 +232,11 @@ impl App {
             AppState::Login { is_loading, error } => {
                 login::view("", "", *is_loading, error.as_deref())
             }
-            AppState::Main { cards, canvas_cache, .. } => {
-                crate::ui::main_layout::view(cards, canvas_cache)
-            }
+            AppState::Main {
+                cards,
+                canvas_cache,
+                ..
+            } => crate::ui::main_layout::view(cards, canvas_cache),
         }
     }
 }

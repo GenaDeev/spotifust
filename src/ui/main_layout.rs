@@ -1,22 +1,31 @@
-use iced::{
-    widget::{Column, Container, Row, Text, Space, canvas},
-    Length, Element, Alignment, Background, Color, Theme, Border, Shadow, Vector,
-};
 use crate::app::{CardState, Message};
 use crate::ui::canvas_view::CanvasView;
-
-pub fn view<'a>(
-    cards: &'a [CardState],
-    canvas_cache: &'a canvas::Cache,
-) -> Element<'a, Message> {
+use iced::{
+    Alignment, Background, Border, Color, Element, Length, Shadow, Theme, Vector,
+    widget::{Column, Container, Row, Space, Text, canvas},
+};
+#[allow(clippy::too_many_lines)]
+pub fn view<'a>(cards: &'a [CardState], canvas_cache: &'a canvas::Cache) -> Element<'a, Message> {
     // 1. Sidebar (Darker, rounded floating style)
     let sidebar = Container::new(
         Column::new()
-            .push(Text::new("Spotifust").size(26).color(Color::from_rgb8(29, 185, 84)))
+            .push(
+                Text::new("Spotifust")
+                    .size(26)
+                    .color(Color::from_rgb8(29, 185, 84)),
+            )
             .push(Space::new().height(Length::Fixed(40.0)))
             .push(Text::new("Home").size(16).color(Color::WHITE))
-            .push(Text::new("Search").size(16).color(Color::from_rgb8(179, 179, 179)))
-            .push(Text::new("Library").size(16).color(Color::from_rgb8(179, 179, 179)))
+            .push(
+                Text::new("Search")
+                    .size(16)
+                    .color(Color::from_rgb8(179, 179, 179)),
+            )
+            .push(
+                Text::new("Library")
+                    .size(16)
+                    .color(Color::from_rgb8(179, 179, 179)),
+            )
             .spacing(24)
             .padding(25),
     )
@@ -27,7 +36,12 @@ pub fn view<'a>(
         border: Border {
             color: Color::from_rgba8(255, 255, 255, 0.05),
             width: 1.0,
-            radius: iced::border::Radius { top_left: 0.0, top_right: 15.0, bottom_right: 15.0, bottom_left: 0.0 },
+            radius: iced::border::Radius {
+                top_left: 0.0,
+                top_right: 15.0,
+                bottom_right: 15.0,
+                bottom_left: 0.0,
+            },
         },
         shadow: Shadow {
             color: Color::from_rgba8(0, 0, 0, 0.8),
@@ -57,17 +71,33 @@ pub fn view<'a>(
     let playback_bar = Container::new(
         Row::new()
             .align_y(Alignment::Center)
-            .push(Text::new("Now Playing - Artist").size(14).color(Color::WHITE))
+            .push(
+                Text::new("Now Playing - Artist")
+                    .size(14)
+                    .color(Color::WHITE),
+            )
             .push(Space::new().width(Length::Fill))
             .push(
                 Row::new()
                     .spacing(20)
-                    .push(Text::new("⏮").size(22).color(Color::from_rgb8(179, 179, 179)))
+                    .push(
+                        Text::new("⏮")
+                            .size(22)
+                            .color(Color::from_rgb8(179, 179, 179)),
+                    )
                     .push(Text::new("▶").size(28).color(Color::WHITE))
-                    .push(Text::new("⏭").size(22).color(Color::from_rgb8(179, 179, 179)))
+                    .push(
+                        Text::new("⏭")
+                            .size(22)
+                            .color(Color::from_rgb8(179, 179, 179)),
+                    ),
             )
             .push(Space::new().width(Length::Fill))
-            .push(Text::new("0:00 / 3:45").size(12).color(Color::from_rgb8(179, 179, 179)))
+            .push(
+                Text::new("0:00 / 3:45")
+                    .size(12)
+                    .color(Color::from_rgb8(179, 179, 179)),
+            )
             .padding([15, 30]),
     )
     .width(Length::Fill)
@@ -77,7 +107,12 @@ pub fn view<'a>(
         border: Border {
             color: Color::from_rgba8(255, 255, 255, 0.08),
             width: 1.0,
-            radius: iced::border::Radius { top_left: 20.0, top_right: 20.0, bottom_right: 0.0, bottom_left: 0.0 },
+            radius: iced::border::Radius {
+                top_left: 20.0,
+                top_right: 20.0,
+                bottom_right: 0.0,
+                bottom_left: 0.0,
+            },
         },
         shadow: Shadow {
             color: Color::from_rgba8(0, 0, 0, 0.9),
@@ -94,9 +129,7 @@ pub fn view<'a>(
         .push(main_content)
         .height(Length::Fill);
 
-    let layout = Column::new()
-        .push(top_section)
-        .push(playback_bar);
+    let layout = Column::new().push(top_section).push(playback_bar);
 
     Container::new(layout)
         .width(Length::Fill)
