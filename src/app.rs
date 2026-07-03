@@ -3,6 +3,7 @@ use crate::error::AppError;
 use iced::{Element, Point, Rectangle, Size, Task, widget::canvas::Cache};
 use tokio::sync::mpsc as tokio_mpsc;
 use crate::ui::login;
+use rspotify::clients::BaseClient;
 
 #[derive(Debug, Clone)]
 pub struct CardState {
@@ -39,8 +40,10 @@ pub enum Message {
     LoginRequested,
     CheckLogin,
     CheckLoginFailed,
-    LoginSuccess, // Will be fired from async task
+    LoginSuccess(rspotify::AuthCodePkceSpotify),
     LoginFailed(String),
+    // Audio Messages
+    AudioSessionConnected(crate::audio::session::AudioSession),
     // Main UI Messages
     CursorMoved(Point),
     CursorPressed(Point),
@@ -63,7 +66,7 @@ impl App {
             Task::perform(
                 async { crate::api::auth::check_existing_login().await },
                 |res| match res {
-                    Ok(_spotify) => Message::LoginSuccess,
+                    Ok(spotify) => Message::LoginSuccess(spotify),
                     Err(_) => Message::LoginFailed("No token".to_string()),
                 }
             )
@@ -93,7 +96,7 @@ impl App {
                     return Task::perform(
                         async { crate::api::auth::do_login_flow().await },
                         |res| match res {
-                            Ok(()) => Message::LoginSuccess,
+                            Ok(spotify) => Message::LoginSuccess(spotify),
                             Err(e) => Message::LoginFailed(e.to_string()),
                         }
                     );
@@ -104,7 +107,7 @@ impl App {
                 Task::perform(
                     async { crate::api::auth::check_existing_login().await },
                     |res| match res {
-                        Ok(_) => Message::LoginSuccess,
+                        Ok(spotify) => Message::LoginSuccess(spotify),
                         Err(_) => Message::CheckLoginFailed,
                     }
                 )
@@ -113,7 +116,7 @@ impl App {
                 // Do nothing, keep polling
                 Task::none()
             }
-            Message::LoginSuccess => {
+            Message::LoginSuccess(spotify) => {
                 self.state = AppState::Main {
                     cards: vec![
                         CardState {
@@ -133,6 +136,23 @@ impl App {
                     dragging_card_idx: None,
                     drag_offset: Point::ORIGIN,
                 };
+
+                return Task::perform(
+                    async move {
+                        let token_mutex = spotify.get_token();
+                        let token_guard = token_mutex.lock().await.unwrap();
+                        let access_token = token_guard.as_ref().unwrap().access_token.clone();
+                        crate::audio::session::connect_with_token(&access_token).await
+                    },
+                    |res| match res {
+                        Ok(audio_session) => Message::AudioSessionConnected(audio_session),
+                        Err(e) => Message::ErrorEncountered(e),
+                    }
+                );
+            }
+            Message::AudioSessionConnected(_session) => {
+                // Here we can store the session inside AppState::Main in the future
+                println!("Audio session connected successfully!");
                 Task::none()
             }
             Message::LoginFailed(err) => {

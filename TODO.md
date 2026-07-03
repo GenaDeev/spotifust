@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] (Phase 3) Implement Librespot Authentication (Discovery/Zeroconf or Credentials)
+- [ ] (Phase 3) Playback Control and Track Metadata
 
 ## Development Backlog
 
@@ -23,15 +23,15 @@
 ### Phase 3: Librespot Audio & Session Pipeline (Next up)
 
 - [x] **Librespot Authentication**: Setup `librespot::core::session::Session` and login using credentials or Zeroconf.
-- [ ] **Librespot Audio Backend**: Implement a custom `librespot::playback::audio_backend::Sink` that captures decoded PCM frames from Spotify.
-- [ ] **Audio Bridge**: Route the decoded PCM frames from the Librespot custom Sink through our bounded `mpsc` channel directly to our `rodio` playback thread.
+- [x] **Librespot Audio Backend**: Implement a custom `librespot::playback::audio_backend::Sink` that captures decoded PCM frames from Spotify.
+- [x] **Audio Bridge**: Route the decoded PCM frames from the Librespot custom Sink through our bounded `mpsc` channel directly to our `rodio` playback thread.
 - [ ] **Playback Control**: Wire UI commands (Play, Pause, Skip, Seek) through `iced::Subscription` down to the `librespot` player instance.
 - [ ] **Track Metadata**: Extract current track information (Title, Artist, Duration, Position) from Librespot events and stream them to the UI state.
 
 ### Phase 4: RSpotify Web API, Auth & Premium UI
 
-- [ ] **OAuth PKCE Flow**: Implement `rspotify` Authorization Code Flow with PKCE using a custom protocol callback (`spotifust://callback`).
-- [ ] **Keychain Storage**: Securely store the OAuth refresh token via the OS credential store (`keyring` crate).
+- [x] **OAuth PKCE Flow**: Implement `rspotify` Authorization Code Flow with PKCE using a custom protocol callback (`spotifust://callback`).
+- [x] **Keychain Storage**: Securely store the OAuth refresh token via the OS credential store (`keyring` crate).
 - [ ] **Main Layout UI**: Build the primary layout grid using standard `iced` widgets (Sidebar, Main Content Area, Bottom Playback Bar) wrapping our Canvas cards.
 - [ ] **Playback Bar UI**: Implement a dynamic Bottom Playback Bar with Album Art, Title, Artist, Play/Pause/Skip buttons, and a draggable Seek Bar.
 - [ ] **Library & Search UI**: Fetch and display the user's saved playlists, albums, and top tracks using the RSpotify client.

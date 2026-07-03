@@ -30,7 +30,7 @@ fn get_spotify_client() -> AuthCodePkceSpotify {
 }
 
 #[allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
-pub async fn do_login_flow() -> Result<(), AppError> {
+pub async fn do_login_flow() -> Result<AuthCodePkceSpotify, AppError> {
     let mut spotify = get_spotify_client();
     let url = spotify
         .get_authorize_url(None)
@@ -75,7 +75,7 @@ pub async fn do_login_flow() -> Result<(), AppError> {
             .map_err(|e| AppError::Auth(format!("Failed to save token to keyring: {e}")))?;
     }
 
-    Ok(())
+    Ok(spotify)
 }
 
 #[allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
