@@ -22,7 +22,7 @@
 
 ### Phase 3: Librespot Audio & Session Pipeline (Next up)
 
-- [ ] **Librespot Authentication**: Setup `librespot::core::session::Session` and login using credentials or Zeroconf.
+- [x] **Librespot Authentication**: Setup `librespot::core::session::Session` and login using credentials or Zeroconf.
 - [ ] **Librespot Audio Backend**: Implement a custom `librespot::playback::audio_backend::Sink` that captures decoded PCM frames from Spotify.
 - [ ] **Audio Bridge**: Route the decoded PCM frames from the Librespot custom Sink through our bounded `mpsc` channel directly to our `rodio` playback thread.
 - [ ] **Playback Control**: Wire UI commands (Play, Pause, Skip, Seek) through `iced::Subscription` down to the `librespot` player instance.
@@ -30,7 +30,7 @@
 
 ### Phase 4: RSpotify Web API, Auth & Premium UI
 
-- [ ] **OAuth PKCE Flow**: Implement `rspotify` Authorization Code Flow with PKCE using a fixed-port loopback `TcpListener` (`127.0.0.1:8888`).
+- [ ] **OAuth PKCE Flow**: Implement `rspotify` Authorization Code Flow with PKCE using a custom protocol callback (`spotifust://callback`).
 - [ ] **Keychain Storage**: Securely store the OAuth refresh token via the OS credential store (`keyring` crate).
 - [ ] **Main Layout UI**: Build the primary layout grid using standard `iced` widgets (Sidebar, Main Content Area, Bottom Playback Bar) wrapping our Canvas cards.
 - [ ] **Playback Bar UI**: Implement a dynamic Bottom Playback Bar with Album Art, Title, Artist, Play/Pause/Skip buttons, and a draggable Seek Bar.

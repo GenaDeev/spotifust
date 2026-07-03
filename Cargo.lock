@@ -5602,6 +5602,7 @@ dependencies = [
  "image",
  "keyring",
  "librespot",
+ "open",
  "rodio",
  "rspotify",
  "thiserror 2.0.18",

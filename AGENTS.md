@@ -106,8 +106,8 @@ Always re-read `TODO.md` immediately before editing it, even if you wrote it ear
 ### C. Web API Layer (`src/api/`)
 
 * Implement `rspotify` Authorization Code Flow **with PKCE** — never the implicit or plain Authorization Code flow (no client secret should ever be required for the desktop app's own auth).
-* Intercept the OAuth callback with a `tokio::net::TcpListener` bound to a **fixed** loopback port (e.g., `127.0.0.1:8888`) — the port must be hardcoded and must exactly match the redirect URI registered in the Spotify Developer Dashboard, since Spotify does not allow wildcard redirect ports.
-* Shut the listener down immediately after receiving the callback; do not leave it bound for the lifetime of the app.
+* Intercept the OAuth callback via a **custom protocol handler** (e.g., `spotifust://callback`) registered at the OS level by an installer, guaranteeing cross-platform compatibility without relying on local open ports. Ensure the URL scheme is uniquely identifiable.
+* Extract the auth code directly from the incoming OS invocation arguments.
 * Persist the refresh token via the OS credential store (`keyring` crate: Credential Manager / Keychain / Secret Service) — never as plaintext in `src/api/cache.rs` or any repo-adjacent file.
 * `src/api/cache.rs` is for metadata/image caching only, not credentials.
 
@@ -130,7 +130,6 @@ Always re-read `TODO.md` immediately before editing it, even if you wrote it ear
 Add these to **Blocked / Needs Human Decision** in `TODO.md` instead of picking silently:
 
 * Choosing between `rodio` and `cpal` as the final playback backend (both are listed as acceptable — pick one per-project, not per-file, and flag the choice for confirmation the first time it comes up).
-* Any change to the fixed OAuth loopback port after it's been set once (changing it breaks the registered redirect URI).
 * Adding any new external dependency not already implied by the Tech Stack table in `README.md`.
 
 ---
