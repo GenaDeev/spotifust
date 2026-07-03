@@ -14,7 +14,7 @@ all = "warn"
 pedantic = "warn"
 
 [dependencies]
-iced = { version = "0.14.0", features = ["tiny-skia", "canvas", "tokio", "image"] }
+iced = { version = "0.14.0", features = ["tiny-skia", "canvas", "tokio", "image", "svg"] }
 image = "0.25.9"
 keyring = "4.1.2"
 librespot = { git = "https://github.com/librespot-org/librespot", version = "0.8.0" }
