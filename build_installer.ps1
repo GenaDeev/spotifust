@@ -8,6 +8,7 @@ cargo build --release
 
 Write-Host "Building MSI installer..."
 cd installer
-wix build -acceptEula wix7 -o Spotifust.msi spotifust.wxs
+wix extension add WixToolset.UI.wixext
+wix build -acceptEula wix7 -ext WixToolset.UI.wixext -o Spotifust.msi spotifust.wxs
 Write-Host "Done! Installer located at installer/Spotifust.msi"
 cd ..

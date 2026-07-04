@@ -127,7 +127,8 @@ jobs:
           dotnet tool install --global wix
           
           cd installer
-          wix build -o ..\${{ matrix.artifact_name }}.msi spotifust.wxs
+          wix extension add WixToolset.UI.wixext
+          wix build -acceptEula wix7 -ext WixToolset.UI.wixext -o ..\${{ matrix.artifact_name }}.msi spotifust.wxs
           cd ..
           
           if ([string]::IsNullOrEmpty($env:WIN_CERT_BASE64) -eq $false) {

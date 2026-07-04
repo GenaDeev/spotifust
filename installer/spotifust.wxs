@@ -1,10 +1,25 @@
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package Name="Spotifust" Manufacturer="Spotifust Team" Version="0.1.0" UpgradeCode="78A55B2E-54CD-485A-A6A4-D9D7C235ED98">
     <MajorUpgrade DowngradeErrorMessage="A newer version of Spotifust is already installed." />
+
+    <!-- UI Configuration -->
+    <ui:WixUI Id="WixUI_InstallDir" />
+    <WixVariable Id="WixUILicenseRtf" Value="LICENSE.rtf" />
+    <WixVariable Id="WixUIDialogBmp" Value="dialog.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="banner.bmp" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    
+    <!-- Final screen options -->
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Abrir el repositorio de GitHub para contribuir" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="Spotifust" />
     </StandardDirectory>
+
+    <Icon Id="AppIcon.ico" SourceFile="..\assets\spotifust.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
 
     <StandardDirectory Id="ProgramMenuFolder">
       <Directory Id="ApplicationProgramsFolder" Name="Spotifust" />
@@ -15,6 +30,14 @@
       <ComponentGroupRef Id="AppShortcuts" />
     </Feature>
   </Package>
+
+  <!-- Open GitHub Custom Action -->
+  <Fragment>
+    <CustomAction Id="OpenGitHub" Directory="INSTALLFOLDER" Execute="immediate" Impersonate="yes" Return="asyncNoWait" ExeCommand="explorer.exe &quot;https://github.com/GenaDeev/spotifust&quot;" />
+    <UI>
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="OpenGitHub" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed" />
+    </UI>
+  </Fragment>
 
   <Fragment>
     <ComponentGroup Id="AppComponents" Directory="INSTALLFOLDER">
@@ -43,7 +66,8 @@
                   Name="Spotifust"
                   Description="A modern Spotify client built with Rust and Iced"
                   Target="[#SpotifustEXE]"
-                  WorkingDirectory="INSTALLFOLDER" />
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="AppIcon.ico" />
         <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall" />
         <RegistryValue Root="HKCU" Key="Software\Spotifust" Name="installed" Type="integer" Value="1" KeyPath="yes" />
       </Component>
