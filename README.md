@@ -95,6 +95,13 @@ cargo run --release
 
 On first launch, it'll ask for your Spotify Premium credentials to initialize the `librespot` session. Once authenticated, the session gets cached locally for future launches.
 
+### Packaging for Release
+
+If you want to package the application for distribution, you can use the provided build scripts:
+
+- **Windows**: Run `.\build_installer.ps1` in PowerShell. This requires the [WiX v4 Toolset](https://wixtoolset.org/) installed globally via `dotnet tool install --global wix`. It will compile the binary in release mode and generate an MSI installer in the `installer/` directory.
+- **macOS / Linux**: Run `./build_installer.sh` in your terminal. On macOS, this will create an `.app` bundle and package it into a `.dmg`. On Linux, it will compress the release binary into a `.tar.gz` archive.
+
 ### Environment Variables (optional)
 
 If you're registering your own app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) to use `rspotify` with your own API credentials:

@@ -1,0 +1,52 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Spotifust" Manufacturer="Spotifust Team" Version="0.1.0" UpgradeCode="78A55B2E-54CD-485A-A6A4-D9D7C235ED98">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Spotifust is already installed." />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Spotifust" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="Spotifust" />
+    </StandardDirectory>
+
+    <Feature Id="Main">
+      <ComponentGroupRef Id="AppComponents" />
+      <ComponentGroupRef Id="AppShortcuts" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="AppComponents" Directory="INSTALLFOLDER">
+      <Component Id="MainExecutable" Guid="B4E38A4B-0726-476E-8041-A87071A213D5">
+        <File Id="SpotifustEXE" Source="..\target\release\spotifust.exe" KeyPath="yes" />
+        
+        <!-- Register custom protocol handler: spotifust:// -->
+        <!-- This intercepts the OAuth callback from the browser to pass the token back to the app -->
+        <RegistryKey Root="HKCR" Key="spotifust">
+          <RegistryValue Type="string" Value="URL:Spotifust Protocol" />
+          <RegistryValue Type="string" Name="URL Protocol" Value="" />
+          <RegistryKey Key="DefaultIcon">
+            <RegistryValue Type="string" Value="[#SpotifustEXE],0" />
+          </RegistryKey>
+          <RegistryKey Key="shell\open\command">
+            <!-- Passes the URL as the first argument, which our main.rs intercepts -->
+            <RegistryValue Type="string" Value="&quot;[#SpotifustEXE]&quot; &quot;%1&quot;" />
+          </RegistryKey>
+        </RegistryKey>
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="AppShortcuts" Directory="ApplicationProgramsFolder">
+      <Component Id="ApplicationShortcut" Guid="729F4A75-72F2-43E5-A672-0FA33C404E26">
+        <Shortcut Id="ApplicationStartMenuShortcut"
+                  Name="Spotifust"
+                  Description="A modern Spotify client built with Rust and Iced"
+                  Target="[#SpotifustEXE]"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\Spotifust" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

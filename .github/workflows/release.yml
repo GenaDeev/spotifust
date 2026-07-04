@@ -48,22 +48,99 @@ jobs:
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Package binary (Unix)
-        if: runner.os != 'Windows'
+      - name: Package binary (Linux)
+        if: runner.os == 'Linux'
         run: |
           cd target/${{ matrix.target }}/release
           tar -czvf ../../../${{ matrix.artifact_name }}.tar.gz spotifust
           cd ../../../
           sha256sum ${{ matrix.artifact_name }}.tar.gz > ${{ matrix.artifact_name }}.tar.gz.sha256
 
+      - name: Package binary (macOS)
+        if: runner.os == 'macOS'
+        env:
+          MACOS_CERT_BASE64: ${{ secrets.MACOS_CERT_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_APPLE_ID: ${{ secrets.MACOS_APPLE_ID }}
+          MACOS_APP_PASSWORD: ${{ secrets.MACOS_APP_PASSWORD }}
+          MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+        run: |
+          APP_NAME="Spotifust"
+          APP_DIR="${APP_NAME}.app/Contents"
+          mkdir -p "$APP_DIR/MacOS"
+          mkdir -p "$APP_DIR/Resources"
+          cp target/${{ matrix.target }}/release/spotifust "$APP_DIR/MacOS/"
+          
+          # Minimal Info.plist
+          cat <<EOF > "$APP_DIR/Info.plist"
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleExecutable</key>
+              <string>spotifust</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.spotifust.app</string>
+              <key>CFBundleName</key>
+              <string>Spotifust</string>
+              <key>CFBundleVersion</key>
+              <string>0.1.0</string>
+              <key>CFBundleShortVersionString</key>
+              <string>0.1.0</string>
+          </dict>
+          </plist>
+          EOF
+          
+          if [ -n "$MACOS_CERT_BASE64" ]; then
+              echo "Signing macOS App Bundle..."
+              echo "$MACOS_CERT_BASE64" | base64 --decode > cert.p12
+              
+              KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+              KEYCHAIN_PASSWORD=$(uuidgen)
+              security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+              security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+              security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+              
+              security import cert.p12 -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+              security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+              
+              CERT_ID=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep "Developer ID Application" | awk '{print $2}')
+              /usr/bin/codesign --force -s "$CERT_ID" --options runtime "$APP_NAME.app"
+          fi
+          
+          # Create DMG
+          hdiutil create -volname "${APP_NAME}" -srcfolder "${APP_NAME}.app" -ov -format UDZO "${{ matrix.artifact_name }}.dmg"
+          
+          if [ -n "$MACOS_CERT_BASE64" ]; then
+              echo "Signing and Notarizing DMG..."
+              /usr/bin/codesign --force -s "$CERT_ID" --options runtime "${{ matrix.artifact_name }}.dmg"
+              xcrun notarytool submit "${{ matrix.artifact_name }}.dmg" --apple-id "$MACOS_APPLE_ID" --password "$MACOS_APP_PASSWORD" --team-id "$MACOS_TEAM_ID" --wait
+              xcrun stapler staple "${{ matrix.artifact_name }}.dmg"
+          fi
+
       - name: Package binary (Windows)
         if: runner.os == 'Windows'
+        env:
+          WIN_CERT_BASE64: ${{ secrets.WIN_CERT_BASE64 }}
+          WIN_CERT_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
         run: |
-          cd target\${{ matrix.target }}\release
-          Compress-Archive -Path spotifust.exe -DestinationPath ..\..\..\${{ matrix.artifact_name }}.zip
-          cd ..\..\..
-          $hash = Get-FileHash -Path ${{ matrix.artifact_name }}.zip -Algorithm SHA256
-          "$($hash.Hash.ToLower())  ${{ matrix.artifact_name }}.zip" | Out-File -FilePath ${{ matrix.artifact_name }}.zip.sha256 -Encoding ASCII
+          dotnet tool install --global wix
+          
+          cd installer
+          wix build -o ..\${{ matrix.artifact_name }}.msi spotifust.wxs
+          cd ..
+          
+          if ([string]::IsNullOrEmpty($env:WIN_CERT_BASE64) -eq $false) {
+              Write-Host "Signing Windows MSI and EXE..."
+              $certPath = "cert.pfx"
+              [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WIN_CERT_BASE64))
+              
+              $signtool = (Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" -Recurse | Select-Object -First 1).FullName
+              
+              & $signtool sign /f $certPath /p $env:WIN_CERT_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 target\${{ matrix.target }}\release\spotifust.exe
+              & $signtool sign /f $certPath /p $env:WIN_CERT_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 ${{ matrix.artifact_name }}.msi
+              Remove-Item $certPath
+          }
 
       - name: Upload packaging artifacts
         uses: actions/upload-artifact@v4
@@ -71,7 +148,8 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: |
             *.tar.gz
-            *.zip
+            *.dmg
+            *.msi
             *.sha256
 
   publish-release:
