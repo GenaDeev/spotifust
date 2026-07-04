@@ -1,0 +1,52 @@
+name: Build MSI (Manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-msi:
+    name: Build MSI on Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Package MSI and Sign
+        env:
+          WIN_CERT_BASE64: ${{ secrets.WIN_CERT_BASE64 }}
+          WIN_CERT_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
+        run: |
+          $AppVersion = (Select-String -Path "Cargo.toml" -Pattern "^version = `"(.*)`"").Matches.Groups[1].Value
+          dotnet tool install --global wix
+          
+          cd installer
+          wix extension add WixToolset.UI.wixext
+          wix build -d AppVersion=$AppVersion -acceptEula wix7 -ext WixToolset.UI.wixext -o ..\spotifust-windows.msi spotifust.wxs
+          cd ..
+          
+          if ([string]::IsNullOrEmpty($env:WIN_CERT_BASE64) -eq $false) {
+              Write-Host "Signing Windows MSI and EXE..."
+              $certPath = "cert.pfx"
+              [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WIN_CERT_BASE64))
+              
+              $signtool = (Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" -Recurse | Select-Object -First 1).FullName
+              
+              & $signtool sign /f $certPath /p $env:WIN_CERT_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 target\release\spotifust.exe
+              & $signtool sign /f $certPath /p $env:WIN_CERT_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 spotifust-windows.msi
+              Remove-Item $certPath
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotifust-windows-msi
+          path: spotifust-windows.msi

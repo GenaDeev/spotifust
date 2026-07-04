@@ -9,6 +9,7 @@ cargo build --release
 if [ "$(uname)" == "Darwin" ]; then
     echo "Packaging for macOS..."
     APP_NAME="Spotifust"
+    APP_VERSION=$(grep '^version' Cargo.toml | head -n 1 | awk -F '"' '{print $2}')
     APP_DIR="${APP_NAME}.app/Contents"
     
     mkdir -p "$APP_DIR/MacOS"
@@ -27,9 +28,9 @@ if [ "$(uname)" == "Darwin" ]; then
     <key>CFBundleName</key>
     <string>Spotifust</string>
     <key>CFBundleVersion</key>
-    <string>0.1.0</string>
+    <string>${APP_VERSION}</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>${APP_VERSION}</string>
 </dict>
 </plist>
 EOF

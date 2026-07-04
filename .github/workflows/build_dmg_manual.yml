@@ -1,0 +1,89 @@
+name: Build DMG (Manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-dmg:
+    name: Build DMG on macOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Package DMG and Sign
+        env:
+          MACOS_CERT_BASE64: ${{ secrets.MACOS_CERT_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_APPLE_ID: ${{ secrets.MACOS_APPLE_ID }}
+          MACOS_APP_PASSWORD: ${{ secrets.MACOS_APP_PASSWORD }}
+          MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+        run: |
+          APP_VERSION=$(grep '^version' Cargo.toml | head -n 1 | awk -F '"' '{print $2}')
+          APP_NAME="Spotifust"
+          APP_DIR="${APP_NAME}.app/Contents"
+          mkdir -p "$APP_DIR/MacOS"
+          mkdir -p "$APP_DIR/Resources"
+          cp target/release/spotifust "$APP_DIR/MacOS/"
+          
+          # Minimal Info.plist
+          cat <<EOF > "$APP_DIR/Info.plist"
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleExecutable</key>
+              <string>spotifust</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.spotifust.app</string>
+              <key>CFBundleName</key>
+              <string>Spotifust</string>
+              <key>CFBundleVersion</key>
+              <string>${APP_VERSION}</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${APP_VERSION}</string>
+          </dict>
+          </plist>
+          EOF
+          
+          if [ -n "$MACOS_CERT_BASE64" ]; then
+              echo "Signing macOS App Bundle..."
+              echo "$MACOS_CERT_BASE64" | base64 --decode > cert.p12
+              
+              KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+              KEYCHAIN_PASSWORD=$(uuidgen)
+              security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+              security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+              security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+              
+              security import cert.p12 -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+              security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+              
+              CERT_ID=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep "Developer ID Application" | awk '{print $2}')
+              /usr/bin/codesign --force -s "$CERT_ID" --options runtime "$APP_NAME.app"
+          fi
+          
+          # Create DMG
+          hdiutil create -volname "${APP_NAME}" -srcfolder "${APP_NAME}.app" -ov -format UDZO "spotifust-macos.dmg"
+          
+          if [ -n "$MACOS_CERT_BASE64" ]; then
+              echo "Signing and Notarizing DMG..."
+              /usr/bin/codesign --force -s "$CERT_ID" --options runtime "spotifust-macos.dmg"
+              xcrun notarytool submit "spotifust-macos.dmg" --apple-id "$MACOS_APPLE_ID" --password "$MACOS_APP_PASSWORD" --team-id "$MACOS_TEAM_ID" --wait
+              xcrun stapler staple "spotifust-macos.dmg"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotifust-macos-dmg
+          path: spotifust-macos.dmg
