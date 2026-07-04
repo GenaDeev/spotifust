@@ -228,7 +228,7 @@ Read [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 ### Contributors
 
 <a href="https://github.com/GenaDeev/spotifust/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=GenaDeev/spotifust" />
+  <img alt="Spotifust contributor panel" src="https://contrib.rocks/image?repo=GenaDeev/spotifust" />
 </a>
 
 ---
