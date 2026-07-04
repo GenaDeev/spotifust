@@ -1,9 +1,8 @@
-/// Branding constants for Spotifust's visual identity.
-///
-/// The accent color is the warm salmon/peach orange from the Spotifust logo,
-/// NOT Spotify green. Spotify green should only appear where it explicitly
-/// represents the Spotify brand (e.g., the "Login with Spotify" button).
-
+//! Branding constants for Spotifust's visual identity.
+//!
+//! The accent color is the warm salmon/peach orange from the Spotifust logo,
+//! NOT Spotify green. Spotify green should only appear where it explicitly
+//! represents the Spotify brand (e.g., the "Login with Spotify" button).
 /// Brand accent color — warm salmon/peach orange.
 /// Derived from the Spotifust logo: `#F4A582`.
 pub const ACCENT: iced::Color = iced::Color {
@@ -14,6 +13,7 @@ pub const ACCENT: iced::Color = iced::Color {
 };
 
 /// Deeper/saturated variant of the accent — `#F48264`.
+#[allow(dead_code)]
 pub const ACCENT_DEEP: iced::Color = iced::Color {
     r: 0.957,
     g: 0.510,
@@ -22,6 +22,7 @@ pub const ACCENT_DEEP: iced::Color = iced::Color {
 };
 
 /// Accent at reduced opacity for subtle highlights.
+#[allow(dead_code)]
 pub const ACCENT_DIM: iced::Color = iced::Color {
     r: 0.957,
     g: 0.647,
@@ -64,6 +65,7 @@ pub const SURFACE_2: iced::Color = iced::Color {
 };
 
 /// Highest elevation surface — active states. `#282828`
+#[allow(dead_code)]
 pub const SURFACE_3: iced::Color = iced::Color {
     r: 0.157,
     g: 0.157,
@@ -90,6 +92,7 @@ pub const TEXT_SECONDARY: iced::Color = iced::Color {
 };
 
 /// Tertiary text — very muted. `#727272`
+#[allow(dead_code)]
 pub const TEXT_TERTIARY: iced::Color = iced::Color {
     r: 0.447,
     g: 0.447,
@@ -111,6 +114,7 @@ pub const BORDER_SUBTLE: iced::Color = iced::Color {
 
 /// Spotify green — use ONLY for elements that represent the Spotify brand,
 /// such as the "Login with Spotify" button. NOT for general UI accent.
+#[allow(dead_code)]
 pub const SPOTIFY_GREEN: iced::Color = iced::Color {
     r: 0.114,
     g: 0.725,
@@ -121,6 +125,7 @@ pub const SPOTIFY_GREEN: iced::Color = iced::Color {
 // --- Semantic colors ---
 
 /// Error/danger color — warm red. `#FF5555`
+#[allow(dead_code)]
 pub const ERROR: iced::Color = iced::Color {
     r: 1.0,
     g: 0.333,

@@ -2,11 +2,11 @@
 ///
 /// Provides a centralized way to load and display SVG icons throughout the UI.
 /// All icons are loaded from `assets/icons/` at compile time via `include_bytes!`.
-
 use iced::widget::Svg;
 use iced::{Element, Length};
 
 /// Available icons in the application.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Icon {
     Home,
@@ -80,6 +80,7 @@ impl Icon {
     }
 
     /// Renders this icon as a raw `Svg` widget (for further customization).
+    #[allow(dead_code)]
     pub fn svg(self, size: f32) -> Svg<'static> {
         Svg::new(self.handle())
             .width(Length::Fixed(size))

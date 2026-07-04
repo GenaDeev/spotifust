@@ -32,8 +32,8 @@
 
 - [x] **OAuth PKCE Flow**: Implement `rspotify` Authorization Code Flow with PKCE using a custom protocol callback (`spotifust://callback`).
 - [x] **Keychain Storage**: Securely store the OAuth refresh token via the OS credential store (`keyring` crate).
-- [ ] **Main Layout UI**: Build the primary layout grid using standard `iced` widgets (Sidebar, Main Content Area, Bottom Playback Bar) wrapping our Canvas cards.
-- [ ] **Playback Bar UI**: Implement a dynamic Bottom Playback Bar with Album Art, Title, Artist, Play/Pause/Skip buttons, and a draggable Seek Bar.
+- [x] **Main Layout UI**: Build the primary layout grid using standard `iced` widgets (Sidebar, Main Content Area, Bottom Playback Bar).
+- [x] **Playback Bar UI**: Implement a dynamic Bottom Playback Bar with Album Art, Title, Artist, Play/Pause/Skip buttons, and a draggable Seek Bar.
 - [ ] **Library & Search UI**: Fetch and display the user's saved playlists, albums, and top tracks using the RSpotify client.
 - [ ] **Album Art Caching**: Fetch album cover images asynchronously and cache them to disk in `src/api/cache.rs` to avoid redundant network calls.
 
