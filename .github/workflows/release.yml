@@ -18,16 +18,16 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact_name: spotifust-linux-x86_64
+            platform: linux-x86_64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact_name: spotifust-windows-x86_64
+            platform: windows-x86_64
           - os: macos-13
             target: x86_64-apple-darwin
-            artifact_name: spotifust-macos-x86_64
+            platform: macos-x86_64
           - os: macos-latest
             target: aarch64-apple-darwin
-            artifact_name: spotifust-macos-aarch64
+            platform: macos-aarch64
 
     steps:
       - name: Checkout repository
@@ -48,13 +48,38 @@ jobs:
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
+      - name: Extract version from Cargo.toml (Unix)
+        if: runner.os != 'Windows'
+        id: version_unix
+        run: |
+          APP_VERSION=$(grep '^version' Cargo.toml | head -n 1 | awk -F '"' '{print $2}')
+          echo "version=$APP_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Extract version from Cargo.toml (Windows)
+        if: runner.os == 'Windows'
+        id: version_win
+        run: |
+          $AppVersion = (Select-String -Path "Cargo.toml" -Pattern "^version = `"(.*)`"").Matches.Groups[1].Value
+          echo "version=$AppVersion" >> $env:GITHUB_OUTPUT
+
+      - name: Set version output
+        id: artifact
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            echo "version=${{ steps.version_win.outputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ steps.version_unix.outputs.version }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Package binary (Linux)
         if: runner.os == 'Linux'
         run: |
+          ARTIFACT="spotifust-${{ matrix.platform }}-${{ steps.artifact.outputs.version }}"
           cd target/${{ matrix.target }}/release
-          tar -czvf ../../../${{ matrix.artifact_name }}.tar.gz spotifust
+          tar -czvf "../../../${ARTIFACT}.tar.gz" spotifust
           cd ../../../
-          sha256sum ${{ matrix.artifact_name }}.tar.gz > ${{ matrix.artifact_name }}.tar.gz.sha256
+          sha256sum "${ARTIFACT}.tar.gz" > "${ARTIFACT}.tar.gz.sha256"
 
       - name: Package binary (macOS)
         if: runner.os == 'macOS'
@@ -65,7 +90,8 @@ jobs:
           MACOS_APP_PASSWORD: ${{ secrets.MACOS_APP_PASSWORD }}
           MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
         run: |
-          APP_VERSION=$(grep '^version' Cargo.toml | head -n 1 | awk -F '"' '{print $2}')
+          ARTIFACT="spotifust-${{ matrix.platform }}-${{ steps.artifact.outputs.version }}"
+          APP_VERSION="${{ steps.artifact.outputs.version }}"
           APP_NAME="Spotifust"
           APP_DIR="${APP_NAME}.app/Contents"
           mkdir -p "$APP_DIR/MacOS"
@@ -110,13 +136,13 @@ jobs:
           fi
           
           # Create DMG
-          hdiutil create -volname "${APP_NAME}" -srcfolder "${APP_NAME}.app" -ov -format UDZO "${{ matrix.artifact_name }}.dmg"
+          hdiutil create -volname "${APP_NAME}" -srcfolder "${APP_NAME}.app" -ov -format UDZO "${ARTIFACT}.dmg"
           
           if [ -n "$MACOS_CERT_BASE64" ]; then
               echo "Signing and Notarizing DMG..."
-              /usr/bin/codesign --force -s "$CERT_ID" --options runtime "${{ matrix.artifact_name }}.dmg"
-              xcrun notarytool submit "${{ matrix.artifact_name }}.dmg" --apple-id "$MACOS_APPLE_ID" --password "$MACOS_APP_PASSWORD" --team-id "$MACOS_TEAM_ID" --wait
-              xcrun stapler staple "${{ matrix.artifact_name }}.dmg"
+              /usr/bin/codesign --force -s "$CERT_ID" --options runtime "${ARTIFACT}.dmg"
+              xcrun notarytool submit "${ARTIFACT}.dmg" --apple-id "$MACOS_APPLE_ID" --password "$MACOS_APP_PASSWORD" --team-id "$MACOS_TEAM_ID" --wait
+              xcrun stapler staple "${ARTIFACT}.dmg"
           fi
 
       - name: Package binary (Windows)
@@ -125,12 +151,13 @@ jobs:
           WIN_CERT_BASE64: ${{ secrets.WIN_CERT_BASE64 }}
           WIN_CERT_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
         run: |
-          $AppVersion = (Select-String -Path "Cargo.toml" -Pattern "^version = `"(.*)`"").Matches.Groups[1].Value
+          $Artifact = "spotifust-${{ matrix.platform }}-${{ steps.artifact.outputs.version }}"
+          $AppVersion = "${{ steps.artifact.outputs.version }}"
           dotnet tool install --global wix
           
           cd installer
           wix extension add WixToolset.UI.wixext
-          wix build -d AppVersion=$AppVersion -acceptEula wix7 -ext WixToolset.UI.wixext -o ..\${{ matrix.artifact_name }}.msi spotifust.wxs
+          wix build -d AppVersion=$AppVersion -acceptEula wix7 -ext WixToolset.UI.wixext -o "..\${Artifact}.msi" spotifust.wxs
           cd ..
           
           if ([string]::IsNullOrEmpty($env:WIN_CERT_BASE64) -eq $false) {
@@ -141,14 +168,14 @@ jobs:
               $signtool = (Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" -Recurse | Select-Object -First 1).FullName
               
               & $signtool sign /f $certPath /p $env:WIN_CERT_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 target\${{ matrix.target }}\release\spotifust.exe
-              & $signtool sign /f $certPath /p $env:WIN_CERT_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 ${{ matrix.artifact_name }}.msi
+              & $signtool sign /f $certPath /p $env:WIN_CERT_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 "${Artifact}.msi"
               Remove-Item $certPath
           }
 
       - name: Upload packaging artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
+          name: spotifust-${{ matrix.platform }}
           path: |
             *.tar.gz
             *.dmg

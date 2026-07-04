@@ -29,6 +29,7 @@ jobs:
           MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
         run: |
           APP_VERSION=$(grep '^version' Cargo.toml | head -n 1 | awk -F '"' '{print $2}')
+          ARTIFACT="spotifust-macos-${APP_VERSION}"
           APP_NAME="Spotifust"
           APP_DIR="${APP_NAME}.app/Contents"
           mkdir -p "$APP_DIR/MacOS"
@@ -73,17 +74,17 @@ jobs:
           fi
           
           # Create DMG
-          hdiutil create -volname "${APP_NAME}" -srcfolder "${APP_NAME}.app" -ov -format UDZO "spotifust-macos.dmg"
+          hdiutil create -volname "${APP_NAME}" -srcfolder "${APP_NAME}.app" -ov -format UDZO "${ARTIFACT}.dmg"
           
           if [ -n "$MACOS_CERT_BASE64" ]; then
               echo "Signing and Notarizing DMG..."
-              /usr/bin/codesign --force -s "$CERT_ID" --options runtime "spotifust-macos.dmg"
-              xcrun notarytool submit "spotifust-macos.dmg" --apple-id "$MACOS_APPLE_ID" --password "$MACOS_APP_PASSWORD" --team-id "$MACOS_TEAM_ID" --wait
-              xcrun stapler staple "spotifust-macos.dmg"
+              /usr/bin/codesign --force -s "$CERT_ID" --options runtime "${ARTIFACT}.dmg"
+              xcrun notarytool submit "${ARTIFACT}.dmg" --apple-id "$MACOS_APPLE_ID" --password "$MACOS_APP_PASSWORD" --team-id "$MACOS_TEAM_ID" --wait
+              xcrun stapler staple "${ARTIFACT}.dmg"
           fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: spotifust-macos-dmg
-          path: spotifust-macos.dmg
+          path: spotifust-macos-*.dmg
