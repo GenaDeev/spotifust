@@ -1,16 +1,40 @@
 use crate::audio::engine::{AudioCommand, AudioEngine};
 use crate::error::AppError;
 use crate::ui::login;
-use iced::{Element, Point, Rectangle, Size, Task, widget::canvas::Cache};
+use iced::{Element, Task};
 use rspotify::clients::BaseClient;
-use tokio::sync::mpsc as tokio_mpsc;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NavigationItem {
+    Home,
+    Search,
+    Library,
+}
 
 #[derive(Debug, Clone)]
-pub struct CardState {
-    pub bounds: Rectangle,
-    pub is_hovered: bool,
-    pub is_dragging: bool,
+pub struct TrackInfo {
     pub title: String,
+    pub artist: String,
+    pub duration_ms: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct PlaybackState {
+    pub is_playing: bool,
+    pub current_track: Option<TrackInfo>,
+    pub progress_ms: u32,
+    pub volume: f32,
+}
+
+impl Default for PlaybackState {
+    fn default() -> Self {
+        Self {
+            is_playing: false,
+            current_track: None,
+            progress_ms: 0,
+            volume: 1.0,
+        }
+    }
 }
 
 pub enum AppState {
@@ -19,17 +43,16 @@ pub enum AppState {
         error: Option<String>,
     },
     Main {
-        cards: Vec<CardState>,
-        canvas_cache: Cache,
-        dragging_card_idx: Option<usize>,
-        drag_offset: Point,
+        nav_item: NavigationItem,
+        playback: PlaybackState,
+        // session: Option<crate::audio::session::AudioSession>, // Kept for Phase 3 integration
     },
 }
 
 pub struct App {
     pub state: AppState,
     #[allow(dead_code)]
-    pub audio_tx: tokio_mpsc::Sender<AudioCommand>,
+    pub audio_tx: tokio::sync::mpsc::Sender<AudioCommand>,
 }
 
 #[derive(Debug, Clone)]
@@ -45,15 +68,18 @@ pub enum Message {
     // Audio Messages
     AudioSessionConnected(crate::audio::session::AudioSession),
     // Main UI Messages
-    CursorMoved(Point),
-    CursorPressed(Point),
-    CursorReleased,
+    NavigationSelected(NavigationItem),
+    TogglePlayback,
+    SkipNext,
+    SkipPrev,
+    SeekTo(f32),        // 0.0 to 1.0
+    VolumeChanged(f32), // 0.0 to 1.0
 }
 
 impl App {
     pub fn new() -> (Self, Task<Message>) {
         let audio_tx = AudioEngine::spawn();
-        let _ = audio_tx.try_send(AudioCommand::Play); // Auto-play the test sine wave
+        // Removed auto-play of test sine wave
 
         (
             Self {
@@ -82,7 +108,6 @@ impl App {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ErrorEncountered(e) => {
@@ -115,27 +140,21 @@ impl App {
                 Task::none()
             }
             Message::LoginSuccess(spotify) => {
+                // Pre-fill some mock data so the UI looks complete while we wait for backend
+                let mock_playback = PlaybackState {
+                    is_playing: false,
+                    current_track: Some(TrackInfo {
+                        title: "Neon Nights".to_string(),
+                        artist: "Synthwave Architect".to_string(),
+                        duration_ms: 225_000,
+                    }),
+                    progress_ms: 85_000,
+                    volume: 0.8,
+                };
+
                 self.state = AppState::Main {
-                    cards: vec![
-                        CardState {
-                            bounds: Rectangle::new(Point::new(50.0, 50.0), Size::new(200.0, 150.0)),
-                            is_hovered: false,
-                            is_dragging: false,
-                            title: "Playlist 1".to_string(),
-                        },
-                        CardState {
-                            bounds: Rectangle::new(
-                                Point::new(300.0, 50.0),
-                                Size::new(200.0, 150.0),
-                            ),
-                            is_hovered: false,
-                            is_dragging: false,
-                            title: "Playlist 2".to_string(),
-                        },
-                    ],
-                    canvas_cache: Cache::default(),
-                    dragging_card_idx: None,
-                    drag_offset: Point::ORIGIN,
+                    nav_item: NavigationItem::Home,
+                    playback: mock_playback,
                 };
 
                 Task::perform(
@@ -152,7 +171,6 @@ impl App {
                 )
             }
             Message::AudioSessionConnected(_session) => {
-                // Here we can store the session inside AppState::Main in the future
                 println!("Audio session connected successfully!");
                 Task::none()
             }
@@ -168,59 +186,43 @@ impl App {
                 }
                 Task::none()
             }
-            Message::CursorMoved(point) => {
-                if let AppState::Main {
-                    cards,
-                    canvas_cache,
-                    dragging_card_idx,
-                    drag_offset,
-                } = &mut self.state
-                {
-                    if let Some(idx) = *dragging_card_idx {
-                        cards[idx].bounds.x = point.x - drag_offset.x;
-                        cards[idx].bounds.y = point.y - drag_offset.y;
-                        canvas_cache.clear(); // Geometry changed
+            Message::NavigationSelected(item) => {
+                if let AppState::Main { nav_item, .. } = &mut self.state {
+                    *nav_item = item;
+                }
+                Task::none()
+            }
+            Message::TogglePlayback => {
+                if let AppState::Main { playback, .. } = &mut self.state {
+                    playback.is_playing = !playback.is_playing;
+
+                    // Send command to audio engine for visual feedback
+                    let cmd = if playback.is_playing {
+                        AudioCommand::Play
                     } else {
-                        for card in cards {
-                            let contains = card.bounds.contains(point);
-                            if card.is_hovered != contains {
-                                card.is_hovered = contains;
-                            }
-                        }
+                        AudioCommand::Pause
+                    };
+                    let _ = self.audio_tx.try_send(cmd);
+                }
+                Task::none()
+            }
+            Message::SkipNext | Message::SkipPrev => Task::none(),
+            #[allow(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                clippy::cast_precision_loss
+            )]
+            Message::SeekTo(percent) => {
+                if let AppState::Main { playback, .. } = &mut self.state {
+                    if let Some(track) = &playback.current_track {
+                        playback.progress_ms = (percent * track.duration_ms as f32) as u32;
                     }
                 }
                 Task::none()
             }
-            Message::CursorPressed(point) => {
-                if let AppState::Main {
-                    cards,
-                    dragging_card_idx,
-                    drag_offset,
-                    ..
-                } = &mut self.state
-                {
-                    for (idx, card) in cards.iter_mut().enumerate().rev() {
-                        if card.bounds.contains(point) {
-                            *dragging_card_idx = Some(idx);
-                            card.is_dragging = true;
-                            *drag_offset =
-                                Point::new(point.x - card.bounds.x, point.y - card.bounds.y);
-                            break;
-                        }
-                    }
-                }
-                Task::none()
-            }
-            Message::CursorReleased => {
-                if let AppState::Main {
-                    cards,
-                    dragging_card_idx,
-                    ..
-                } = &mut self.state
-                {
-                    if let Some(idx) = dragging_card_idx.take() {
-                        cards[idx].is_dragging = false;
-                    }
+            Message::VolumeChanged(vol) => {
+                if let AppState::Main { playback, .. } = &mut self.state {
+                    playback.volume = vol;
                 }
                 Task::none()
             }
@@ -232,11 +234,9 @@ impl App {
             AppState::Login { is_loading, error } => {
                 login::view("", "", *is_loading, error.as_deref())
             }
-            AppState::Main {
-                cards,
-                canvas_cache,
-                ..
-            } => crate::ui::main_layout::view(cards, canvas_cache),
+            AppState::Main { nav_item, playback } => {
+                crate::ui::main_layout::view(nav_item, playback)
+            }
         }
     }
 }
