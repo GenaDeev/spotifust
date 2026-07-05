@@ -8,7 +8,7 @@
 
 ### Phase 1: Bootstrapping & Core Architecture
 
-- [x] Configure Cargo.toml with feature flags for Iced (wgpu backend), RSpotify, and Librespot
+- [x] Configure Cargo.toml with feature flags for Iced (tiny-skia backend to save RAM), RSpotify, and Librespot
 - [x] Define central `AppError` enum (thiserror) with per-subsystem variants
 - [x] Set up base Model-View-Update loop in `src/app.rs`
 - [x] Set up full GitHub Actions CI/CD infrastructure, Issue templates, and documentation
@@ -45,6 +45,7 @@
 
 ## Architectural Debt
 
+- [ ] Reducir aún más el consumo de RAM (actualmente en ~45MB) para alcanzar el límite estricto de < 25MB establecido en AGENTS.md.
 - [ ] Ensure all `librespot` and `rspotify` errors are properly wrapped in `AppError` variants before reaching the `iced::Message` enum.
 
 ## Blocked / Needs Human Decision

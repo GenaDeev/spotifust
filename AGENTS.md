@@ -62,7 +62,7 @@ Always re-read `TODO.md` immediately before editing it, even if you wrote it ear
 ## Development Backlog
 
 ### Phase 1: Bootstrapping & Core Architecture
-- [ ] Configure Cargo.toml with feature flags for Iced (wgpu backend), RSpotify, and Librespot
+- [x] Configure Cargo.toml with feature flags for Iced (tiny-skia backend to save RAM), RSpotify, and Librespot
 - [ ] Define central `AppError` enum (thiserror) with per-subsystem variants
 - [ ] Set up base Model-View-Update loop in `src/app.rs`
 
