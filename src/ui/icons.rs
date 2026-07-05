@@ -71,11 +71,27 @@ impl Icon {
         iced::widget::svg::Handle::from_memory(self.svg_bytes())
     }
 
-    /// Renders this icon as an `Svg` widget with the given size.
+    /// Renders this icon as an `Svg` widget with the given size and default text color.
     pub fn view<M: 'static>(self, size: f32) -> Element<'static, M> {
         Svg::new(self.handle())
             .width(Length::Fixed(size))
             .height(Length::Fixed(size))
+            .style(|_theme: &iced::Theme, _status| iced::widget::svg::Style {
+                color: Some(crate::ui::theme::TEXT_PRIMARY),
+            })
+            .into()
+    }
+
+    /// Renders this icon with a specific color.
+    pub fn view_colored<M: 'static>(self, size: f32, color: iced::Color) -> Element<'static, M> {
+        Svg::new(self.handle())
+            .width(Length::Fixed(size))
+            .height(Length::Fixed(size))
+            .style(
+                move |_theme: &iced::Theme, _status| iced::widget::svg::Style {
+                    color: Some(color),
+                },
+            )
             .into()
     }
 

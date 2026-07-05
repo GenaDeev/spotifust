@@ -7,7 +7,9 @@ use rspotify::clients::BaseClient;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NavigationItem {
     Home,
+    #[allow(dead_code)]
     Search,
+    #[allow(dead_code)]
     Library,
 }
 
@@ -74,6 +76,8 @@ pub enum Message {
     SkipPrev,
     SeekTo(f32),        // 0.0 to 1.0
     VolumeChanged(f32), // 0.0 to 1.0
+    // Mock UI Actions
+    MockAction,
 }
 
 impl App {
@@ -225,6 +229,10 @@ impl App {
                 if let AppState::Main { playback, .. } = &mut self.state {
                     playback.volume = vol;
                 }
+                Task::none()
+            }
+            Message::MockAction => {
+                // Ignore for now
                 Task::none()
             }
         }
