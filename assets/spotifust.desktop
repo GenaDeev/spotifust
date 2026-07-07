@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Spotifust
+Comment=A native, fast, and light Spotify desktop client built entirely on Rust.
+Exec=spotifust %u
+Icon=spotifust
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;Player;
+MimeType=x-scheme-handler/spotifust;

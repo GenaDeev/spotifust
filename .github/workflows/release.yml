@@ -75,11 +75,16 @@ jobs:
       - name: Package binary (Linux)
         if: runner.os == 'Linux'
         run: |
+          cargo install cargo-deb
+          cargo deb --target ${{ matrix.target }}
+          
           ARTIFACT="spotifust-${{ matrix.platform }}-${{ steps.artifact.outputs.version }}"
           cd target/${{ matrix.target }}/release
           tar -czvf "../../../${ARTIFACT}.tar.gz" spotifust
           cd ../../../
+          cp target/${{ matrix.target }}/debian/*.deb "${ARTIFACT}.deb"
           sha256sum "${ARTIFACT}.tar.gz" > "${ARTIFACT}.tar.gz.sha256"
+          sha256sum "${ARTIFACT}.deb" > "${ARTIFACT}.deb.sha256"
 
       - name: Package binary (macOS)
         if: runner.os == 'macOS'
@@ -180,6 +185,7 @@ jobs:
             *.tar.gz
             *.dmg
             *.msi
+            *.deb
             *.sha256
 
   publish-release:

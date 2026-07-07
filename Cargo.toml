@@ -26,3 +26,10 @@ open = "5.1.2"
 
 [build-dependencies]
 winres = "0.1.12"
+
+[package.metadata.deb]
+assets = [
+    ["target/release/spotifust", "usr/bin/", "755"],
+    ["assets/spotifust.desktop", "usr/share/applications/", "644"],
+    ["assets/spotifust.png", "usr/share/pixmaps/", "644"]
+]
