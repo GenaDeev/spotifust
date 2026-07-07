@@ -111,6 +111,11 @@ Always re-read `TODO.md` immediately before editing it, even if you wrote it ear
 * Persist the refresh token via the OS credential store (`keyring` crate: Credential Manager / Keychain / Secret Service) — never as plaintext in `src/api/cache.rs` or any repo-adjacent file.
 * `src/api/cache.rs` is for metadata/image caching only, not credentials.
 
+### D. Scripts & CI (`scripts/`)
+
+* All developer, testing, and CI scripts MUST be placed inside the `scripts/` directory.
+* The only exception is `install.sh`, which is intended for end-users and must stay at the root so it can be easily included in release `.tar.gz` archives or run directly by users who clone the repo.
+
 ---
 
 ## 5. Forbidden Patterns (quick scan before any commit)

@@ -79,9 +79,15 @@ jobs:
           cargo deb --target ${{ matrix.target }}
           
           ARTIFACT="spotifust-${{ matrix.platform }}-${{ steps.artifact.outputs.version }}"
-          cd target/${{ matrix.target }}/release
-          tar -czvf "../../../${ARTIFACT}.tar.gz" spotifust
-          cd ../../../
+          mkdir -p "staging/${ARTIFACT}"
+          cp "target/${{ matrix.target }}/release/spotifust" "staging/${ARTIFACT}/"
+          cp "install.sh" "staging/${ARTIFACT}/"
+          cp -r "assets" "staging/${ARTIFACT}/"
+          
+          cd staging
+          tar -czvf "../${ARTIFACT}.tar.gz" "${ARTIFACT}"
+          cd ..
+          
           cp target/${{ matrix.target }}/debian/*.deb "${ARTIFACT}.deb"
           sha256sum "${ARTIFACT}.tar.gz" > "${ARTIFACT}.tar.gz.sha256"
           sha256sum "${ARTIFACT}.deb" > "${ARTIFACT}.deb.sha256"

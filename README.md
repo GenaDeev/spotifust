@@ -119,10 +119,12 @@ spotifust/
 ├── assets/                   # App icons & resources
 ├── installer/                # WiX MSI installer sources
 ├── docs/                     # Additional documentation
-├── testing.sh                # Unix test runner
-├── testing.ps1               # Windows test runner
-├── build_installer.sh        # Unix packaging script
-├── build_installer.ps1       # Windows packaging script
+├── scripts/                  # Developer & CI scripts
+│   ├── build.sh             # Unix packaging script
+│   ├── build.ps1            # Windows packaging script
+│   ├── test.sh              # Unix test runner
+│   └── test.ps1             # Windows test runner
+├── install.sh                # End-user Linux installation script
 ├── Cargo.toml
 └── TODO.md                   # Development backlog & roadmap
 ```
@@ -178,12 +180,17 @@ Pre-built binaries are available on the [Releases](https://github.com/GenaDeev/s
 | 🍎 macOS | `spotifust-macos-aarch64-{version}.dmg` | Apple Silicon |
 | 🍎 macOS | `spotifust-macos-x86_64-{version}.dmg` | Intel |
 | 🐧 Linux | `spotifust-linux-x86_64-{version}.tar.gz` | x86_64 |
+| 🐧 Linux | `spotifust-linux-x86_64-{version}.deb` | Debian/Ubuntu |
+
+### Linux Installation
+
+Download the `.tar.gz`, extract it, and run the included `./install.sh` script to install the app and register the `spotifust://` protocol handler automatically. Alternatively, install the `.deb` package directly on Debian-based systems.
 
 ### Building installers locally
 
-- **Windows:** Run `.\build_installer.ps1` in PowerShell. Requires the [WiX v4 Toolset](https://wixtoolset.org/) installed via `dotnet tool install --global wix`.
-- **macOS:** Run `./build_installer.sh`. Creates an `.app` bundle and packages it into a `.dmg`.
-- **Linux:** Run `./build_installer.sh`. Compresses the release binary into a `.tar.gz` archive.
+- **Windows:** Run `.\scripts\build.ps1` in PowerShell. Requires the [WiX v4 Toolset](https://wixtoolset.org/) installed via `dotnet tool install --global wix`.
+- **macOS:** Run `./scripts/build.sh`. Creates an `.app` bundle and packages it into a `.dmg`.
+- **Linux:** Run `./scripts/build.sh`. Compresses the release binary into a `.tar.gz` archive.
 
 ---
 
@@ -193,10 +200,10 @@ To ensure your code meets the quality standards of the project, we provide unifi
 
 ```bash
 # Unix
-./testing.sh
+./scripts/test.sh
 
 # Windows (PowerShell)
-.\testing.ps1
+.\scripts\test.ps1
 ```
 
 The CI pipeline runs automatically on every push and PR:
