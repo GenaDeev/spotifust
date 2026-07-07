@@ -255,10 +255,6 @@ This project is licensed under the [GNU General Public License v3.0](./LICENSE).
 <!-- TODO: Generate the real embed URL at https://repobeats.axiom.co for GenaDeev/spotifust -->
 ![Repobeats analytics](https://repobeats.axiom.co/api/embed/5732d66e101f2fda36c9bb8aa0d2954cc3b5cd2e.svg "Repobeats analytics image")
 
-### Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=GenaDeev/spotifust&type=Date)](https://star-history.com/#GenaDeev/spotifust&Date)
-
 ### Activity
 
 ![Activity Graph](https://github-readme-activity-graph.vercel.app/graph?username=GenaDeev&repo=spotifust&theme=xcode)
