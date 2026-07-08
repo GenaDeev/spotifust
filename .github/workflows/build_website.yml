@@ -1,0 +1,16 @@
+name: Trigger Cloudflare Build for WEB
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  trigger-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curve to CF Hook
+        run: |
+          curl -X POST "${{ secrets.CF_DEPLOY_WEBHOOK }}"
