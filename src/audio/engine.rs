@@ -94,13 +94,9 @@ impl Iterator for PcmSource {
     fn next(&mut self) -> Option<Self::Item> {
         if self.index >= self.current_chunk.len() {
             // Block audio thread until tokio gives us PCM data
-            match self.rx.blocking_recv() {
-                Some(chunk) => {
-                    self.current_chunk = chunk;
-                    self.index = 0;
-                }
-                None => return None,
-            }
+            let chunk = self.rx.blocking_recv()?;
+            self.current_chunk = chunk;
+            self.index = 0;
         }
 
         let sample = self.current_chunk[self.index];

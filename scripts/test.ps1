@@ -42,7 +42,7 @@ if (Get-Command typos -ErrorAction SilentlyContinue) {
 
 if (Get-Command lychee -ErrorAction SilentlyContinue) {
     Write-Host "=== Running lychee ==="
-    lychee --cache --max-cache-age 1d --exclude-loopback --exclude "spotify.*localhost" --exclude-path .agents --exclude-path target --verbose '**/*.md'
+    lychee --cache --max-cache-age 1d --exclude-loopback --exclude "spotify.*localhost" --exclude-path .agents --verbose '**/*.md'
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 } else {
     Write-Host "=== [WARN] lychee is not installed. Skipping... ===" -ForegroundColor Yellow
