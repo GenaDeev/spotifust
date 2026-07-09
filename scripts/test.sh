@@ -5,8 +5,6 @@ set -euo pipefail
 echo "=== Checking formatting ==="
 cargo fmt --all -- --check
 
-echo "=== Running cargo check ==="
-cargo check --all-targets
 
 echo "=== Running clippy ==="
 cargo clippy --all-targets -- -D warnings
@@ -40,6 +38,13 @@ if command -v lychee >/dev/null 2>&1; then
     lychee --cache --max-cache-age 1d --exclude-loopback --exclude "spotify.*localhost" --exclude-path .agents --verbose '**/*.md'
 else
     echo "=== [WARN] lychee is not installed. Skipping... ==="
+fi
+
+if command -v markdownlint-cli2 >/dev/null 2>&1; then
+    echo "=== Running markdownlint ==="
+    markdownlint-cli2 '**/*.md'
+else
+    echo "=== [WARN] markdownlint-cli2 is not installed. Skipping... ==="
 fi
 
 echo "=== Compiling in release mode ==="

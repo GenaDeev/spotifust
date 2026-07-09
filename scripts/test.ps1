@@ -4,9 +4,6 @@ Write-Host "=== Checking formatting ==="
 cargo fmt --all -- --check
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Host "=== Running cargo check ==="
-cargo check --all-targets
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "=== Running clippy ==="
 cargo clippy --all-targets -- -D warnings
@@ -46,6 +43,14 @@ if (Get-Command lychee -ErrorAction SilentlyContinue) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 } else {
     Write-Host "=== [WARN] lychee is not installed. Skipping... ===" -ForegroundColor Yellow
+}
+
+if (Get-Command markdownlint-cli2 -ErrorAction SilentlyContinue) {
+    Write-Host "=== Running markdownlint ==="
+    markdownlint-cli2 '**/*.md'
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+} else {
+    Write-Host "=== [WARN] markdownlint-cli2 is not installed. Skipping... ===" -ForegroundColor Yellow
 }
 
 Write-Host "=== Compiling in release mode ==="
