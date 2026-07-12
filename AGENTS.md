@@ -42,8 +42,8 @@ To avoid the two most common failure modes — treating an async task as a proce
 
 ### 3.1 When to touch it
 
-* **On session start:** if `TODO.md` doesn't exist, create it using the schema in §3.3.
-* **On completing one atomic task** (per the §0 definition — one checklist item): mark it `[x]` in the same edit that completes the corresponding code change. Don't batch multiple completed items into a single later rewrite.
+* **On session start:** read `TODO.md`, greet the user with a brief summary of where the project stands, and **ask explicitly whether they want to continue with the next pending task**. If `TODO.md` doesn't exist, create it using the schema in §3.3.
+* **On completing one atomic task** (per the §0 definition — one checklist item): mark it `[x]` in the same edit that completes the corresponding code change. Don't batch multiple completed items into a single later rewrite. After marking it done, **ask the user whether to proceed with the next pending item** before starting anything new.
 * **On discovering new work mid-task** (a missing edge case, a follow-up refactor): append it to **Architectural Debt** immediately, don't just remember it — you won't carry memory into the next session.
 * **Not on every intermediate compile or every function written.** If you're rewriting `TODO.md` more than once per checklist item, you're over-triggering this rule.
 
@@ -73,7 +73,7 @@ Always re-read `TODO.md` immediately before editing it, even if you wrote it ear
 
 ### Phase 3: Audio & Session Pipeline
 - [ ] Spawn librespot session on tokio::spawn, bridged via mpsc → iced::Subscription
-- [ ] Wire rodio/cpal sink for decoded PCM playback
+- [ ] Wire rodio sink for decoded PCM playback
 
 ### Phase 4: Web API & Auth
 - [ ] Implement PKCE flow with fixed-port loopback TcpListener
@@ -98,9 +98,10 @@ Always re-read `TODO.md` immediately before editing it, even if you wrote it ear
 
 ### B. Audio & Session Pipeline (`src/audio/`)
 
+* **The audio backend is `rodio`.** This decision is final — do not introduce `cpal` directly or propose switching. The `rodio` crate is already integrated and in use.
 * Run the Spotify session on `tokio::spawn` — this is a task within the same process, not a violation of §1's process rule.
 * Bridge the async task to the UI exclusively via bounded `tokio::sync::mpsc` channels, exposed to `iced` as a `Subscription`. No shared state.
-* Feed decoded PCM arrays directly into a `rodio::Sink` or `cpal` stream, bypassing any intermediate buffering layer that would add latency versus the system mixer.
+* Feed decoded PCM arrays directly into a `rodio::Sink`, bypassing any intermediate buffering layer that would add latency versus the system mixer.
 * Bound the channel (`mpsc::channel(N)`, not `unbounded_channel`) — an unbounded channel between a fast producer (decoder) and a slower consumer (UI) is a memory-growth footgun that directly threatens the 25MB baseline.
 
 ### C. Web API Layer (`src/api/`)
@@ -134,8 +135,8 @@ Always re-read `TODO.md` immediately before editing it, even if you wrote it ear
 
 Add these to **Blocked / Needs Human Decision** in `TODO.md` instead of picking silently:
 
-* Choosing between `rodio` and `cpal` as the final playback backend (both are listed as acceptable — pick one per-project, not per-file, and flag the choice for confirmation the first time it comes up).
 * Adding any new external dependency not already implied by the Tech Stack table in `README.md`.
+* Any architectural change that affects the MVU data flow, the audio pipeline topology, or the error-handling contract in §2.
 
 ---
 
@@ -171,7 +172,7 @@ Use this table to translate a task to the right skill without waiting for a prom
 | `src/audio/` (tokio::spawn, mpsc channels) | `m07-concurrency`, `domain-web` (for the session's network calls) | Bounded-channel and cross-task patterns directly affect the 25MB baseline (§4.B) |
 | Any `unsafe` block, FFI into `librespot`/OS audio APIs (`cpal`, `rodio` backends) | `unsafe-checker` (full checklist tree: `checklists/`, `rules/ffi-*`, `rules/mem-*`, `rules/ptr-*`) | This is the highest-stakes category in the whole knowledge base — an `unsafe` mistake here is a memory-safety bug shipped in a desktop binary, not a linter warning |
 | `src/api/` (rspotify, PKCE, TcpListener) | `domain-web` | Covers REST/OAuth-shaped concerns generically; still defer to §4.C of this document for the Spotifust-specific fixed-port and keyring rules |
-| Anything with `Box<dyn Trait>`, generics, trait bounds | `m05-type-driven`, `rust-trait-explorer` | Relevant when abstracting over `rodio`/`cpal` backends behind a common playback trait |
+| Anything with `Box<dyn Trait>`, generics, trait bounds | `m05-type-driven`, `rust-trait-explorer` | Relevant when abstracting over `rodio` sink types behind a common playback trait |
 | Before adding or bumping any crate version | `rust-learner` + `core-dynamic-skills` | Verifies current crate versions/APIs instead of relying on training-data memory — required before touching any dependency per §6 |
 | Reviewing your own diff before calling a task done | `m15-anti-pattern`, `coding-guidelines/clippy-lints` | Run this *in addition to*, not instead of, the checklist in §7 |
 | Genuinely stuck on which category applies | `meta-cognition-parallel` | Fans out across candidate skills in parallel rather than guessing serially |

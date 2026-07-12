@@ -35,7 +35,7 @@ fi
 
 if command -v lychee >/dev/null 2>&1; then
     echo "=== Running lychee ==="
-    lychee --cache --max-cache-age 1d --exclude-loopback --exclude "spotify.*localhost" --exclude-path .agents --verbose '**/*.md'
+    lychee --cache --max-cache-age 1d --exclude-loopback --exclude "spotify.*localhost" --exclude-path .agents --exclude-path target --verbose '**/*.md'
 else
     echo "=== [WARN] lychee is not installed. Skipping... ==="
 fi
