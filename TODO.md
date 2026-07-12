@@ -2,52 +2,128 @@
 
 ## Current Focus
 
-- [ ] (Phase 3) Playback Control and Track Metadata
+- [ ] Wire UI Play/Pause/Skip commands through `iced::Subscription` down to the `librespot` player instance
 
 ## Development Backlog
 
 ### Phase 1: Bootstrapping & Core Architecture
 
-- [x] Configure Cargo.toml with feature flags for Iced (tiny-skia backend to save RAM), RSpotify, and Librespot
+- [x] Configure Cargo.toml with feature flags for Iced (tiny-skia backend), RSpotify, and Librespot
 - [x] Define central `AppError` enum (thiserror) with per-subsystem variants
 - [x] Set up base Model-View-Update loop in `src/app.rs`
 - [x] Set up full GitHub Actions CI/CD infrastructure, Issue templates, and documentation
+- [ ] Verify all `librespot` and `rspotify` raw error types are wrapped in `AppError` before reaching `Message` variants
+- [ ] Audit and eliminate any remaining `.unwrap()` / `.expect()` calls outside `main()` bootstrap
+- [ ] Reduce RAM baseline from ~45 MB down to the target < 25 MB ceiling
 
-### Phase 2: Custom Canvas Layout Engine
+### Phase 2: Canvas Layout Engine
 
-- [x] Implement bounding-box tracking struct for responsive cards
-- [x] Handle PointerPressed / Moved / Released inside `canvas::Program::update`
-- [x] Wire `canvas::Cache` invalidation to interaction messages only
-- [x] Wire synthetic audio engine test pipeline (`rodio` backend)
+- [ ] Implement `iced::widget::canvas::Program` struct for the card-based layout system
+- [ ] Define `Card` state struct (`position`, `size`, `dragging`, `hovered`) inside the central `Model`, not the canvas struct
+- [ ] Implement bounding-box tracking and hit-testing for card pointer events
+- [ ] Handle `PointerPressed` / `PointerMoved` / `PointerReleased` inside `canvas::Program::update` for drag-and-resize
+- [ ] Wire `canvas::Cache` invalidation exclusively to geometry-changing messages (drag, resize, add, remove)
+- [ ] Implement card grid snapping so cards align to a configurable grid on release
+- [ ] Implement card z-order management (bring to front on focus)
+- [ ] Persist card layout to disk so the arrangement survives restarts
+- [ ] Add keyboard shortcuts for card navigation and resizing
 
-### Phase 3: Librespot Audio & Session Pipeline (Next up)
+### Phase 3: Librespot Audio & Session Pipeline
 
-- [x] **Librespot Authentication**: Setup `librespot::core::session::Session` and login using credentials or Zeroconf.
-- [x] **Librespot Audio Backend**: Implement a custom `librespot::playback::audio_backend::Sink` that captures decoded PCM frames from Spotify.
-- [x] **Audio Bridge**: Route the decoded PCM frames from the Librespot custom Sink through our bounded `mpsc` channel directly to our `rodio` playback thread.
-- [ ] **Playback Control**: Wire UI commands (Play, Pause, Skip, Seek) through `iced::Subscription` down to the `librespot` player instance.
-- [ ] **Track Metadata**: Extract current track information (Title, Artist, Duration, Position) from Librespot events and stream them to the UI state.
+- [x] Implement `librespot::core::session::Session` setup and credential-based login
+- [x] Implement a custom `librespot` audio `Sink` that captures decoded PCM frames
+- [x] Route PCM frames from the custom Sink through a bounded `mpsc` channel to a `rodio` playback thread
+- [x] Wire a synthetic sine-wave test pipeline to validate the `rodio` backend end-to-end
+- [ ] Wire UI Play command to call `player.load()` on the active `librespot` player instance
+- [ ] Wire UI Pause / Resume commands to the librespot player
+- [ ] Wire UI Skip Next / Skip Previous commands to the librespot player
+- [ ] Implement Seek: accept a `f32` position ratio from the seek bar and call `player.seek(ms)`
+- [ ] Extract current track metadata (title, artist, album, duration) from `PlayerEvent` and emit them as `Message::TrackChanged`
+- [ ] Stream playback position (elapsed ms) from the audio task to the UI via the mpsc channel
+- [ ] Implement end-of-track detection via `PlayerEvent::EndOfTrack` and auto-advance to next track
+- [ ] Validate that the mpsc channel remains bounded under sustained high-throughput decoding
+- [ ] Wire volume control: slider value in UI → `rodio::Sink::set_volume()` (full 0.0–1.0 range, not binary)
+- [ ] Fix seek bar so it travels the full 0–100% range and reflects real playback position
+- [ ] Handle `librespot` session expiry and reconnection without crashing
 
-### Phase 4: RSpotify Web API, Auth & Premium UI
+### Phase 4: RSpotify Web API & Auth
 
-- [x] **OAuth PKCE Flow**: Implement `rspotify` Authorization Code Flow with PKCE using a custom protocol callback (`spotifust://callback`).
-- [x] **Keychain Storage**: Securely store the OAuth refresh token via the OS credential store (`keyring` crate).
-- [x] **Main Layout UI**: Build the primary layout grid using standard `iced` widgets (Sidebar, Main Content Area, Bottom Playback Bar).
-- [x] **Playback Bar UI**: Implement a dynamic Bottom Playback Bar with Album Art, Title, Artist, Play/Pause/Skip buttons, and a draggable Seek Bar.
-- [ ] **Library & Search UI**: Fetch and display the user's saved playlists, albums, and top tracks using the RSpotify client.
-- [ ] **Album Art Caching**: Fetch album cover images asynchronously and cache them to disk in `src/api/cache.rs` to avoid redundant network calls.
+- [x] Implement PKCE Authorization Code Flow with `rspotify`
+- [x] Register `spotifust://callback` custom protocol handler for the OAuth redirect
+- [ ] Verify the refresh token is stored exclusively via the OS keychain (`keyring` crate), never as plaintext
+- [ ] Implement token refresh on expiry: detect 401 responses and silently re-authenticate
+- [ ] Fetch the authenticated user's profile (`/me`) and display name and avatar in the sidebar
+- [ ] Fetch the user's full playlist library (`/me/playlists`, paginated) and stream items into the sidebar list
+- [ ] Fetch playlist track listings on demand when a playlist is selected
+- [ ] Fetch the user's saved albums and expose them in a dedicated Albums view
+- [ ] Fetch the user's top tracks and expose them in a Home/For You view
+- [ ] Implement search: send queries to `/search` and display track, album, and artist results
+- [ ] Implement album detail view: fetch `/albums/{id}` and list its tracks
+- [ ] Implement artist detail view: fetch `/artists/{id}` with top tracks and discography
+- [ ] Fetch currently playing track via `/me/player/currently-playing` on startup and sync UI state
+- [ ] Implement album art fetching: download cover images asynchronously and cache to disk in `src/api/cache.rs`
+- [ ] Implement a metadata cache layer in `src/api/cache.rs` to avoid redundant API calls (TTL-based)
+- [ ] Implement rate-limit handling: respect `Retry-After` headers from the Spotify API
 
-### Phase 5: Polish & Optimization
+### Phase 5: UI Design System & Component Polish
 
-- [ ] **Memory Profiling**: Verify the application stays under the strict 25MB RAM baseline.
-- [ ] **Micro-animations**: Add smooth hover transitions and interactions to UI elements.
-- [ ] **System Tray Integration**: Add a system tray icon with basic playback controls (if supported by OS).
+- [ ] Define a unified design token system (color palette, spacing scale, typography scale) in a central `theme.rs`
+- [ ] Replace all ad-hoc hardcoded color literals and magic numbers with design tokens
+- [ ] Implement smooth hover transitions on sidebar items, buttons, and playback controls
+- [ ] Implement animated loading skeletons for album art and track list placeholders while data is fetching
+- [ ] Add waveform or animated equalizer bars to the Now Playing area during active playback
+- [ ] Implement smooth progress bar animation that interpolates position between tick updates
+- [ ] Add context menus (right-click) on tracks and playlist items (Add to queue, Go to album, etc.)
+- [ ] Implement a proper volume slider that covers the full 0–100% range with a mute toggle
+- [ ] Add keyboard shortcuts for Play/Pause (Space), Skip (→/←), Volume (↑/↓)
+- [ ] Implement a mini-player / compact mode for when the window is resized to small dimensions
+- [ ] Implement drag-and-drop track reordering within a playlist queue view
+- [ ] Add toast / snackbar notifications for user-facing errors and confirmations
+- [ ] Audit and refine all font sizes, weights, and line heights for visual consistency
+- [ ] Ensure the entire UI is navigable via keyboard (tab order, focus rings)
+
+### Phase 6: Queue, Playback State & Shuffle
+
+- [ ] Implement an internal play queue data structure in the `Model`
+- [ ] Display the current queue in a slide-out panel
+- [ ] Implement Shuffle mode: randomise queue order and persist the shuffle seed
+- [ ] Implement Repeat modes: No Repeat, Repeat Queue, Repeat One
+- [ ] Implement "Add to queue" action from track context menus
+- [ ] Sync queue state back to Spotify Connect so other devices see the same queue
+- [ ] Implement Crossfade between tracks (configurable duration)
+
+### Phase 7: System Integration & Distribution
+
+- [ ] Add a system tray icon with Play/Pause, Skip, and Quit actions
+- [ ] Register global media key bindings (MPRIS on Linux, MediaSession on Windows/macOS)
+- [ ] Implement MPRIS2 D-Bus interface on Linux for desktop environment integration
+- [ ] Package the binary as a `.deb` and `.rpm` for Linux
+- [x] Package the binary as a `.dmg` / `.app` bundle for macOS
+- [x] Package the binary as an `.msi` installer for Windows
+- [ ] Integrate auto-update check: compare current version against GitHub Releases on startup
+- [ ] Write end-to-end integration tests for the auth flow and audio pipeline
+
+### Phase 8: Performance & Hardening
+
+- [ ] Run a full memory profile and verify the application stays under 25 MB baseline at idle
+- [ ] Profile and eliminate any hot-path allocations in the canvas render loop and audio callback
+- [ ] Replace any `.clone()` / `.to_string()` in hot paths with borrows (`&str`, `&[u8]`) where applicable
+- [ ] Run `cargo clippy --all-targets -- -D warnings` clean and resolve all lints
+- [ ] Run `cargo deny check` and ensure no disallowed licenses or duplicated dependencies
+- [ ] Set up memory-leak detection in CI (Valgrind or similar) for the audio pipeline
+- [ ] Add structured logging (`tracing` crate) with configurable verbosity levels
+- [ ] Implement graceful shutdown: flush audio buffers and close the librespot session cleanly on exit
 
 ## Architectural Debt
 
-- [ ] Reducir aún más el consumo de RAM (actualmente en ~45MB) para alcanzar el límite estricto de < 25MB establecido en AGENTS.md.
-- [ ] Ensure all `librespot` and `rspotify` errors are properly wrapped in `AppError` variants before reaching the `iced::Message` enum.
+- [ ] The Canvas Layout Engine was listed as completed but was never implemented; all Phase 2 items are open
+- [ ] Volume slider and seek bar have only two discrete positions and do not cover their full range
+- [ ] All playlist/album/track data shown in the UI is hardcoded mock data, not from the Spotify API
+- [ ] RAM usage is currently ~45 MB, nearly double the 25 MB target
+- [ ] The librespot session may be storing or caching credentials insecurely; needs a full audit
+- [ ] No structured error surfacing to the user: errors silently fail or panic instead of showing in the UI
 
 ## Blocked / Needs Human Decision
 
-- [ ] (None currently - waiting for tomorrow's session)
+- [ ] Decide whether to support Spotify Connect (remote control from phone/web) in scope for v1.0
+- [ ] Decide on the crossfade implementation approach before Phase 6 begins
