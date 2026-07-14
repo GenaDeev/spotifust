@@ -70,7 +70,9 @@ pub async fn do_login_flow() -> Result<AuthCodePkceSpotify, AppError> {
         .map_err(|e| AppError::Auth(format!("Failed to request token: {e}")))?;
 
     let token_mutex = spotify.get_token();
-    let token_guard = token_mutex.lock().await
+    let token_guard = token_mutex
+        .lock()
+        .await
         .map_err(|e| AppError::Auth(format!("Failed to lock token mutex: {e:?}")))?;
     let token = token_guard
         .clone()
@@ -105,7 +107,9 @@ pub async fn check_existing_login() -> Result<AuthCodePkceSpotify, AppError> {
     };
 
     let token_mutex = spotify.get_token();
-    *token_mutex.lock().await
+    *token_mutex
+        .lock()
+        .await
         .map_err(|e| AppError::Auth(format!("Failed to lock token mutex: {e:?}")))? = Some(token);
 
     // Force a refresh to verify it works and get an access token

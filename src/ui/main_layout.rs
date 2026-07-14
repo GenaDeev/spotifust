@@ -1,10 +1,10 @@
-use crate::app::{Message, NavigationItem, PlaybackState, Card};
+use crate::app::{Card, Message, NavigationItem, PlaybackState};
+use crate::ui::canvas_view::CardCanvas;
 use crate::ui::icons::Icon;
 use crate::ui::theme;
-use crate::ui::canvas_view::CardCanvas;
 use iced::{
     Alignment, Background, Border, Element, Length, Theme,
-    widget::{Button, Column, Container, Row, Scrollable, Space, Text, container, slider, canvas},
+    widget::{Button, Column, Container, Row, Scrollable, Space, Text, canvas, container, slider},
 };
 
 pub fn view<'a>(
@@ -445,10 +445,7 @@ fn view_main_content<'a>(
         .width(Length::Fill)
         .height(Length::Fill);
 
-    let layout = Column::new()
-        .spacing(16)
-        .push(chips)
-        .push(canvas_widget);
+    let layout = Column::new().spacing(16).push(chips).push(canvas_widget);
 
     Container::new(layout)
         .width(Length::Fill)
@@ -564,8 +561,6 @@ fn icon_button_circle_active<'a>(
     })
     .into()
 }
-
-
 
 #[allow(clippy::too_many_lines, clippy::cast_precision_loss)]
 fn view_playback_bar(playback: &PlaybackState) -> Element<'_, Message> {

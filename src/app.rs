@@ -1,5 +1,5 @@
 use crate::audio::engine::{AudioCommand, AudioEngine};
-use crate::audio::session::{AudioSession, PlayerCommand, AudioSessionEvent};
+use crate::audio::session::{AudioSession, AudioSessionEvent, PlayerCommand};
 use crate::error::AppError;
 use crate::ui::login;
 use iced::{Element, Task};
@@ -145,7 +145,9 @@ impl iced::advanced::subscription::Recipe for PlayerEventsRecipe {
                         use iced::futures::SinkExt;
                         let msg = match ev {
                             AudioSessionEvent::Player(pe) => Message::PlayerEventReceived(pe),
-                            AudioSessionEvent::PositionMs(pos) => Message::PlaybackPositionReceived(pos),
+                            AudioSessionEvent::PositionMs(pos) => {
+                                Message::PlaybackPositionReceived(pos)
+                            }
                         };
                         if output.send(msg).await.is_err() {
                             break;
@@ -291,8 +293,9 @@ impl App {
                 Task::perform(
                     async move {
                         let token_mutex = spotify.get_token();
-                        let token_guard = token_mutex.lock().await
-                            .map_err(|e| AppError::Auth(format!("Failed to lock token mutex: {e:?}")))?;
+                        let token_guard = token_mutex.lock().await.map_err(|e| {
+                            AppError::Auth(format!("Failed to lock token mutex: {e:?}"))
+                        })?;
                         let token_ref = (*token_guard).as_ref().ok_or_else(|| {
                             AppError::Auth("No access token available".to_string())
                         })?;
@@ -471,8 +474,18 @@ impl App {
                 }
                 Task::none()
             }
-            Message::CardPressed { id, is_resize, offset_x, offset_y } => {
-                if let AppState::Main { cards, canvas_cache, .. } = &mut self.state {
+            Message::CardPressed {
+                id,
+                is_resize,
+                offset_x,
+                offset_y,
+            } => {
+                if let AppState::Main {
+                    cards,
+                    canvas_cache,
+                    ..
+                } = &mut self.state
+                {
                     if let Some(pos) = cards.iter().position(|c| c.id == id) {
                         let mut card = cards.remove(pos);
                         card.dragging = !is_resize;
@@ -485,7 +498,12 @@ impl App {
                 Task::none()
             }
             Message::CardMoved { x, y } => {
-                if let AppState::Main { cards, canvas_cache, .. } = &mut self.state {
+                if let AppState::Main {
+                    cards,
+                    canvas_cache,
+                    ..
+                } = &mut self.state
+                {
                     for card in cards.iter_mut() {
                         if card.dragging {
                             if let Some((offset_x, offset_y)) = card.drag_offset {
@@ -503,7 +521,12 @@ impl App {
                 Task::none()
             }
             Message::CardReleased => {
-                if let AppState::Main { cards, canvas_cache, .. } = &mut self.state {
+                if let AppState::Main {
+                    cards,
+                    canvas_cache,
+                    ..
+                } = &mut self.state
+                {
                     for card in cards.iter_mut() {
                         card.dragging = false;
                         card.resizing = false;
@@ -530,7 +553,11 @@ impl App {
                 login::view("", "", *is_loading, error.as_deref())
             }
             AppState::Main {
-                nav_item, playback, cards, canvas_cache, ..
+                nav_item,
+                playback,
+                cards,
+                canvas_cache,
+                ..
             } => crate::ui::main_layout::view(nav_item, playback, cards, canvas_cache),
         }
     }

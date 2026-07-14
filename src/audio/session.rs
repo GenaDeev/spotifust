@@ -55,7 +55,8 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
 
     let builder = rodio::OutputStreamBuilder::from_default_device()
         .map_err(|e| AppError::Playback(format!("Failed to get default audio device: {e}")))?;
-    let stream = builder.open_stream()
+    let stream = builder
+        .open_stream()
         .map_err(|e| AppError::Playback(format!("Failed to open audio stream: {e}")))?;
     let rodio_sink = rodio::Sink::connect_new(stream.mixer());
 

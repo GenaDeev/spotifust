@@ -1,10 +1,9 @@
-use iced::{
-    Rectangle, Renderer, Theme, Point, Size, Pixels,
-    widget::canvas::{self, Event, Geometry, Path, Program, Stroke, Text},
-    mouse,
-};
-use crate::app::{Message, Card};
+use crate::app::{Card, Message};
 use crate::ui::theme;
+use iced::{
+    Pixels, Point, Rectangle, Renderer, Size, Theme, mouse,
+    widget::canvas::{self, Event, Geometry, Path, Program, Stroke, Text},
+};
 
 pub struct CardCanvas<'a> {
     pub cards: &'a [Card],
@@ -13,7 +12,10 @@ pub struct CardCanvas<'a> {
 
 impl<'a> CardCanvas<'a> {
     pub fn new(cards: &'a [Card], layout_cache: &'a canvas::Cache) -> Self {
-        Self { cards, layout_cache }
+        Self {
+            cards,
+            layout_cache,
+        }
     }
 }
 
@@ -87,11 +89,23 @@ impl Program<Message> for CardCanvas<'_> {
 
                 // Draw resize grip dots/lines in the bottom-right corner
                 let grip_path = Path::new(|builder| {
-                    builder.move_to(Point::new(card.x + card.width - 12.0, card.y + card.height - 4.0));
-                    builder.line_to(Point::new(card.x + card.width - 4.0, card.y + card.height - 12.0));
+                    builder.move_to(Point::new(
+                        card.x + card.width - 12.0,
+                        card.y + card.height - 4.0,
+                    ));
+                    builder.line_to(Point::new(
+                        card.x + card.width - 4.0,
+                        card.y + card.height - 12.0,
+                    ));
 
-                    builder.move_to(Point::new(card.x + card.width - 8.0, card.y + card.height - 4.0));
-                    builder.line_to(Point::new(card.x + card.width - 4.0, card.y + card.height - 8.0));
+                    builder.move_to(Point::new(
+                        card.x + card.width - 8.0,
+                        card.y + card.height - 4.0,
+                    ));
+                    builder.line_to(Point::new(
+                        card.x + card.width - 4.0,
+                        card.y + card.height - 8.0,
+                    ));
                 });
                 frame.stroke(
                     &grip_path,
