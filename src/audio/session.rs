@@ -59,7 +59,7 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
         .map_err(|e| AppError::Playback(format!("Failed to open audio stream: {e}")))?;
     let rodio_sink = rodio::Sink::connect_new(stream.mixer());
 
-    let (audio_tx, audio_rx) = mpsc::channel::<Vec<f32>>(256);
+    let (audio_tx, audio_rx) = mpsc::channel::<Vec<f32>>(8);
     crate::audio::sink::spawn_rodio_thread(audio_rx, rodio_sink, stream);
 
     let player = Player::new(

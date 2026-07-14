@@ -8,7 +8,7 @@ mod error;
 mod ui;
 
 fn load_icon() -> Option<iced::window::Icon> {
-    let bytes = include_bytes!("../assets/spotifust.png");
+    let bytes = include_bytes!("../assets/spotifust_icon.png");
     let img = image::load_from_memory(bytes).ok()?;
     let rgba = img.into_rgba8();
     let (width, height) = rgba.dimensions();

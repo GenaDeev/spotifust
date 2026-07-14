@@ -34,3 +34,10 @@ assets = [
     ["assets/spotifust.desktop", "usr/share/applications/", "644"],
     ["assets/spotifust.png", "usr/share/pixmaps/", "644"]
 ]
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
