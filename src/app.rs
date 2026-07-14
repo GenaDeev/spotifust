@@ -1,8 +1,11 @@
 use crate::audio::engine::{AudioCommand, AudioEngine};
+use crate::audio::session::{AudioSession, PlayerCommand};
 use crate::error::AppError;
 use crate::ui::login;
 use iced::{Element, Task};
+use librespot::playback::player::PlayerEvent;
 use rspotify::clients::BaseClient;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NavigationItem {
@@ -26,6 +29,7 @@ pub struct PlaybackState {
     pub current_track: Option<TrackInfo>,
     pub progress_ms: u32,
     pub volume: f32,
+    pub current_track_uri: Option<String>,
 }
 
 impl Default for PlaybackState {
@@ -35,6 +39,7 @@ impl Default for PlaybackState {
             current_track: None,
             progress_ms: 0,
             volume: 1.0,
+            current_track_uri: None,
         }
     }
 }
@@ -47,7 +52,7 @@ pub enum AppState {
     Main {
         nav_item: NavigationItem,
         playback: PlaybackState,
-        // session: Option<crate::audio::session::AudioSession>, // Kept for Phase 3 integration
+        audio_session: Option<AudioSession>,
     },
 }
 
@@ -68,7 +73,8 @@ pub enum Message {
     LoginSuccess(Box<rspotify::AuthCodePkceSpotify>),
     LoginFailed(String),
     // Audio Messages
-    AudioSessionConnected(crate::audio::session::AudioSession),
+    AudioSessionConnected(AudioSession),
+    PlayerEventReceived(PlayerEvent),
     // Main UI Messages
     NavigationSelected(NavigationItem),
     TogglePlayback,
@@ -80,15 +86,49 @@ pub enum Message {
     MockAction,
 }
 
+struct PlayerEventsRecipe {
+    events: Arc<tokio::sync::Mutex<tokio::sync::mpsc::Receiver<PlayerEvent>>>,
+}
+
+impl iced::advanced::subscription::Recipe for PlayerEventsRecipe {
+    type Output = Message;
+
+    fn hash(&self, state: &mut iced::advanced::subscription::Hasher) {
+        use std::hash::Hash;
+        std::any::TypeId::of::<Self>().hash(state);
+        (Arc::as_ptr(&self.events) as u64).hash(state);
+    }
+
+    fn stream(
+        self: Box<Self>,
+        _input: iced::advanced::subscription::EventStream,
+    ) -> futures::stream::BoxStream<'static, Self::Output> {
+        let events = self.events;
+        Box::pin(iced::stream::channel(32, async move |mut output| {
+            loop {
+                let maybe_event = events.lock().await.recv().await;
+                match maybe_event {
+                    Some(ev) => {
+                        use iced::futures::SinkExt;
+                        if output.send(Message::PlayerEventReceived(ev)).await.is_err() {
+                            break;
+                        }
+                    }
+                    None => break,
+                }
+            }
+        }))
+    }
+}
+
 impl App {
     pub fn new() -> (Self, Task<Message>) {
         let audio_tx = AudioEngine::spawn();
-        // Removed auto-play of test sine wave
 
         (
             Self {
                 state: AppState::Login {
-                    is_loading: true, // Initial check
+                    is_loading: true,
                     error: None,
                 },
                 audio_tx,
@@ -108,6 +148,12 @@ impl App {
             AppState::Login {
                 is_loading: true, ..
             } => iced::time::every(std::time::Duration::from_secs(2)).map(|_| Message::CheckLogin),
+            AppState::Main {
+                audio_session: Some(session),
+                ..
+            } => iced::advanced::subscription::from_recipe(PlayerEventsRecipe {
+                events: Arc::clone(&session.events),
+            }),
             _ => iced::Subscription::none(),
         }
     }
@@ -140,12 +186,8 @@ impl App {
                     Err(_) => Message::CheckLoginFailed,
                 },
             ),
-            Message::CheckLoginFailed => {
-                // Do nothing, keep polling
-                Task::none()
-            }
+            Message::CheckLoginFailed | Message::MockAction => Task::none(),
             Message::LoginSuccess(spotify) => {
-                // Pre-fill some mock data so the UI looks complete while we wait for backend
                 let mock_playback = PlaybackState {
                     is_playing: false,
                     current_track: Some(TrackInfo {
@@ -155,11 +197,13 @@ impl App {
                     }),
                     progress_ms: 85_000,
                     volume: 0.8,
+                    current_track_uri: None,
                 };
 
                 self.state = AppState::Main {
                     nav_item: NavigationItem::Home,
                     playback: mock_playback,
+                    audio_session: None,
                 };
 
                 Task::perform(
@@ -175,8 +219,44 @@ impl App {
                     },
                 )
             }
-            Message::AudioSessionConnected(_session) => {
-                println!("Audio session connected successfully!");
+            Message::AudioSessionConnected(session) => {
+                if let AppState::Main { audio_session, .. } = &mut self.state {
+                    *audio_session = Some(session);
+                }
+                Task::none()
+            }
+            Message::PlayerEventReceived(event) => {
+                match &event {
+                    PlayerEvent::Playing {
+                        track_id,
+                        position_ms,
+                        ..
+                    } => {
+                        if let AppState::Main { playback, .. } = &mut self.state {
+                            playback.is_playing = true;
+                            playback.progress_ms = *position_ms;
+                            playback.current_track_uri = Some(track_id.to_uri());
+                        }
+                    }
+                    PlayerEvent::Paused { position_ms, .. } => {
+                        if let AppState::Main { playback, .. } = &mut self.state {
+                            playback.is_playing = false;
+                            playback.progress_ms = *position_ms;
+                        }
+                    }
+                    PlayerEvent::Stopped { .. } => {
+                        if let AppState::Main { playback, .. } = &mut self.state {
+                            playback.is_playing = false;
+                            playback.progress_ms = 0;
+                        }
+                    }
+                    PlayerEvent::EndOfTrack { .. } => {
+                        if let AppState::Main { playback, .. } = &mut self.state {
+                            playback.is_playing = false;
+                        }
+                    }
+                    _ => {}
+                }
                 Task::none()
             }
             Message::LoginFailed(err) => {
@@ -198,29 +278,72 @@ impl App {
                 Task::none()
             }
             Message::TogglePlayback => {
-                if let AppState::Main { playback, .. } = &mut self.state {
-                    playback.is_playing = !playback.is_playing;
+                if let AppState::Main {
+                    playback,
+                    audio_session,
+                    ..
+                } = &mut self.state
+                {
+                    let was_playing = playback.is_playing;
+                    playback.is_playing = !was_playing;
 
-                    // Send command to audio engine for visual feedback
-                    let cmd = if playback.is_playing {
-                        AudioCommand::Play
+                    if let Some(session) = audio_session {
+                        let cmd = if was_playing {
+                            PlayerCommand::Pause
+                        } else {
+                            PlayerCommand::Resume
+                        };
+                        let _ = session.cmd_tx.try_send(cmd);
                     } else {
-                        AudioCommand::Pause
-                    };
-                    let _ = self.audio_tx.try_send(cmd);
+                        let legacy_cmd = if playback.is_playing {
+                            AudioCommand::Play
+                        } else {
+                            AudioCommand::Pause
+                        };
+                        let _ = self.audio_tx.try_send(legacy_cmd);
+                    }
                 }
                 Task::none()
             }
-            Message::SkipNext | Message::SkipPrev => Task::none(),
+            Message::SkipNext => {
+                if let AppState::Main {
+                    audio_session: Some(session),
+                    ..
+                } = &mut self.state
+                {
+                    let _ = session.cmd_tx.try_send(PlayerCommand::SkipNext);
+                }
+                Task::none()
+            }
+            Message::SkipPrev => {
+                if let AppState::Main {
+                    audio_session: Some(session),
+                    ..
+                } = &mut self.state
+                {
+                    let _ = session.cmd_tx.try_send(PlayerCommand::SkipPrev);
+                }
+                Task::none()
+            }
             #[allow(
                 clippy::cast_possible_truncation,
                 clippy::cast_sign_loss,
                 clippy::cast_precision_loss
             )]
             Message::SeekTo(percent) => {
-                if let AppState::Main { playback, .. } = &mut self.state {
+                if let AppState::Main {
+                    playback,
+                    audio_session,
+                    ..
+                } = &mut self.state
+                {
                     if let Some(track) = &playback.current_track {
-                        playback.progress_ms = (percent * track.duration_ms as f32) as u32;
+                        let pos_ms = (percent * track.duration_ms as f32) as u32;
+                        playback.progress_ms = pos_ms;
+
+                        if let Some(session) = audio_session {
+                            let _ = session.cmd_tx.try_send(PlayerCommand::Seek(pos_ms));
+                        }
                     }
                 }
                 Task::none()
@@ -231,10 +354,6 @@ impl App {
                 }
                 Task::none()
             }
-            Message::MockAction => {
-                // Ignore for now
-                Task::none()
-            }
         }
     }
 
@@ -243,9 +362,9 @@ impl App {
             AppState::Login { is_loading, error } => {
                 login::view("", "", *is_loading, error.as_deref())
             }
-            AppState::Main { nav_item, playback } => {
-                crate::ui::main_layout::view(nav_item, playback)
-            }
+            AppState::Main {
+                nav_item, playback, ..
+            } => crate::ui::main_layout::view(nav_item, playback),
         }
     }
 }

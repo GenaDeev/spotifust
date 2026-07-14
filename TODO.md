@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Wire UI Play/Pause/Skip commands through `iced::Subscription` down to the `librespot` player instance
+- [ ] Extract current track metadata (title, artist, album, duration) from `PlayerEvent` and emit them as `Message::TrackChanged`
 
 ## Development Backlog
 
@@ -34,9 +34,9 @@
 - [x] Implement a custom `librespot` audio `Sink` that captures decoded PCM frames
 - [x] Route PCM frames from the custom Sink through a bounded `mpsc` channel to a `rodio` playback thread
 - [x] Wire a synthetic sine-wave test pipeline to validate the `rodio` backend end-to-end
-- [ ] Wire UI Play command to call `player.load()` on the active `librespot` player instance
-- [ ] Wire UI Pause / Resume commands to the librespot player
-- [ ] Wire UI Skip Next / Skip Previous commands to the librespot player
+- [x] Wire UI Play command to call `player.load()` on the active `librespot` player instance
+- [x] Wire UI Pause / Resume commands to the librespot player
+- [x] Wire UI Skip Next / Skip Previous commands to the librespot player
 - [ ] Implement Seek: accept a `f32` position ratio from the seek bar and call `player.seek(ms)`
 - [ ] Extract current track metadata (title, artist, album, duration) from `PlayerEvent` and emit them as `Message::TrackChanged`
 - [ ] Stream playback position (elapsed ms) from the audio task to the UI via the mpsc channel
