@@ -20,12 +20,18 @@ pub enum PlayerCommand {
     Seek(u32),
 }
 
+#[derive(Debug, Clone)]
+pub enum AudioSessionEvent {
+    Player(PlayerEvent),
+    PositionMs(u32),
+}
+
 #[derive(Clone)]
 pub struct AudioSession {
     #[allow(dead_code)]
     pub player: Arc<Player>,
     pub cmd_tx: mpsc::Sender<PlayerCommand>,
-    pub events: Arc<tokio::sync::Mutex<mpsc::Receiver<PlayerEvent>>>,
+    pub events: Arc<tokio::sync::Mutex<mpsc::Receiver<AudioSessionEvent>>>,
 }
 
 impl std::fmt::Debug for AudioSession {
@@ -57,13 +63,64 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
     );
 
     let (cmd_tx, mut cmd_rx) = mpsc::channel::<PlayerCommand>(16);
-    let (event_tx, event_rx) = mpsc::channel::<PlayerEvent>(32);
+    let (event_tx, event_rx) = mpsc::channel::<AudioSessionEvent>(32);
 
     let mut librespot_rx = player.get_player_event_channel();
     tokio::spawn(async move {
-        while let Some(event) = librespot_rx.recv().await {
-            if event_tx.send(event).await.is_err() {
-                break;
+        let mut is_playing = false;
+        let mut position_ms = 0;
+        let mut last_update = tokio::time::Instant::now();
+        let mut interval = tokio::time::interval(std::time::Duration::from_millis(500));
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
+        loop {
+            tokio::select! {
+                maybe_event = librespot_rx.recv() => {
+                    match maybe_event {
+                        Some(event) => {
+                            match &event {
+                                PlayerEvent::Playing { position_ms: pos, .. } => {
+                                    is_playing = true;
+                                    position_ms = *pos;
+                                    last_update = tokio::time::Instant::now();
+                                    let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
+                                }
+                                PlayerEvent::Paused { position_ms: pos, .. } => {
+                                    is_playing = false;
+                                    position_ms = *pos;
+                                    let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
+                                }
+                                PlayerEvent::Stopped { .. } => {
+                                    is_playing = false;
+                                    position_ms = 0;
+                                    let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
+                                }
+                                PlayerEvent::EndOfTrack { .. } => {
+                                    is_playing = false;
+                                }
+                                _ => {}
+                            }
+
+                            if event_tx.send(AudioSessionEvent::Player(event)).await.is_err() {
+                                break;
+                            }
+                        }
+                        None => break,
+                    }
+                }
+                _ = interval.tick() => {
+                    if is_playing {
+                        let now = tokio::time::Instant::now();
+                        #[allow(clippy::cast_possible_truncation)]
+                        let elapsed = now.duration_since(last_update).as_millis() as u32;
+                        position_ms += elapsed;
+                        last_update = now;
+
+                        if event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await.is_err() {
+                            break;
+                        }
+                    }
+                }
             }
         }
     });

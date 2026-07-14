@@ -1,5 +1,5 @@
 use crate::audio::engine::{AudioCommand, AudioEngine};
-use crate::audio::session::{AudioSession, PlayerCommand};
+use crate::audio::session::{AudioSession, PlayerCommand, AudioSessionEvent};
 use crate::error::AppError;
 use crate::ui::login;
 use iced::{Element, Task};
@@ -76,6 +76,7 @@ pub enum Message {
     // Audio Messages
     AudioSessionConnected(AudioSession),
     PlayerEventReceived(PlayerEvent),
+    PlaybackPositionReceived(u32),
     // Main UI Messages
     NavigationSelected(NavigationItem),
     TogglePlayback,
@@ -88,7 +89,7 @@ pub enum Message {
 }
 
 struct PlayerEventsRecipe {
-    events: Arc<tokio::sync::Mutex<tokio::sync::mpsc::Receiver<PlayerEvent>>>,
+    events: Arc<tokio::sync::Mutex<tokio::sync::mpsc::Receiver<AudioSessionEvent>>>,
 }
 
 impl iced::advanced::subscription::Recipe for PlayerEventsRecipe {
@@ -111,7 +112,11 @@ impl iced::advanced::subscription::Recipe for PlayerEventsRecipe {
                 match maybe_event {
                     Some(ev) => {
                         use iced::futures::SinkExt;
-                        if output.send(Message::PlayerEventReceived(ev)).await.is_err() {
+                        let msg = match ev {
+                            AudioSessionEvent::Player(pe) => Message::PlayerEventReceived(pe),
+                            AudioSessionEvent::PositionMs(pos) => Message::PlaybackPositionReceived(pos),
+                        };
+                        if output.send(msg).await.is_err() {
                             break;
                         }
                     }
@@ -283,6 +288,12 @@ impl App {
                         }
                     }
                     _ => {}
+                }
+                Task::none()
+            }
+            Message::PlaybackPositionReceived(pos) => {
+                if let AppState::Main { playback, .. } = &mut self.state {
+                    playback.progress_ms = pos;
                 }
                 Task::none()
             }

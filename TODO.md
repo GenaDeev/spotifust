@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Stream playback position (elapsed ms) from the audio task to the UI via the mpsc channel
+- [x] Stream playback position (elapsed ms) from the audio task to the UI via the mpsc channel
 
 ## Development Backlog
 
@@ -39,7 +39,7 @@
 - [x] Wire UI Skip Next / Skip Previous commands to the librespot player
 - [ ] Implement Seek: accept a `f32` position ratio from the seek bar and call `player.seek(ms)`
 - [x] Extract current track metadata (title, artist, album, duration) from `PlayerEvent` and emit them as `Message::TrackChanged`
-- [ ] Stream playback position (elapsed ms) from the audio task to the UI via the mpsc channel
+- [x] Stream playback position (elapsed ms) from the audio task to the UI via the mpsc channel
 - [ ] Implement end-of-track detection via `PlayerEvent::EndOfTrack` and auto-advance to next track
 - [ ] Validate that the mpsc channel remains bounded under sustained high-throughput decoding
 - [ ] Wire volume control: slider value in UI → `rodio::Sink::set_volume()` (full 0.0–1.0 range, not binary)
