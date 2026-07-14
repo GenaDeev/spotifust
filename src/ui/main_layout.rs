@@ -1,28 +1,35 @@
-use crate::app::{Card, Message, NavigationItem, PlaybackState};
-use crate::ui::canvas_view::CardCanvas;
+use crate::app::{Message, NavigationItem, PlaybackState, RightPanelTab};
 use crate::ui::icons::Icon;
 use crate::ui::theme;
+use iced::widget::mouse_area;
 use iced::{
     Alignment, Background, Border, Element, Length, Theme,
-    widget::{Button, Column, Container, Row, Scrollable, Space, Text, canvas, container, slider},
+    widget::{Button, Column, Container, Row, Scrollable, Space, Text, container, slider},
 };
 
 pub fn view<'a>(
     nav_item: &'a NavigationItem,
     playback: &'a PlaybackState,
-    cards: &'a [Card],
-    canvas_cache: &'a canvas::Cache,
-    grid_size: f32,
+    sidebar_width: f32,
+    right_panel_width: f32,
+    active_right_panel: Option<RightPanelTab>,
 ) -> Element<'a, Message> {
     let top_bar = view_top_bar(*nav_item);
-    let sidebar = view_sidebar();
-    let main_content = view_main_content(*nav_item, cards, canvas_cache, grid_size);
-    let playback_bar = view_playback_bar(playback);
+    let sidebar = view_sidebar_panel(sidebar_width);
+    let main_content = view_main_content(*nav_item);
+    let right_panel = view_right_panel(active_right_panel, right_panel_width);
+    let playback_bar = view_playback_bar(playback, active_right_panel);
 
-    let middle_section = Row::new()
+    let mut middle_row = Row::new()
         .push(sidebar)
-        .push(Space::new().width(Length::Fixed(8.0)))
-        .push(main_content)
+        .push(view_drag_handle(true))
+        .push(main_content);
+
+    if active_right_panel.is_some() {
+        middle_row = middle_row.push(view_drag_handle(false)).push(right_panel);
+    }
+
+    let middle_section = middle_row
         .padding(iced::Padding {
             top: 0.0,
             right: 8.0,
@@ -184,7 +191,109 @@ fn view_top_bar(current_nav: NavigationItem) -> Element<'static, Message> {
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_sidebar() -> Element<'static, Message> {
+fn view_sidebar_panel(width: f32) -> Element<'static, Message> {
+    let is_compact = width < 120.0;
+
+    if is_compact {
+        let mut list = Column::new().spacing(12).align_x(Alignment::Center);
+        // Liked Songs compact icon
+        list = list.push(
+            Button::new(
+                Container::new(Icon::Heart.view_colored(20.0, theme::BG_BASE))
+                    .width(Length::Fixed(40.0))
+                    .height(Length::Fixed(40.0))
+                    .align_x(iced::alignment::Horizontal::Center)
+                    .align_y(iced::alignment::Vertical::Center)
+                    .style(|_theme| container::Style {
+                        background: Some(Background::Color(theme::ACCENT)),
+                        border: Border {
+                            radius: 4.0.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }),
+            )
+            .padding(0)
+            .on_press(Message::MockAction)
+            .style(|_theme, status| {
+                let base = iced::widget::button::Style {
+                    background: Some(Background::Color(iced::Color::TRANSPARENT)),
+                    ..Default::default()
+                };
+                match status {
+                    iced::widget::button::Status::Hovered => iced::widget::button::Style {
+                        background: Some(Background::Color(theme::SURFACE_1)),
+                        ..base
+                    },
+                    _ => base,
+                }
+            }),
+        );
+
+        let library_items = [
+            Icon::Album,     // Synthwave Architect
+            Icon::User,      // The Midnight
+            Icon::MusicNote, // Rustaceans Unite
+        ];
+
+        for icon in library_items {
+            list = list.push(
+                Button::new(
+                    Container::new(icon.view_colored(20.0, theme::TEXT_SECONDARY))
+                        .width(Length::Fixed(40.0))
+                        .height(Length::Fixed(40.0))
+                        .align_x(iced::alignment::Horizontal::Center)
+                        .align_y(iced::alignment::Vertical::Center)
+                        .style(|_theme| container::Style {
+                            background: Some(Background::Color(theme::SURFACE_2)),
+                            border: Border {
+                                radius: 4.0.into(),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        }),
+                )
+                .padding(0)
+                .on_press(Message::MockAction)
+                .style(|_theme, status| {
+                    let base = iced::widget::button::Style {
+                        background: Some(Background::Color(iced::Color::TRANSPARENT)),
+                        ..Default::default()
+                    };
+                    match status {
+                        iced::widget::button::Status::Hovered => iced::widget::button::Style {
+                            background: Some(Background::Color(theme::SURFACE_1)),
+                            ..base
+                        },
+                        _ => base,
+                    }
+                }),
+            );
+        }
+
+        let scrollable_list = Scrollable::new(list).height(Length::Fill);
+
+        return Container::new(
+            Column::new()
+                .spacing(16)
+                .align_x(Alignment::Center)
+                .push(Icon::Library.view_colored(24.0, theme::TEXT_SECONDARY))
+                .push(scrollable_list),
+        )
+        .width(Length::Fixed(width))
+        .height(Length::Fill)
+        .padding([16, 0])
+        .style(|_theme: &Theme| container::Style {
+            background: Some(Background::Color(theme::BG_BASE)),
+            border: Border {
+                radius: 8.0.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .into();
+    }
+
     let header = Row::new()
         .align_y(Alignment::Center)
         .push(
@@ -257,8 +366,6 @@ fn view_sidebar() -> Element<'static, Message> {
         true,
     ));
 
-    // TODO: When integrating real API data, replace these static lists with dynamic
-    // collections mapped from rspotify::model::* (e.g., user's followed playlists).
     let library_items = [
         ("Synthwave Architect", "Playlist • GenaDeev", false),
         ("The Midnight", "Artist", false),
@@ -295,10 +402,10 @@ fn view_sidebar() -> Element<'static, Message> {
             )
             .push(scrollable_list),
     )
-    .width(Length::Fixed(280.0))
+    .width(Length::Fixed(width))
     .height(Length::Fill)
     .style(|_theme: &Theme| container::Style {
-        background: Some(Background::Color(theme::BG_BASE)), // Actually standard sidebar is inside #121212 rounded container now
+        background: Some(Background::Color(theme::BG_BASE)),
         border: Border {
             radius: 8.0.into(),
             ..Default::default()
@@ -431,65 +538,59 @@ fn library_row<'a>(
         .into()
 }
 
-fn view_main_content<'a>(
-    _nav: NavigationItem,
-    cards: &'a [Card],
-    canvas_cache: &'a canvas::Cache,
-    grid_size: f32,
-) -> Element<'a, Message> {
-    let grid_label = if (grid_size - 1.0).abs() < f32::EPSILON {
-        "Off".to_string()
-    } else {
-        format!("{grid_size}px")
-    };
-
-    let grid_control = Row::new()
-        .spacing(8)
-        .align_y(Alignment::Center)
-        .push(
-            Text::new("Snap Grid:")
-                .size(13)
-                .color(theme::TEXT_SECONDARY),
-        )
-        .push(
-            Button::new(Text::new(grid_label).size(13))
-                .padding([6, 12])
-                .on_press(Message::CycleGridSize)
-                .style(|_theme: &Theme, status| {
-                    let base = iced::widget::button::Style {
-                        background: Some(Background::Color(theme::SURFACE_2)),
-                        text_color: theme::TEXT_PRIMARY,
-                        border: Border {
-                            radius: 999.0.into(),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    };
-                    match status {
-                        iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                            background: Some(Background::Color(theme::SURFACE_1)),
-                            ..base
-                        },
-                        _ => base,
-                    }
-                }),
-        );
-
+fn view_main_content<'a>(_nav: NavigationItem) -> Element<'a, Message> {
     let chips = Row::new()
         .spacing(8)
         .push(filter_chip("All"))
         .push(filter_chip("Music"))
-        .push(filter_chip("Podcasts"))
-        .push(Space::new().width(Length::Fill))
-        .push(grid_control);
+        .push(filter_chip("Podcasts"));
 
-    let canvas_widget = canvas(CardCanvas::new(cards, canvas_cache))
-        .width(Length::Fill)
-        .height(Length::Fill);
+    let featured_title = Text::new("Welcome back")
+        .size(24)
+        .font(iced::Font {
+            weight: iced::font::Weight::Bold,
+            ..Default::default()
+        })
+        .color(theme::TEXT_PRIMARY);
 
-    let layout = Column::new().spacing(16).push(chips).push(canvas_widget);
+    let main_layout = Column::new()
+        .spacing(24)
+        .push(chips)
+        .push(featured_title)
+        .push(
+            Container::new(
+                Column::new()
+                    .spacing(12)
+                    .push(
+                        Text::new("Spotifust Native Desktop")
+                            .size(18)
+                            .color(theme::ACCENT)
+                            .font(iced::Font {
+                                weight: iced::font::Weight::Bold,
+                                ..Default::default()
+                            }),
+                    )
+                    .push(
+                        Text::new(
+                            "This is a modular, ultra-lightweight client built from scratch in Rust. Drag the borders of the panels to resize the layout just like Spotify!",
+                        )
+                        .size(14)
+                        .color(theme::TEXT_SECONDARY),
+                    ),
+            )
+            .padding(24)
+            .width(Length::Fill)
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(theme::SURFACE_1)),
+                border: Border {
+                    radius: 8.0.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+        );
 
-    Container::new(layout)
+    Container::new(main_layout)
         .width(Length::Fill)
         .height(Length::Fill)
         .style(|_theme: &Theme| container::Style {
@@ -500,7 +601,7 @@ fn view_main_content<'a>(
             },
             ..Default::default()
         })
-        .padding(16)
+        .padding(24)
         .into()
 }
 
@@ -605,7 +706,10 @@ fn icon_button_circle_active<'a>(
 }
 
 #[allow(clippy::too_many_lines, clippy::cast_precision_loss)]
-fn view_playback_bar(playback: &PlaybackState) -> Element<'_, Message> {
+fn view_playback_bar(
+    playback: &PlaybackState,
+    active_right_panel: Option<RightPanelTab>,
+) -> Element<'_, Message> {
     let play_icon = if playback.is_playing {
         Icon::Pause
     } else {
@@ -775,11 +879,22 @@ fn view_playback_bar(playback: &PlaybackState) -> Element<'_, Message> {
                 .push(Text::new(total_time).size(11).color(theme::TEXT_SECONDARY)),
         );
 
+    let now_playing_active = active_right_panel == Some(RightPanelTab::NowPlaying);
+    let queue_active = active_right_panel == Some(RightPanelTab::Queue);
+
     let extra_controls = Row::new()
         .align_y(Alignment::Center)
         .spacing(16)
-        .push(icon_button(Icon::Album, Message::MockAction)) // Now playing view
-        .push(icon_button(Icon::Queue, Message::MockAction))
+        .push(icon_button_active(
+            Icon::Album,
+            Message::ToggleRightPanel(RightPanelTab::NowPlaying),
+            now_playing_active,
+        ))
+        .push(icon_button_active(
+            Icon::Queue,
+            Message::ToggleRightPanel(RightPanelTab::Queue),
+            queue_active,
+        ))
         .push(icon_button(Icon::Devices, Message::MockAction))
         .push(
             Row::new()
@@ -893,6 +1008,186 @@ fn icon_button_active<'a>(icon: Icon, message: Message, is_active: bool) -> Elem
                 },
                 _ => base,
             }
+        })
+        .into()
+}
+
+fn view_drag_handle<'a>(is_sidebar: bool) -> Element<'a, Message> {
+    let msg = if is_sidebar {
+        Message::StartSidebarDrag
+    } else {
+        Message::StartRightPanelDrag
+    };
+
+    let handle_line = Container::new(Space::new())
+        .width(Length::Fixed(1.0))
+        .height(Length::Fill)
+        .style(|_theme| container::Style {
+            background: Some(Background::Color(theme::SURFACE_2)),
+            ..Default::default()
+        });
+
+    let area = mouse_area(
+        Container::new(handle_line)
+            .width(Length::Fixed(6.0))
+            .height(Length::Fill)
+            .center_x(Length::Fill),
+    )
+    .on_press(msg)
+    .interaction(iced::mouse::Interaction::ResizingHorizontally);
+
+    area.into()
+}
+
+#[allow(clippy::too_many_lines)]
+fn view_right_panel<'a>(view: Option<RightPanelTab>, width: f32) -> Element<'a, Message> {
+    let Some(tab) = view else {
+        return Space::new()
+            .width(Length::Fixed(0.0))
+            .height(Length::Fixed(0.0))
+            .into();
+    };
+
+    let title = match tab {
+        RightPanelTab::NowPlaying => "Now Playing",
+        RightPanelTab::Queue => "Play Queue",
+        RightPanelTab::Lyrics => "Lyrics",
+    };
+
+    let header = Row::new()
+        .align_y(Alignment::Center)
+        .push(
+            Text::new(title)
+                .size(16)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_PRIMARY),
+        )
+        .push(Space::new().width(Length::Fill))
+        .push(
+            Button::new(Icon::X.view_colored(14.0, theme::TEXT_SECONDARY))
+                .padding(6)
+                .on_press(Message::ToggleRightPanel(tab))
+                .style(|_theme, status| {
+                    let base = iced::widget::button::Style {
+                        background: Some(Background::Color(iced::Color::TRANSPARENT)),
+                        ..Default::default()
+                    };
+                    match status {
+                        iced::widget::button::Status::Hovered => iced::widget::button::Style {
+                            background: Some(Background::Color(theme::SURFACE_2)),
+                            ..base
+                        },
+                        _ => base,
+                    }
+                }),
+        );
+
+    let content: Element<'_, Message> = match tab {
+        RightPanelTab::NowPlaying => Column::new()
+            .spacing(16)
+            .push(
+                Container::new(Icon::MusicNote.view_colored(48.0, theme::TEXT_SECONDARY))
+                    .width(Length::Fill)
+                    .height(Length::Fixed(240.0))
+                    .align_x(iced::alignment::Horizontal::Center)
+                    .align_y(iced::alignment::Vertical::Center)
+                    .style(|_theme| container::Style {
+                        background: Some(Background::Color(theme::SURFACE_2)),
+                        border: Border {
+                            radius: 8.0.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }),
+            )
+            .push(
+                Text::new("Neon Nights")
+                    .size(18)
+                    .font(iced::Font {
+                        weight: iced::font::Weight::Bold,
+                        ..Default::default()
+                    })
+                    .color(theme::TEXT_PRIMARY),
+            )
+            .push(
+                Text::new("Synthwave Architect")
+                    .size(14)
+                    .color(theme::TEXT_SECONDARY),
+            )
+            .into(),
+        RightPanelTab::Queue => Column::new()
+            .spacing(12)
+            .push(
+                Text::new("Now Playing")
+                    .size(12)
+                    .color(theme::TEXT_SECONDARY),
+            )
+            .push(
+                Row::new()
+                    .spacing(8)
+                    .push(Icon::MusicNote.view_colored(16.0, theme::ACCENT))
+                    .push(Text::new("Neon Nights").size(14).color(theme::ACCENT)),
+            )
+            .push(Space::new().height(Length::Fixed(8.0)))
+            .push(
+                Text::new("Next In Queue")
+                    .size(12)
+                    .color(theme::TEXT_SECONDARY),
+            )
+            .push(
+                Text::new("1. Retro Wave — Miami Nights")
+                    .size(13)
+                    .color(theme::TEXT_PRIMARY),
+            )
+            .push(
+                Text::new("2. Laser Diodes — Grid Runner")
+                    .size(13)
+                    .color(theme::TEXT_PRIMARY),
+            )
+            .into(),
+        RightPanelTab::Lyrics => Scrollable::new(
+            Column::new()
+                .spacing(16)
+                .push(
+                    Text::new("Driving through the neon glow...")
+                        .size(16)
+                        .color(theme::TEXT_PRIMARY),
+                )
+                .push(
+                    Text::new("Synth waves moving very slow...")
+                        .size(16)
+                        .color(theme::TEXT_PRIMARY),
+                )
+                .push(
+                    Text::new("Gridlines stretching to the sky...")
+                        .size(16)
+                        .color(theme::TEXT_SECONDARY),
+                )
+                .push(
+                    Text::new("Underneath the purple sky...")
+                        .size(16)
+                        .color(theme::TEXT_SECONDARY),
+                ),
+        )
+        .into(),
+    };
+
+    let panel_layout = Column::new().spacing(16).push(header).push(content);
+
+    Container::new(panel_layout)
+        .width(Length::Fixed(width))
+        .height(Length::Fill)
+        .padding(16)
+        .style(|_theme| container::Style {
+            background: Some(Background::Color(theme::BG_BASE)),
+            border: Border {
+                radius: 8.0.into(),
+                ..Default::default()
+            },
+            ..Default::default()
         })
         .into()
 }

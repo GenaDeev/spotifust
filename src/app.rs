@@ -19,6 +19,14 @@ pub enum NavigationItem {
     Library,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
+pub enum RightPanelTab {
+    NowPlaying,
+    Queue,
+    Lyrics,
+}
+
 #[derive(Debug, Clone)]
 pub struct TrackInfo {
     pub title: String,
@@ -48,21 +56,6 @@ impl Default for PlaybackState {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Card {
-    pub id: String,
-    pub title: String,
-    pub subtitle: String,
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-    pub dragging: bool,
-    pub resizing: bool,
-    pub hovered: bool,
-    pub drag_offset: Option<(f32, f32)>,
-}
-
 #[allow(clippy::large_enum_variant)]
 pub enum AppState {
     Login {
@@ -73,9 +66,12 @@ pub enum AppState {
         nav_item: NavigationItem,
         playback: PlaybackState,
         audio_session: Option<AudioSession>,
-        cards: Vec<Card>,
-        canvas_cache: iced::widget::canvas::Cache,
-        grid_size: f32,
+        sidebar_width: f32,
+        right_panel_width: f32,
+        active_right_panel: Option<RightPanelTab>,
+        dragging_sidebar: bool,
+        dragging_right_panel: bool,
+        window_width: f32,
     },
 }
 
@@ -107,27 +103,17 @@ pub enum Message {
     SkipPrev,
     SeekTo(f32),        // 0.0 to 1.0
     VolumeChanged(f32), // 0.0 to 1.0
-    // Card Layout Messages
-    CardPressed {
-        id: String,
-        is_resize: bool,
-        offset_x: f32,
-        offset_y: f32,
-    },
-    CardMoved {
-        x: f32,
-        y: f32,
-    },
-    CardReleased,
-    CardHovered(Option<String>),
     // Mock UI Actions
     MockAction,
     // Error Actions
     DismissError,
-    // Grid Actions
-    CycleGridSize,
-    // Keyboard Actions
-    KeyboardAction(iced::keyboard::Key, iced::keyboard::Modifiers),
+    // Panel Layout Messages
+    StartSidebarDrag,
+    StartRightPanelDrag,
+    EndPanelDrag,
+    PanelDragMoved(f32),
+    ToggleRightPanel(RightPanelTab),
+    WindowResized(f32),
 }
 
 struct PlayerEventsRecipe {
@@ -209,11 +195,15 @@ impl App {
                     ));
                 }
                 subs.push(iced::event::listen().filter_map(|event| match event {
-                    iced::Event::Keyboard(iced::keyboard::Event::KeyPressed {
-                        key,
-                        modifiers,
-                        ..
-                    }) => Some(Message::KeyboardAction(key, modifiers)),
+                    iced::Event::Mouse(iced::mouse::Event::CursorMoved { position }) => {
+                        Some(Message::PanelDragMoved(position.x))
+                    }
+                    iced::Event::Mouse(iced::mouse::Event::ButtonReleased(
+                        iced::mouse::Button::Left,
+                    )) => Some(Message::EndPanelDrag),
+                    iced::Event::Window(iced::window::Event::Resized(size)) => {
+                        Some(Message::WindowResized(size.width))
+                    }
                     _ => None,
                 }));
                 iced::Subscription::batch(subs)
@@ -255,6 +245,7 @@ impl App {
                 },
             ),
             Message::CheckLoginFailed | Message::MockAction => Task::none(),
+
             Message::LoginSuccess(spotify) => {
                 let mock_playback = PlaybackState {
                     is_playing: false,
@@ -269,57 +260,18 @@ impl App {
                     current_track_uri: None,
                 };
 
-                let mut default_cards = vec![
-                    Card {
-                        id: "liked_songs".to_string(),
-                        title: "Liked Songs".to_string(),
-                        subtitle: "Your favorite tracks".to_string(),
-                        x: 40.0,
-                        y: 40.0,
-                        width: 250.0,
-                        height: 180.0,
-                        dragging: false,
-                        resizing: false,
-                        hovered: false,
-                        drag_offset: None,
-                    },
-                    Card {
-                        id: "synthwave".to_string(),
-                        title: "Synthwave Architect".to_string(),
-                        subtitle: "Album • Neon Dreams".to_string(),
-                        x: 320.0,
-                        y: 40.0,
-                        width: 250.0,
-                        height: 180.0,
-                        dragging: false,
-                        resizing: false,
-                        hovered: false,
-                        drag_offset: None,
-                    },
-                    Card {
-                        id: "recently_played".to_string(),
-                        title: "Recently Played".to_string(),
-                        subtitle: "Carpenter Brut, The Midnight...".to_string(),
-                        x: 40.0,
-                        y: 260.0,
-                        width: 530.0,
-                        height: 220.0,
-                        dragging: false,
-                        resizing: false,
-                        hovered: false,
-                        drag_offset: None,
-                    },
-                ];
-
-                let _ = load_layout(&mut default_cards);
+                let (sw, rw) = load_layout();
 
                 self.state = AppState::Main {
                     nav_item: NavigationItem::Home,
                     playback: mock_playback,
                     audio_session: None,
-                    cards: default_cards,
-                    canvas_cache: iced::widget::canvas::Cache::default(),
-                    grid_size: 20.0,
+                    sidebar_width: sw,
+                    right_panel_width: rw,
+                    active_right_panel: None,
+                    dragging_sidebar: false,
+                    dragging_right_panel: false,
+                    window_width: 1200.0,
                 };
 
                 Task::perform(
@@ -514,165 +466,79 @@ impl App {
                 }
                 Task::none()
             }
-            Message::CardPressed {
-                id,
-                is_resize,
-                offset_x,
-                offset_y,
-            } => {
+            Message::StartSidebarDrag => {
                 if let AppState::Main {
-                    cards,
-                    canvas_cache,
+                    dragging_sidebar, ..
+                } = &mut self.state
+                {
+                    *dragging_sidebar = true;
+                }
+                Task::none()
+            }
+            Message::StartRightPanelDrag => {
+                if let AppState::Main {
+                    dragging_right_panel,
                     ..
                 } = &mut self.state
                 {
-                    if let Some(pos) = cards.iter().position(|c| c.id == id) {
-                        let mut card = cards.remove(pos);
-                        card.dragging = !is_resize;
-                        card.resizing = is_resize;
-                        card.drag_offset = Some((offset_x, offset_y));
-                        cards.push(card);
-                        canvas_cache.clear();
-                    }
+                    *dragging_right_panel = true;
                 }
                 Task::none()
             }
-            Message::CardMoved { x, y } => {
+            Message::EndPanelDrag => {
                 if let AppState::Main {
-                    cards,
-                    canvas_cache,
+                    dragging_sidebar,
+                    dragging_right_panel,
+                    sidebar_width,
+                    right_panel_width,
                     ..
                 } = &mut self.state
                 {
-                    for card in cards.iter_mut() {
-                        if card.dragging {
-                            if let Some((offset_x, offset_y)) = card.drag_offset {
-                                card.x = x - offset_x;
-                                card.y = y - offset_y;
-                                canvas_cache.clear();
-                            }
-                        } else if card.resizing {
-                            card.width = (x - card.x).max(120.0);
-                            card.height = (y - card.y).max(80.0);
-                            canvas_cache.clear();
-                        }
+                    if *dragging_sidebar || *dragging_right_panel {
+                        *dragging_sidebar = false;
+                        *dragging_right_panel = false;
+                        let _ = save_layout(*sidebar_width, *right_panel_width);
                     }
                 }
                 Task::none()
             }
-            Message::CardReleased => {
+            Message::PanelDragMoved(x) => {
                 if let AppState::Main {
-                    cards,
-                    canvas_cache,
-                    grid_size,
+                    dragging_sidebar,
+                    dragging_right_panel,
+                    sidebar_width,
+                    right_panel_width,
+                    window_width,
                     ..
                 } = &mut self.state
                 {
-                    let gs = *grid_size;
-                    for card in cards.iter_mut() {
-                        if card.dragging {
-                            card.x = (card.x / gs).round() * gs;
-                            card.y = (card.y / gs).round() * gs;
-                        }
-                        if card.resizing {
-                            card.width = ((card.width / gs).round() * gs).max(120.0);
-                            card.height = ((card.height / gs).round() * gs).max(80.0);
-                        }
-                        card.dragging = false;
-                        card.resizing = false;
-                        card.drag_offset = None;
+                    if *dragging_sidebar {
+                        let new_w = x.clamp(80.0, 400.0);
+                        *sidebar_width = if new_w < 120.0 { 80.0 } else { new_w };
                     }
-                    canvas_cache.clear();
-
-                    // Persist the new cards layout to disk
-                    if let Err(e) = save_layout(cards) {
-                        eprintln!("Failed to save layout: {e}");
+                    if *dragging_right_panel {
+                        let new_w = (*window_width - x).clamp(200.0, 500.0);
+                        *right_panel_width = new_w;
                     }
                 }
                 Task::none()
             }
-            Message::CycleGridSize => {
-                if let AppState::Main { grid_size, .. } = &mut self.state {
-                    *grid_size = match *grid_size {
-                        1.0 => 10.0,
-                        10.0 => 20.0,
-                        20.0 => 50.0,
-                        50.0 => 1.0,
-                        _ => 20.0,
-                    };
-                }
-                Task::none()
-            }
-            Message::CardHovered(hovered_id) => {
-                if let AppState::Main { cards, .. } = &mut self.state {
-                    for card in cards.iter_mut() {
-                        card.hovered = Some(card.id.clone()) == hovered_id;
-                    }
-                }
-                Task::none()
-            }
-            Message::KeyboardAction(key, modifiers) => {
+            Message::ToggleRightPanel(tab) => {
                 if let AppState::Main {
-                    cards,
-                    canvas_cache,
-                    grid_size,
-                    ..
+                    active_right_panel, ..
                 } = &mut self.state
                 {
-                    use iced::keyboard::key::Named;
-                    let gs = if *grid_size > 1.0 { *grid_size } else { 10.0 };
-
-                    match key {
-                        iced::keyboard::Key::Named(Named::Tab) => {
-                            if !cards.is_empty() {
-                                let card = cards.remove(0);
-                                cards.push(card);
-                                canvas_cache.clear();
-                            }
-                        }
-                        iced::keyboard::Key::Named(Named::ArrowLeft) => {
-                            if let Some(card) = cards.last_mut() {
-                                if modifiers.shift() {
-                                    card.width = (card.width - gs).max(120.0);
-                                } else {
-                                    card.x -= gs;
-                                }
-                                canvas_cache.clear();
-                            }
-                        }
-                        iced::keyboard::Key::Named(Named::ArrowRight) => {
-                            if let Some(card) = cards.last_mut() {
-                                if modifiers.shift() {
-                                    card.width += gs;
-                                } else {
-                                    card.x += gs;
-                                }
-                                canvas_cache.clear();
-                            }
-                        }
-                        iced::keyboard::Key::Named(Named::ArrowUp) => {
-                            if let Some(card) = cards.last_mut() {
-                                if modifiers.shift() {
-                                    card.height = (card.height - gs).max(80.0);
-                                } else {
-                                    card.y -= gs;
-                                }
-                                canvas_cache.clear();
-                            }
-                        }
-                        iced::keyboard::Key::Named(Named::ArrowDown) => {
-                            if let Some(card) = cards.last_mut() {
-                                if modifiers.shift() {
-                                    card.height += gs;
-                                } else {
-                                    card.y += gs;
-                                }
-                                canvas_cache.clear();
-                            }
-                        }
-                        _ => {}
+                    if *active_right_panel == Some(tab) {
+                        *active_right_panel = None;
+                    } else {
+                        *active_right_panel = Some(tab);
                     }
-                    let _ = save_layout(cards);
+                }
+                Task::none()
+            }
+            Message::WindowResized(w) => {
+                if let AppState::Main { window_width, .. } = &mut self.state {
+                    *window_width = w;
                 }
                 Task::none()
             }
@@ -687,11 +553,17 @@ impl App {
             AppState::Main {
                 nav_item,
                 playback,
-                cards,
-                canvas_cache,
-                grid_size,
+                sidebar_width,
+                right_panel_width,
+                active_right_panel,
                 ..
-            } => crate::ui::main_layout::view(nav_item, playback, cards, canvas_cache, *grid_size),
+            } => crate::ui::main_layout::view(
+                nav_item,
+                playback,
+                *sidebar_width,
+                *right_panel_width,
+                *active_right_panel,
+            ),
         };
 
         if let Some(err) = &self.active_error {
@@ -765,48 +637,33 @@ fn get_layout_path() -> PathBuf {
     std::path::Path::new(&home).join(".spotifust_layout")
 }
 
-pub fn save_layout(cards: &[Card]) -> Result<(), std::io::Error> {
+pub fn save_layout(sidebar_width: f32, right_panel_width: f32) -> Result<(), std::io::Error> {
     let path = get_layout_path();
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
     let mut file = File::create(path)?;
-    for card in cards {
-        writeln!(
-            file,
-            "{},{},{},{},{}",
-            card.id, card.x, card.y, card.width, card.height
-        )?;
-    }
+    writeln!(file, "{sidebar_width},{right_panel_width}")?;
     Ok(())
 }
 
-pub fn load_layout(cards: &mut [Card]) -> Result<(), std::io::Error> {
+pub fn load_layout() -> (f32, f32) {
+    let default_sidebar = 280.0;
+    let default_right = 320.0;
     let path = get_layout_path();
     if !path.exists() {
-        return Ok(());
+        return (default_sidebar, default_right);
     }
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    for line in reader.lines() {
-        let line = line?;
-        let parts: Vec<&str> = line.split(',').collect();
-        if parts.len() == 5 {
-            let id = parts[0];
-            if let (Ok(x), Ok(y), Ok(w), Ok(h)) = (
-                parts[1].parse::<f32>(),
-                parts[2].parse::<f32>(),
-                parts[3].parse::<f32>(),
-                parts[4].parse::<f32>(),
-            ) {
-                if let Some(card) = cards.iter_mut().find(|c| c.id == id) {
-                    card.x = x;
-                    card.y = y;
-                    card.width = w;
-                    card.height = h;
+    if let Ok(file) = File::open(path) {
+        let reader = BufReader::new(file);
+        if let Some(Ok(line)) = reader.lines().next() {
+            let parts: Vec<&str> = line.split(',').collect();
+            if parts.len() == 2 {
+                if let (Ok(sw), Ok(rw)) = (parts[0].parse::<f32>(), parts[1].parse::<f32>()) {
+                    return (sw, rw);
                 }
             }
         }
     }
-    Ok(())
+    (default_sidebar, default_right)
 }
