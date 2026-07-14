@@ -63,8 +63,13 @@ impl AudioEngine {
 
         // 2. OS Audio Thread (rodio Sink)
         std::thread::spawn(move || {
-            let stream =
-                OutputStreamBuilder::open_default_stream().expect("Failed to open audio output");
+            let stream = match OutputStreamBuilder::open_default_stream() {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("Failed to open mock audio output stream: {e}");
+                    return;
+                }
+            };
             let sink = Sink::connect_new(stream.mixer());
 
             let source = PcmSource {

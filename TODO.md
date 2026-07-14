@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [x] Stream playback position (elapsed ms) from the audio task to the UI via the mpsc channel
+- [x] Audit and eliminate any remaining `.unwrap()` / `.expect()` calls outside `main()` bootstrap
 
 ## Development Backlog
 
@@ -12,8 +12,8 @@
 - [x] Define central `AppError` enum (thiserror) with per-subsystem variants
 - [x] Set up base Model-View-Update loop in `src/app.rs`
 - [x] Set up full GitHub Actions CI/CD infrastructure, Issue templates, and documentation
-- [ ] Verify all `librespot` and `rspotify` raw error types are wrapped in `AppError` before reaching `Message` variants
-- [ ] Audit and eliminate any remaining `.unwrap()` / `.expect()` calls outside `main()` bootstrap
+- [x] Verify all `librespot` and `rspotify` raw error types are wrapped in `AppError` before reaching `Message` variants
+- [x] Audit and eliminate any remaining `.unwrap()` / `.expect()` calls outside `main()` bootstrap
 - [ ] Reduce RAM baseline from ~45 MB down to the target < 25 MB ceiling
 
 ### Phase 2: Canvas Layout Engine

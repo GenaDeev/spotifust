@@ -216,8 +216,12 @@ impl App {
                 Task::perform(
                     async move {
                         let token_mutex = spotify.get_token();
-                        let token_guard = token_mutex.lock().await.unwrap();
-                        let access_token = token_guard.as_ref().unwrap().access_token.clone();
+                        let token_guard = token_mutex.lock().await
+                            .map_err(|e| AppError::Auth(format!("Failed to lock token mutex: {e:?}")))?;
+                        let token_ref = (*token_guard).as_ref().ok_or_else(|| {
+                            AppError::Auth("No access token available".to_string())
+                        })?;
+                        let access_token = token_ref.access_token.clone();
                         crate::audio::session::connect_with_token(&access_token).await
                     },
                     |res| match res {

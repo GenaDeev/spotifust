@@ -38,14 +38,12 @@ impl Sink for MpscSink {
     }
 }
 
-pub fn spawn_rodio_thread(mut receiver: mpsc::Receiver<Vec<f32>>) {
+pub fn spawn_rodio_thread(
+    mut receiver: mpsc::Receiver<Vec<f32>>,
+    rodio_sink: RodioSink,
+    _stream: rodio::OutputStream,
+) {
     std::thread::spawn(move || {
-        let stream = rodio::OutputStreamBuilder::from_default_device()
-            .expect("Failed to get default device")
-            .open_stream()
-            .expect("Failed to open stream");
-        let rodio_sink = RodioSink::connect_new(stream.mixer());
-
         // Continuously read PCM chunks from librespot and append them to rodio
         while let Some(samples) = receiver.blocking_recv() {
             // Librespot outputs stereo 44.1kHz by default

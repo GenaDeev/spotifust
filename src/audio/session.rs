@@ -40,6 +40,7 @@ impl std::fmt::Debug for AudioSession {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppError> {
     let credentials = Credentials::with_access_token(access_token);
     let session_config = SessionConfig::default();
@@ -52,8 +53,14 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
 
     let player_config = PlayerConfig::default();
 
+    let builder = rodio::OutputStreamBuilder::from_default_device()
+        .map_err(|e| AppError::Playback(format!("Failed to get default audio device: {e}")))?;
+    let stream = builder.open_stream()
+        .map_err(|e| AppError::Playback(format!("Failed to open audio stream: {e}")))?;
+    let rodio_sink = rodio::Sink::connect_new(stream.mixer());
+
     let (audio_tx, audio_rx) = mpsc::channel::<Vec<f32>>(256);
-    crate::audio::sink::spawn_rodio_thread(audio_rx);
+    crate::audio::sink::spawn_rodio_thread(audio_rx, rodio_sink, stream);
 
     let player = Player::new(
         player_config,
