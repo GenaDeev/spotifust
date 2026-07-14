@@ -1,15 +1,21 @@
-use crate::app::{Message, NavigationItem, PlaybackState};
+use crate::app::{Message, NavigationItem, PlaybackState, Card};
 use crate::ui::icons::Icon;
 use crate::ui::theme;
+use crate::ui::canvas_view::CardCanvas;
 use iced::{
     Alignment, Background, Border, Element, Length, Theme,
-    widget::{Button, Column, Container, Row, Scrollable, Space, Text, container, slider},
+    widget::{Button, Column, Container, Row, Scrollable, Space, Text, container, slider, canvas},
 };
 
-pub fn view<'a>(nav_item: &'a NavigationItem, playback: &'a PlaybackState) -> Element<'a, Message> {
+pub fn view<'a>(
+    nav_item: &'a NavigationItem,
+    playback: &'a PlaybackState,
+    cards: &'a [Card],
+    canvas_cache: &'a canvas::Cache,
+) -> Element<'a, Message> {
     let top_bar = view_top_bar(*nav_item);
     let sidebar = view_sidebar();
-    let main_content = view_main_content(*nav_item);
+    let main_content = view_main_content(*nav_item, cards, canvas_cache);
     let playback_bar = view_playback_bar(playback);
 
     let middle_section = Row::new()
@@ -424,145 +430,27 @@ fn library_row<'a>(
         .into()
 }
 
-#[allow(clippy::too_many_lines)]
-fn view_main_content(_nav: NavigationItem) -> Element<'static, Message> {
+fn view_main_content<'a>(
+    _nav: NavigationItem,
+    cards: &'a [Card],
+    canvas_cache: &'a canvas::Cache,
+) -> Element<'a, Message> {
     let chips = Row::new()
         .spacing(8)
         .push(filter_chip("All"))
         .push(filter_chip("Music"))
         .push(filter_chip("Podcasts"));
 
-    let hero_grid = Column::new()
-        .spacing(8)
-        .push(
-            Row::new()
-                .spacing(8)
-                .push(mock_hero_card("Liked Songs"))
-                .push(mock_hero_card("Synthwave Architect"))
-                .push(mock_hero_card("Daily Mix 1")),
-        )
-        .push(
-            Row::new()
-                .spacing(8)
-                .push(mock_hero_card("Discover Weekly"))
-                .push(mock_hero_card("Rustaceans Unite"))
-                .push(mock_hero_card("Release Radar")),
-        );
+    let canvas_widget = canvas(CardCanvas::new(cards, canvas_cache))
+        .width(Length::Fill)
+        .height(Length::Fill);
 
-    let recently_played = Column::new()
+    let layout = Column::new()
         .spacing(16)
-        .push(
-            Row::new()
-                .push(
-                    Text::new("Recently played")
-                        .size(24)
-                        .font(iced::Font {
-                            weight: iced::font::Weight::Bold,
-                            ..Default::default()
-                        })
-                        .color(theme::TEXT_PRIMARY),
-                )
-                .push(Space::new().width(Length::Fill))
-                .push(
-                    Text::new("Show all")
-                        .size(14)
-                        .color(theme::TEXT_SECONDARY)
-                        .font(iced::Font {
-                            weight: iced::font::Weight::Bold,
-                            ..Default::default()
-                        }),
-                ),
-        )
-        .push(
-            Scrollable::new(
-                Row::new()
-                    .spacing(16)
-                    .push(mock_vertical_card("The Midnight", "Artist", true))
-                    .push(mock_vertical_card("Trilogy", "Carpenter Brut", false))
-                    .push(mock_vertical_card("Endless Summer", "The Midnight", false))
-                    .push(mock_vertical_card("Atlas", "FM-84", false))
-                    .push(mock_vertical_card("Night Drive", "Timecop1983", false)),
-            )
-            .direction(iced::widget::scrollable::Direction::Horizontal(
-                iced::widget::scrollable::Scrollbar::new(),
-            )),
-        );
+        .push(chips)
+        .push(canvas_widget);
 
-    let made_for_you = Column::new()
-        .spacing(16)
-        .push(
-            Row::new()
-                .push(
-                    Text::new("Made for you")
-                        .size(24)
-                        .font(iced::Font {
-                            weight: iced::font::Weight::Bold,
-                            ..Default::default()
-                        })
-                        .color(theme::TEXT_PRIMARY),
-                )
-                .push(Space::new().width(Length::Fill))
-                .push(
-                    Text::new("Show all")
-                        .size(14)
-                        .color(theme::TEXT_SECONDARY)
-                        .font(iced::Font {
-                            weight: iced::font::Weight::Bold,
-                            ..Default::default()
-                        }),
-                ),
-        )
-        .push(
-            Scrollable::new(
-                Row::new()
-                    .spacing(16)
-                    .push(mock_vertical_card(
-                        "Daily Mix 1",
-                        "The Midnight, FM-84, Gunship",
-                        false,
-                    ))
-                    .push(mock_vertical_card("Daily Mix 2", "Rust, Go, C++", false))
-                    .push(mock_vertical_card(
-                        "Discover Weekly",
-                        "New music for you",
-                        false,
-                    ))
-                    .push(mock_vertical_card(
-                        "Release Radar",
-                        "Catch up on the latest",
-                        false,
-                    ))
-                    .push(mock_vertical_card(
-                        "On Repeat",
-                        "Songs you love right now",
-                        false,
-                    )),
-            )
-            .direction(iced::widget::scrollable::Direction::Horizontal(
-                iced::widget::scrollable::Scrollbar::new(),
-            )),
-        );
-
-    let content_area = Scrollable::new(
-        Column::new().push(
-            Container::new(
-                Column::new()
-                    .spacing(32)
-                    .push(chips)
-                    .push(hero_grid)
-                    .push(recently_played)
-                    .push(made_for_you)
-                    .push(
-                        Space::new()
-                            .width(Length::Fixed(1.0))
-                            .height(Length::Fixed(48.0)),
-                    ),
-            )
-            .padding([24, 24]),
-        ),
-    );
-
-    Container::new(content_area)
+    Container::new(layout)
         .width(Length::Fill)
         .height(Length::Fill)
         .style(|_theme: &Theme| container::Style {
@@ -573,6 +461,7 @@ fn view_main_content(_nav: NavigationItem) -> Element<'static, Message> {
             },
             ..Default::default()
         })
+        .padding(16)
         .into()
 }
 
@@ -676,136 +565,7 @@ fn icon_button_circle_active<'a>(
     .into()
 }
 
-fn mock_hero_card(title: &str) -> Element<'_, Message> {
-    let content = Row::new()
-        .push(
-            Container::new(Icon::Album.view(24.0))
-                .width(Length::Fixed(64.0))
-                .height(Length::Fixed(64.0))
-                .align_x(iced::alignment::Horizontal::Center)
-                .align_y(iced::alignment::Vertical::Center)
-                .style(|_theme: &Theme| container::Style {
-                    background: Some(Background::Color(theme::SURFACE_2)),
-                    text_color: Some(theme::TEXT_SECONDARY),
-                    ..Default::default()
-                }),
-        )
-        .push(
-            Container::new(
-                Text::new(title)
-                    .size(15)
-                    .font(iced::Font {
-                        weight: iced::font::Weight::Bold,
-                        ..Default::default()
-                    })
-                    .color(theme::TEXT_PRIMARY),
-            )
-            .padding([0, 16])
-            .center_y(Length::Fill),
-        );
 
-    Button::new(content)
-        .padding(0)
-        .width(Length::FillPortion(1))
-        .on_press(Message::MockAction)
-        .style(|_theme: &Theme, status| {
-            let base = iced::widget::button::Style {
-                background: Some(Background::Color(iced::Color {
-                    r: 1.0,
-                    g: 1.0,
-                    b: 1.0,
-                    a: 0.08,
-                })),
-                border: Border {
-                    radius: 4.0.into(),
-                    ..Default::default()
-                },
-                ..Default::default()
-            };
-            match status {
-                iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                    background: Some(Background::Color(iced::Color {
-                        r: 1.0,
-                        g: 1.0,
-                        b: 1.0,
-                        a: 0.15,
-                    })),
-                    ..base
-                },
-                _ => base,
-            }
-        })
-        .into()
-}
-
-fn mock_vertical_card<'a>(
-    title: &'a str,
-    subtitle: &'a str,
-    is_circular: bool,
-) -> Element<'a, Message> {
-    // TODO: When integrating real API data, this component should take a `Track` object
-    // and render the real album cover image, track name, and artist name.
-    let content = Column::new()
-        .spacing(16)
-        .push(
-            Container::new(Icon::MusicNote.view(48.0))
-                .width(Length::Fill)
-                .height(Length::Fixed(160.0))
-                .align_x(iced::alignment::Horizontal::Center)
-                .align_y(iced::alignment::Vertical::Center)
-                .style(move |_theme: &Theme| container::Style {
-                    background: Some(Background::Color(theme::SURFACE_2)),
-                    border: Border {
-                        radius: if is_circular {
-                            999.0.into()
-                        } else {
-                            8.0.into()
-                        },
-                        ..Default::default()
-                    },
-                    text_color: Some(theme::TEXT_SECONDARY),
-                    ..Default::default()
-                }),
-        )
-        .push(
-            Column::new()
-                .spacing(4)
-                .push(
-                    Text::new(title)
-                        .size(16)
-                        .color(theme::TEXT_PRIMARY)
-                        .font(iced::Font {
-                            weight: iced::font::Weight::Bold,
-                            ..Default::default()
-                        }),
-                )
-                .push(Text::new(subtitle).size(14).color(theme::TEXT_SECONDARY)),
-        );
-
-    Button::new(content)
-        .padding(16)
-        .width(Length::Fixed(192.0))
-        .height(Length::Fixed(280.0)) // TODO: Fix height calculation
-        .on_press(Message::MockAction)
-        .style(|_theme: &Theme, status| {
-            let base = iced::widget::button::Style {
-                background: Some(Background::Color(theme::SURFACE_1)),
-                border: Border {
-                    radius: 8.0.into(),
-                    ..Default::default()
-                },
-                ..Default::default()
-            };
-            match status {
-                iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                    background: Some(Background::Color(theme::SURFACE_2)),
-                    ..base
-                },
-                _ => base,
-            }
-        })
-        .into()
-}
 
 #[allow(clippy::too_many_lines, clippy::cast_precision_loss)]
 fn view_playback_bar(playback: &PlaybackState) -> Element<'_, Message> {

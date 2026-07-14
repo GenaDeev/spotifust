@@ -45,6 +45,22 @@ impl Default for PlaybackState {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Card {
+    pub id: String,
+    pub title: String,
+    pub subtitle: String,
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+    pub dragging: bool,
+    pub resizing: bool,
+    pub hovered: bool,
+    pub drag_offset: Option<(f32, f32)>,
+}
+
+#[allow(clippy::large_enum_variant)]
 pub enum AppState {
     Login {
         is_loading: bool,
@@ -54,6 +70,8 @@ pub enum AppState {
         nav_item: NavigationItem,
         playback: PlaybackState,
         audio_session: Option<AudioSession>,
+        cards: Vec<Card>,
+        canvas_cache: iced::widget::canvas::Cache,
     },
 }
 
@@ -84,6 +102,19 @@ pub enum Message {
     SkipPrev,
     SeekTo(f32),        // 0.0 to 1.0
     VolumeChanged(f32), // 0.0 to 1.0
+    // Card Layout Messages
+    CardPressed {
+        id: String,
+        is_resize: bool,
+        offset_x: f32,
+        offset_y: f32,
+    },
+    CardMoved {
+        x: f32,
+        y: f32,
+    },
+    CardReleased,
+    CardHovered(Option<String>),
     // Mock UI Actions
     MockAction,
 }
@@ -207,10 +238,54 @@ impl App {
                     current_track_uri: None,
                 };
 
+                let default_cards = vec![
+                    Card {
+                        id: "liked_songs".to_string(),
+                        title: "Liked Songs".to_string(),
+                        subtitle: "Your favorite tracks".to_string(),
+                        x: 40.0,
+                        y: 40.0,
+                        width: 250.0,
+                        height: 180.0,
+                        dragging: false,
+                        resizing: false,
+                        hovered: false,
+                        drag_offset: None,
+                    },
+                    Card {
+                        id: "synthwave".to_string(),
+                        title: "Synthwave Architect".to_string(),
+                        subtitle: "Album • Neon Dreams".to_string(),
+                        x: 320.0,
+                        y: 40.0,
+                        width: 250.0,
+                        height: 180.0,
+                        dragging: false,
+                        resizing: false,
+                        hovered: false,
+                        drag_offset: None,
+                    },
+                    Card {
+                        id: "recently_played".to_string(),
+                        title: "Recently Played".to_string(),
+                        subtitle: "Carpenter Brut, The Midnight...".to_string(),
+                        x: 40.0,
+                        y: 260.0,
+                        width: 530.0,
+                        height: 220.0,
+                        dragging: false,
+                        resizing: false,
+                        hovered: false,
+                        drag_offset: None,
+                    },
+                ];
+
                 self.state = AppState::Main {
                     nav_item: NavigationItem::Home,
                     playback: mock_playback,
                     audio_session: None,
+                    cards: default_cards,
+                    canvas_cache: iced::widget::canvas::Cache::default(),
                 };
 
                 Task::perform(
@@ -396,6 +471,56 @@ impl App {
                 }
                 Task::none()
             }
+            Message::CardPressed { id, is_resize, offset_x, offset_y } => {
+                if let AppState::Main { cards, canvas_cache, .. } = &mut self.state {
+                    if let Some(pos) = cards.iter().position(|c| c.id == id) {
+                        let mut card = cards.remove(pos);
+                        card.dragging = !is_resize;
+                        card.resizing = is_resize;
+                        card.drag_offset = Some((offset_x, offset_y));
+                        cards.push(card);
+                        canvas_cache.clear();
+                    }
+                }
+                Task::none()
+            }
+            Message::CardMoved { x, y } => {
+                if let AppState::Main { cards, canvas_cache, .. } = &mut self.state {
+                    for card in cards.iter_mut() {
+                        if card.dragging {
+                            if let Some((offset_x, offset_y)) = card.drag_offset {
+                                card.x = x - offset_x;
+                                card.y = y - offset_y;
+                                canvas_cache.clear();
+                            }
+                        } else if card.resizing {
+                            card.width = (x - card.x).max(120.0);
+                            card.height = (y - card.y).max(80.0);
+                            canvas_cache.clear();
+                        }
+                    }
+                }
+                Task::none()
+            }
+            Message::CardReleased => {
+                if let AppState::Main { cards, canvas_cache, .. } = &mut self.state {
+                    for card in cards.iter_mut() {
+                        card.dragging = false;
+                        card.resizing = false;
+                        card.drag_offset = None;
+                    }
+                    canvas_cache.clear();
+                }
+                Task::none()
+            }
+            Message::CardHovered(hovered_id) => {
+                if let AppState::Main { cards, .. } = &mut self.state {
+                    for card in cards.iter_mut() {
+                        card.hovered = Some(card.id.clone()) == hovered_id;
+                    }
+                }
+                Task::none()
+            }
         }
     }
 
@@ -405,8 +530,8 @@ impl App {
                 login::view("", "", *is_loading, error.as_deref())
             }
             AppState::Main {
-                nav_item, playback, ..
-            } => crate::ui::main_layout::view(nav_item, playback),
+                nav_item, playback, cards, canvas_cache, ..
+            } => crate::ui::main_layout::view(nav_item, playback, cards, canvas_cache),
         }
     }
 }

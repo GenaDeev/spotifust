@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [x] Reduce RAM baseline from ~45 MB down to the target < 25 MB ceiling
+- [ ] Implement card grid snapping so cards align to a configurable grid on release
 
 ## Development Backlog
 
@@ -18,13 +18,13 @@
 
 ### Phase 2: Canvas Layout Engine
 
-- [ ] Implement `iced::widget::canvas::Program` struct for the card-based layout system
-- [ ] Define `Card` state struct (`position`, `size`, `dragging`, `hovered`) inside the central `Model`, not the canvas struct
-- [ ] Implement bounding-box tracking and hit-testing for card pointer events
-- [ ] Handle `PointerPressed` / `PointerMoved` / `PointerReleased` inside `canvas::Program::update` for drag-and-resize
-- [ ] Wire `canvas::Cache` invalidation exclusively to geometry-changing messages (drag, resize, add, remove)
+- [x] Implement `iced::widget::canvas::Program` struct for the card-based layout system
+- [x] Define `Card` state struct (`position`, `size`, `dragging`, `hovered`) inside the central `Model`, not the canvas struct
+- [x] Implement bounding-box tracking and hit-testing for card pointer events
+- [x] Handle `PointerPressed` / `PointerMoved` / `PointerReleased` inside `canvas::Program::update` for drag-and-resize
+- [x] Wire `canvas::Cache` invalidation exclusively to geometry-changing messages (drag, resize, add, remove)
 - [ ] Implement card grid snapping so cards align to a configurable grid on release
-- [ ] Implement card z-order management (bring to front on focus)
+- [x] Implement card z-order management (bring to front on focus)
 - [ ] Persist card layout to disk so the arrangement survives restarts
 - [ ] Add keyboard shortcuts for card navigation and resizing
 
