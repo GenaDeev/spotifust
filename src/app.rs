@@ -126,6 +126,8 @@ pub enum Message {
     DismissError,
     // Grid Actions
     CycleGridSize,
+    // Keyboard Actions
+    KeyboardAction(iced::keyboard::Key, iced::keyboard::Modifiers),
 }
 
 struct PlayerEventsRecipe {
@@ -197,13 +199,26 @@ impl App {
             AppState::Login {
                 is_loading: true, ..
             } => iced::time::every(std::time::Duration::from_secs(2)).map(|_| Message::CheckLogin),
-            AppState::Main {
-                audio_session: Some(session),
-                ..
-            } => iced::advanced::subscription::from_recipe(PlayerEventsRecipe {
-                events: Arc::clone(&session.events),
-            }),
-            _ => iced::Subscription::none(),
+            AppState::Main { audio_session, .. } => {
+                let mut subs = vec![];
+                if let Some(session) = audio_session {
+                    subs.push(iced::advanced::subscription::from_recipe(
+                        PlayerEventsRecipe {
+                            events: Arc::clone(&session.events),
+                        },
+                    ));
+                }
+                subs.push(iced::event::listen().filter_map(|event| match event {
+                    iced::Event::Keyboard(iced::keyboard::Event::KeyPressed {
+                        key,
+                        modifiers,
+                        ..
+                    }) => Some(Message::KeyboardAction(key, modifiers)),
+                    _ => None,
+                }));
+                iced::Subscription::batch(subs)
+            }
+            AppState::Login { .. } => iced::Subscription::none(),
         }
     }
 
@@ -593,6 +608,71 @@ impl App {
                     for card in cards.iter_mut() {
                         card.hovered = Some(card.id.clone()) == hovered_id;
                     }
+                }
+                Task::none()
+            }
+            Message::KeyboardAction(key, modifiers) => {
+                if let AppState::Main {
+                    cards,
+                    canvas_cache,
+                    grid_size,
+                    ..
+                } = &mut self.state
+                {
+                    use iced::keyboard::key::Named;
+                    let gs = if *grid_size > 1.0 { *grid_size } else { 10.0 };
+
+                    match key {
+                        iced::keyboard::Key::Named(Named::Tab) => {
+                            if !cards.is_empty() {
+                                let card = cards.remove(0);
+                                cards.push(card);
+                                canvas_cache.clear();
+                            }
+                        }
+                        iced::keyboard::Key::Named(Named::ArrowLeft) => {
+                            if let Some(card) = cards.last_mut() {
+                                if modifiers.shift() {
+                                    card.width = (card.width - gs).max(120.0);
+                                } else {
+                                    card.x -= gs;
+                                }
+                                canvas_cache.clear();
+                            }
+                        }
+                        iced::keyboard::Key::Named(Named::ArrowRight) => {
+                            if let Some(card) = cards.last_mut() {
+                                if modifiers.shift() {
+                                    card.width += gs;
+                                } else {
+                                    card.x += gs;
+                                }
+                                canvas_cache.clear();
+                            }
+                        }
+                        iced::keyboard::Key::Named(Named::ArrowUp) => {
+                            if let Some(card) = cards.last_mut() {
+                                if modifiers.shift() {
+                                    card.height = (card.height - gs).max(80.0);
+                                } else {
+                                    card.y -= gs;
+                                }
+                                canvas_cache.clear();
+                            }
+                        }
+                        iced::keyboard::Key::Named(Named::ArrowDown) => {
+                            if let Some(card) = cards.last_mut() {
+                                if modifiers.shift() {
+                                    card.height += gs;
+                                } else {
+                                    card.y += gs;
+                                }
+                                canvas_cache.clear();
+                            }
+                        }
+                        _ => {}
+                    }
+                    let _ = save_layout(cards);
                 }
                 Task::none()
             }

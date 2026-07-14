@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Add keyboard shortcuts for card navigation and resizing
+- [ ] Implement Seek: accept a `f32` position ratio from the seek bar and call `player.seek(ms)`
 
 ## Development Backlog
 
@@ -26,7 +26,7 @@
 - [x] Implement card grid snapping so cards align to a configurable grid on release
 - [x] Implement card z-order management (bring to front on focus)
 - [x] Persist card layout to disk so the arrangement survives restarts
-- [ ] Add keyboard shortcuts for card navigation and resizing
+- [x] Add keyboard shortcuts for card navigation and resizing
 
 ### Phase 3: Librespot Audio & Session Pipeline
 
