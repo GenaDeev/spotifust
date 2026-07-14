@@ -15,6 +15,7 @@ if [ "$(uname)" == "Darwin" ]; then
     mkdir -p "$APP_DIR/MacOS"
     mkdir -p "$APP_DIR/Resources"
     cp target/release/spotifust "$APP_DIR/MacOS/"
+    cp assets/spotifust.icns "$APP_DIR/Resources/"
     
     cat <<EOF > "$APP_DIR/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -31,6 +32,8 @@ if [ "$(uname)" == "Darwin" ]; then
     <string>${APP_VERSION}</string>
     <key>CFBundleShortVersionString</key>
     <string>${APP_VERSION}</string>
+    <key>CFBundleIconFile</key>
+    <string>spotifust.icns</string>
 </dict>
 </plist>
 EOF

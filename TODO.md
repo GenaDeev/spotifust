@@ -94,6 +94,7 @@
 
 ### Phase 7: System Integration & Distribution
 
+- [x] Add application window and taskbar/dock icon support for Windows, macOS, and Linux distros
 - [ ] Add a system tray icon with Play/Pause, Skip, and Quit actions
 - [ ] Register global media key bindings (MPRIS on Linux, MediaSession on Windows/macOS)
 - [ ] Implement MPRIS2 D-Bus interface on Linux for desktop environment integration

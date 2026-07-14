@@ -35,6 +35,10 @@ fn main() -> iced::Result {
         .title("Spotifust")
         .window(iced::window::Settings {
             icon: load_icon(),
+            platform_specific: iced::window::settings::PlatformSpecific {
+                application_id: String::from("spotifust"),
+                ..Default::default()
+            },
             ..Default::default()
         })
         .subscription(app::App::subscription)
