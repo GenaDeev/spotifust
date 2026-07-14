@@ -882,9 +882,13 @@ fn view_playback_bar(playback: &PlaybackState) -> Element<'_, Message> {
                             }),
                     )
                     .push(
-                        Text::new(&track.artist)
-                            .size(12)
-                            .color(theme::TEXT_SECONDARY),
+                        Text::new(if track.album.is_empty() {
+                            track.artist.clone()
+                        } else {
+                            format!("{} — {}", track.artist, track.album)
+                        })
+                        .size(12)
+                        .color(theme::TEXT_SECONDARY),
                     ),
             )
             .push(icon_button_active(Icon::Heart, Message::MockAction, true)) // Mock active liked

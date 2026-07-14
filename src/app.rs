@@ -20,6 +20,7 @@ pub enum NavigationItem {
 pub struct TrackInfo {
     pub title: String,
     pub artist: String,
+    pub album: String,
     pub duration_ms: u32,
 }
 
@@ -193,6 +194,7 @@ impl App {
                     current_track: Some(TrackInfo {
                         title: "Neon Nights".to_string(),
                         artist: "Synthwave Architect".to_string(),
+                        album: "Neon Dreams".to_string(),
                         duration_ms: 225_000,
                     }),
                     progress_ms: 85_000,
@@ -242,6 +244,31 @@ impl App {
                         if let AppState::Main { playback, .. } = &mut self.state {
                             playback.is_playing = false;
                             playback.progress_ms = *position_ms;
+                        }
+                    }
+                    PlayerEvent::TrackChanged { audio_item } => {
+                        if let AppState::Main { playback, .. } = &mut self.state {
+                            use librespot::metadata::audio::UniqueFields;
+                            let (artist, album) = match &audio_item.unique_fields {
+                                UniqueFields::Track { artists, album, .. } => {
+                                    let artist_names: Vec<&str> =
+                                        artists.iter().map(|a| a.name.as_str()).collect();
+                                    (artist_names.join(", "), album.clone())
+                                }
+                                UniqueFields::Episode { show_name, .. } => {
+                                    (show_name.clone(), String::new())
+                                }
+                                UniqueFields::Local { artists, album, .. } => (
+                                    artists.clone().unwrap_or_default(),
+                                    album.clone().unwrap_or_default(),
+                                ),
+                            };
+                            playback.current_track = Some(TrackInfo {
+                                title: audio_item.name.clone(),
+                                artist,
+                                album,
+                                duration_ms: audio_item.duration_ms,
+                            });
                         }
                     }
                     PlayerEvent::Stopped { .. } => {
