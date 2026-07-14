@@ -66,4 +66,3 @@ fn main() -> iced::Result {
         .subscription(app::App::subscription)
         .run()
 }
-
