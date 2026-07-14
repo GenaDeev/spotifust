@@ -15,6 +15,31 @@ fn load_icon() -> Option<iced::window::Icon> {
     iced::window::icon::from_rgba(rgba.into_raw(), width, height).ok()
 }
 
+#[cfg(any(
+    target_os = "linux",
+    target_os = "freebsd",
+    target_os = "dragonfly",
+    target_os = "openbsd",
+    target_os = "netbsd"
+))]
+fn get_platform_settings() -> iced::window::settings::PlatformSpecific {
+    iced::window::settings::PlatformSpecific {
+        application_id: String::from("spotifust"),
+        ..Default::default()
+    }
+}
+
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "freebsd",
+    target_os = "dragonfly",
+    target_os = "openbsd",
+    target_os = "netbsd"
+)))]
+fn get_platform_settings() -> iced::window::settings::PlatformSpecific {
+    iced::window::settings::PlatformSpecific::default()
+}
+
 fn main() -> iced::Result {
     // Intercept custom protocol launch (OAuth callback via spotifust:// scheme).
     // This instance writes the callback URL to a temp file for the main instance
@@ -35,12 +60,10 @@ fn main() -> iced::Result {
         .title("Spotifust")
         .window(iced::window::Settings {
             icon: load_icon(),
-            platform_specific: iced::window::settings::PlatformSpecific {
-                application_id: String::from("spotifust"),
-                ..Default::default()
-            },
+            platform_specific: get_platform_settings(),
             ..Default::default()
         })
         .subscription(app::App::subscription)
         .run()
 }
+
