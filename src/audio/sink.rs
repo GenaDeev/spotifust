@@ -40,7 +40,7 @@ impl Sink for MpscSink {
 
 pub fn spawn_rodio_thread(
     mut receiver: mpsc::Receiver<Vec<f32>>,
-    rodio_sink: RodioSink,
+    rodio_sink: std::sync::Arc<RodioSink>,
     _stream: rodio::OutputStream,
 ) {
     std::thread::spawn(move || {

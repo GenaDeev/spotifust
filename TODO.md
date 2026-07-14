@@ -118,11 +118,11 @@
 ## Architectural Debt
 
 - [ ] The Canvas Layout Engine was listed as completed but was never implemented; all Phase 2 items are open
-- [ ] Volume slider and seek bar have only two discrete positions and do not cover their full range
+- [x] Volume slider and seek bar have only two discrete positions and do not cover their full range
 - [ ] All playlist/album/track data shown in the UI is hardcoded mock data, not from the Spotify API
 - [ ] RAM usage is currently ~45 MB, nearly double the 25 MB target
-- [ ] The librespot session may be storing or caching credentials insecurely; needs a full audit
-- [ ] No structured error surfacing to the user: errors silently fail or panic instead of showing in the UI
+- [x] The librespot session may be storing or caching credentials insecurely; needs a full audit (Audit complete: keyring used, no plaintext or librespot cache on disk)
+- [x] No structured error surfacing to the user: errors silently fail or panic instead of showing in the UI
 
 ## Blocked / Needs Human Decision
 

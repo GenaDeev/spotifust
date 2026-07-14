@@ -79,6 +79,7 @@ pub struct App {
     pub state: AppState,
     #[allow(dead_code)]
     pub audio_tx: tokio::sync::mpsc::Sender<AudioCommand>,
+    pub active_error: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -117,6 +118,8 @@ pub enum Message {
     CardHovered(Option<String>),
     // Mock UI Actions
     MockAction,
+    // Error Actions
+    DismissError,
 }
 
 struct PlayerEventsRecipe {
@@ -171,6 +174,7 @@ impl App {
                     error: None,
                 },
                 audio_tx,
+                active_error: None,
             },
             Task::perform(
                 async { crate::api::auth::check_existing_login().await },
@@ -201,7 +205,11 @@ impl App {
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ErrorEncountered(e) => {
-                eprintln!("Error encountered: {e:?}");
+                self.active_error = Some(e.to_string());
+                Task::none()
+            }
+            Message::DismissError => {
+                self.active_error = None;
                 Task::none()
             }
             Message::LoginRequested => {
@@ -469,8 +477,16 @@ impl App {
                 Task::none()
             }
             Message::VolumeChanged(vol) => {
-                if let AppState::Main { playback, .. } = &mut self.state {
+                if let AppState::Main {
+                    playback,
+                    audio_session,
+                    ..
+                } = &mut self.state
+                {
                     playback.volume = vol;
+                    if let Some(session) = audio_session {
+                        let _ = session.cmd_tx.try_send(PlayerCommand::Volume(vol));
+                    }
                 }
                 Task::none()
             }
@@ -548,7 +564,7 @@ impl App {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        match &self.state {
+        let content = match &self.state {
             AppState::Login { is_loading, error } => {
                 login::view("", "", *is_loading, error.as_deref())
             }
@@ -559,6 +575,69 @@ impl App {
                 canvas_cache,
                 ..
             } => crate::ui::main_layout::view(nav_item, playback, cards, canvas_cache),
+        };
+
+        if let Some(err) = &self.active_error {
+            use crate::ui::icons::Icon;
+            use crate::ui::theme;
+            use iced::widget::{Button, Column, Container, Row, Text, container};
+            use iced::{Alignment, Background, Border, Length};
+
+            let error_banner = Container::new(
+                Row::new()
+                    .spacing(12)
+                    .align_y(Alignment::Center)
+                    .push(Icon::X.view_colored(16.0, theme::TEXT_PRIMARY))
+                    .push(
+                        Text::new(err)
+                            .size(14)
+                            .color(theme::TEXT_PRIMARY)
+                            .width(Length::Fill),
+                    )
+                    .push(
+                        Button::new(Icon::X.view_colored(14.0, theme::TEXT_SECONDARY))
+                            .padding(4)
+                            .on_press(Message::DismissError)
+                            .style(|_theme, status| {
+                                let base = iced::widget::button::Style {
+                                    background: Some(Background::Color(iced::Color::TRANSPARENT)),
+                                    ..Default::default()
+                                };
+                                match status {
+                                    iced::widget::button::Status::Hovered => {
+                                        iced::widget::button::Style {
+                                            background: Some(Background::Color(theme::SURFACE_2)),
+                                            ..base
+                                        }
+                                    }
+                                    _ => base,
+                                }
+                            }),
+                    ),
+            )
+            .padding([8, 16])
+            .width(Length::Fill)
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(iced::Color {
+                    r: 0.7,
+                    g: 0.15,
+                    b: 0.15,
+                    a: 1.0,
+                })),
+                border: Border {
+                    radius: 4.0.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            });
+
+            Column::new()
+                .spacing(8)
+                .push(error_banner)
+                .push(content)
+                .into()
+        } else {
+            content
         }
     }
 }

@@ -18,6 +18,7 @@ pub enum PlayerCommand {
     SkipNext,
     SkipPrev,
     Seek(u32),
+    Volume(f32),
 }
 
 #[derive(Debug, Clone)]
@@ -58,10 +59,10 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
     let stream = builder
         .open_stream()
         .map_err(|e| AppError::Playback(format!("Failed to open audio stream: {e}")))?;
-    let rodio_sink = rodio::Sink::connect_new(stream.mixer());
+    let rodio_sink = Arc::new(rodio::Sink::connect_new(stream.mixer()));
 
     let (audio_tx, audio_rx) = mpsc::channel::<Vec<f32>>(8);
-    crate::audio::sink::spawn_rodio_thread(audio_rx, rodio_sink, stream);
+    crate::audio::sink::spawn_rodio_thread(audio_rx, Arc::clone(&rodio_sink), stream);
 
     let player = Player::new(
         player_config,
@@ -134,6 +135,7 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
     });
 
     let player_cmd = Arc::clone(&player);
+    let rodio_sink_cmd = Arc::clone(&rodio_sink);
     tokio::spawn(async move {
         let mut current_uri: Option<String> = None;
 
@@ -168,6 +170,9 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                 }
                 PlayerCommand::Seek(pos_ms) => {
                     player_cmd.seek(pos_ms);
+                }
+                PlayerCommand::Volume(vol) => {
+                    rodio_sink_cmd.set_volume(vol);
                 }
             }
         }
