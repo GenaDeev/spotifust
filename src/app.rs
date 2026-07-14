@@ -72,6 +72,7 @@ pub enum AppState {
         audio_session: Option<AudioSession>,
         cards: Vec<Card>,
         canvas_cache: iced::widget::canvas::Cache,
+        grid_size: f32,
     },
 }
 
@@ -120,6 +121,8 @@ pub enum Message {
     MockAction,
     // Error Actions
     DismissError,
+    // Grid Actions
+    CycleGridSize,
 }
 
 struct PlayerEventsRecipe {
@@ -296,6 +299,7 @@ impl App {
                     audio_session: None,
                     cards: default_cards,
                     canvas_cache: iced::widget::canvas::Cache::default(),
+                    grid_size: 20.0,
                 };
 
                 Task::perform(
@@ -540,15 +544,37 @@ impl App {
                 if let AppState::Main {
                     cards,
                     canvas_cache,
+                    grid_size,
                     ..
                 } = &mut self.state
                 {
+                    let gs = *grid_size;
                     for card in cards.iter_mut() {
+                        if card.dragging {
+                            card.x = (card.x / gs).round() * gs;
+                            card.y = (card.y / gs).round() * gs;
+                        }
+                        if card.resizing {
+                            card.width = ((card.width / gs).round() * gs).max(120.0);
+                            card.height = ((card.height / gs).round() * gs).max(80.0);
+                        }
                         card.dragging = false;
                         card.resizing = false;
                         card.drag_offset = None;
                     }
                     canvas_cache.clear();
+                }
+                Task::none()
+            }
+            Message::CycleGridSize => {
+                if let AppState::Main { grid_size, .. } = &mut self.state {
+                    *grid_size = match *grid_size {
+                        1.0 => 10.0,
+                        10.0 => 20.0,
+                        20.0 => 50.0,
+                        50.0 => 1.0,
+                        _ => 20.0,
+                    };
                 }
                 Task::none()
             }
@@ -573,8 +599,9 @@ impl App {
                 playback,
                 cards,
                 canvas_cache,
+                grid_size,
                 ..
-            } => crate::ui::main_layout::view(nav_item, playback, cards, canvas_cache),
+            } => crate::ui::main_layout::view(nav_item, playback, cards, canvas_cache, *grid_size),
         };
 
         if let Some(err) = &self.active_error {

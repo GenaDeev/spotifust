@@ -12,10 +12,11 @@ pub fn view<'a>(
     playback: &'a PlaybackState,
     cards: &'a [Card],
     canvas_cache: &'a canvas::Cache,
+    grid_size: f32,
 ) -> Element<'a, Message> {
     let top_bar = view_top_bar(*nav_item);
     let sidebar = view_sidebar();
-    let main_content = view_main_content(*nav_item, cards, canvas_cache);
+    let main_content = view_main_content(*nav_item, cards, canvas_cache, grid_size);
     let playback_bar = view_playback_bar(playback);
 
     let middle_section = Row::new()
@@ -434,12 +435,53 @@ fn view_main_content<'a>(
     _nav: NavigationItem,
     cards: &'a [Card],
     canvas_cache: &'a canvas::Cache,
+    grid_size: f32,
 ) -> Element<'a, Message> {
+    let grid_label = if (grid_size - 1.0).abs() < f32::EPSILON {
+        "Off".to_string()
+    } else {
+        format!("{grid_size}px")
+    };
+
+    let grid_control = Row::new()
+        .spacing(8)
+        .align_y(Alignment::Center)
+        .push(
+            Text::new("Snap Grid:")
+                .size(13)
+                .color(theme::TEXT_SECONDARY),
+        )
+        .push(
+            Button::new(Text::new(grid_label).size(13))
+                .padding([6, 12])
+                .on_press(Message::CycleGridSize)
+                .style(|_theme: &Theme, status| {
+                    let base = iced::widget::button::Style {
+                        background: Some(Background::Color(theme::SURFACE_2)),
+                        text_color: theme::TEXT_PRIMARY,
+                        border: Border {
+                            radius: 999.0.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    };
+                    match status {
+                        iced::widget::button::Status::Hovered => iced::widget::button::Style {
+                            background: Some(Background::Color(theme::SURFACE_1)),
+                            ..base
+                        },
+                        _ => base,
+                    }
+                }),
+        );
+
     let chips = Row::new()
         .spacing(8)
         .push(filter_chip("All"))
         .push(filter_chip("Music"))
-        .push(filter_chip("Podcasts"));
+        .push(filter_chip("Podcasts"))
+        .push(Space::new().width(Length::Fill))
+        .push(grid_control);
 
     let canvas_widget = canvas(CardCanvas::new(cards, canvas_cache))
         .width(Length::Fill)
