@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Implement card grid snapping so cards align to a configurable grid on release
+- [ ] Add keyboard shortcuts for card navigation and resizing
 
 ## Development Backlog
 
@@ -23,9 +23,9 @@
 - [x] Implement bounding-box tracking and hit-testing for card pointer events
 - [x] Handle `PointerPressed` / `PointerMoved` / `PointerReleased` inside `canvas::Program::update` for drag-and-resize
 - [x] Wire `canvas::Cache` invalidation exclusively to geometry-changing messages (drag, resize, add, remove)
-- [ ] Implement card grid snapping so cards align to a configurable grid on release
+- [x] Implement card grid snapping so cards align to a configurable grid on release
 - [x] Implement card z-order management (bring to front on focus)
-- [ ] Persist card layout to disk so the arrangement survives restarts
+- [x] Persist card layout to disk so the arrangement survives restarts
 - [ ] Add keyboard shortcuts for card navigation and resizing
 
 ### Phase 3: Librespot Audio & Session Pipeline

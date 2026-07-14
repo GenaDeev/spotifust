@@ -5,6 +5,9 @@ use crate::ui::login;
 use iced::{Element, Task};
 use librespot::playback::player::PlayerEvent;
 use rspotify::clients::BaseClient;
+use std::fs::File;
+use std::io::{BufRead, BufReader, Write};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -251,7 +254,7 @@ impl App {
                     current_track_uri: None,
                 };
 
-                let default_cards = vec![
+                let mut default_cards = vec![
                     Card {
                         id: "liked_songs".to_string(),
                         title: "Liked Songs".to_string(),
@@ -292,6 +295,8 @@ impl App {
                         drag_offset: None,
                     },
                 ];
+
+                let _ = load_layout(&mut default_cards);
 
                 self.state = AppState::Main {
                     nav_item: NavigationItem::Home,
@@ -563,6 +568,11 @@ impl App {
                         card.drag_offset = None;
                     }
                     canvas_cache.clear();
+
+                    // Persist the new cards layout to disk
+                    if let Err(e) = save_layout(cards) {
+                        eprintln!("Failed to save layout: {e}");
+                    }
                 }
                 Task::none()
             }
@@ -667,4 +677,56 @@ impl App {
             content
         }
     }
+}
+
+fn get_layout_path() -> PathBuf {
+    let home =
+        std::env::var("HOME").unwrap_or_else(|_| std::env::var("USERPROFILE").unwrap_or_default());
+    std::path::Path::new(&home).join(".spotifust_layout")
+}
+
+pub fn save_layout(cards: &[Card]) -> Result<(), std::io::Error> {
+    let path = get_layout_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let mut file = File::create(path)?;
+    for card in cards {
+        writeln!(
+            file,
+            "{},{},{},{},{}",
+            card.id, card.x, card.y, card.width, card.height
+        )?;
+    }
+    Ok(())
+}
+
+pub fn load_layout(cards: &mut [Card]) -> Result<(), std::io::Error> {
+    let path = get_layout_path();
+    if !path.exists() {
+        return Ok(());
+    }
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    for line in reader.lines() {
+        let line = line?;
+        let parts: Vec<&str> = line.split(',').collect();
+        if parts.len() == 5 {
+            let id = parts[0];
+            if let (Ok(x), Ok(y), Ok(w), Ok(h)) = (
+                parts[1].parse::<f32>(),
+                parts[2].parse::<f32>(),
+                parts[3].parse::<f32>(),
+                parts[4].parse::<f32>(),
+            ) {
+                if let Some(card) = cards.iter_mut().find(|c| c.id == id) {
+                    card.x = x;
+                    card.y = y;
+                    card.width = w;
+                    card.height = h;
+                }
+            }
+        }
+    }
+    Ok(())
 }
