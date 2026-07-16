@@ -1,0 +1,52 @@
+name: Build Tar.gz (Manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-targz:
+    name: Build Tar.gz on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+
+      - name: Cache cargo registry and build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Extract version from Cargo.toml
+        id: version
+        run: |
+          APP_VERSION=$(grep '^version' Cargo.toml | head -n 1 | awk -F '"' '{print $2}')
+          echo "version=$APP_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Package binary
+        run: |
+          ARTIFACT="spotifust-linux-x86_64-${{ steps.version.outputs.version }}"
+          mkdir -p "staging/${ARTIFACT}"
+          cp "target/release/spotifust" "staging/${ARTIFACT}/"
+          cp "install.sh" "staging/${ARTIFACT}/"
+          cp -r "assets" "staging/${ARTIFACT}/"
+          
+          cd staging
+          tar -czvf "../${ARTIFACT}.tar.gz" "${ARTIFACT}"
+          cd ..
+          
+          sha256sum "${ARTIFACT}.tar.gz" > "${ARTIFACT}.tar.gz.sha256"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: spotifust-linux-targz
+          path: |
+            *.tar.gz
+            *.tar.gz.sha256
