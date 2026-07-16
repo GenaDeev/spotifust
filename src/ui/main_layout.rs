@@ -837,7 +837,7 @@ fn view_playback_bar(
                 )
                 .push(
                     slider(0.0..=1.0, progress_percent, Message::SeekTo)
-                        .step(0.001)
+                        .step(0.001_f32)
                         .width(Length::Fill)
                         .style(|_theme: &Theme, status| iced::widget::slider::Style {
                             rail: iced::widget::slider::Rail {
@@ -910,7 +910,7 @@ fn view_playback_bar(
                 )
                 .push(
                     slider(0.0..=1.0, playback.volume, Message::VolumeChanged)
-                        .step(0.01)
+                        .step(0.01_f32)
                         .width(Length::Fixed(100.0))
                         .style(|_theme: &Theme, status| iced::widget::slider::Style {
                             rail: iced::widget::slider::Rail {
