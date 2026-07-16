@@ -195,9 +195,9 @@ checksum = "2a4385e2e34eb35d6b3efe798b9eb88096925d87726c0798709bf56d9ed84af3"
 
 [[package]]
 name = "apple-native-keyring-store"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7be2f067ccd8d4b4d4a66ddafe0f32a5dff31732f32dbff85fefc40929b1f72"
+checksum = "797f94b6a53d7d10b56dc18290e0d40a2158352f108bb4ff32350825081a9f29"
 dependencies = [
  "keyring-core",
  "log",
@@ -2671,9 +2671,9 @@ dependencies = [
 
 [[package]]
 name = "keyring"
-version = "4.1.4"
+version = "4.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6ee8d4dae108d4177d0a0ce241f98acc1ef28e20837bdef43cff4d160cf70fe"
+checksum = "0298a59b384c540e408a600c8b375a09b49c3f97debc080e2c30675d79a6368a"
 dependencies = [
  "apple-native-keyring-store",
  "keyring-core",
@@ -2791,7 +2791,7 @@ dependencies = [
 [[package]]
 name = "librespot"
 version = "0.8.0"
-source = "git+https://github.com/librespot-org/librespot#db1ef7ab8c5ebd78edea0ba20f34feb21bd0e195"
+source = "git+https://github.com/librespot-org/librespot#9c7d75615fc093bdcbdb29adbce3fed38c531852"
 dependencies = [
  "data-encoding",
  "env_logger",
@@ -2816,7 +2816,7 @@ dependencies = [
 [[package]]
 name = "librespot-audio"
 version = "0.8.0"
-source = "git+https://github.com/librespot-org/librespot#db1ef7ab8c5ebd78edea0ba20f34feb21bd0e195"
+source = "git+https://github.com/librespot-org/librespot#9c7d75615fc093bdcbdb29adbce3fed38c531852"
 dependencies = [
  "aes",
  "bytes",
@@ -2835,7 +2835,7 @@ dependencies = [
 [[package]]
 name = "librespot-connect"
 version = "0.8.0"
-source = "git+https://github.com/librespot-org/librespot#db1ef7ab8c5ebd78edea0ba20f34feb21bd0e195"
+source = "git+https://github.com/librespot-org/librespot#9c7d75615fc093bdcbdb29adbce3fed38c531852"
 dependencies = [
  "futures-util",
  "librespot-core",
@@ -2854,7 +2854,7 @@ dependencies = [
 [[package]]
 name = "librespot-core"
 version = "0.8.0"
-source = "git+https://github.com/librespot-org/librespot#db1ef7ab8c5ebd78edea0ba20f34feb21bd0e195"
+source = "git+https://github.com/librespot-org/librespot#9c7d75615fc093bdcbdb29adbce3fed38c531852"
 dependencies = [
  "aes",
  "base64",
@@ -2911,7 +2911,7 @@ dependencies = [
 [[package]]
 name = "librespot-discovery"
 version = "0.8.0"
-source = "git+https://github.com/librespot-org/librespot#db1ef7ab8c5ebd78edea0ba20f34feb21bd0e195"
+source = "git+https://github.com/librespot-org/librespot#9c7d75615fc093bdcbdb29adbce3fed38c531852"
 dependencies = [
  "aes",
  "base64",
@@ -2938,7 +2938,7 @@ dependencies = [
 [[package]]
 name = "librespot-metadata"
 version = "0.8.0"
-source = "git+https://github.com/librespot-org/librespot#db1ef7ab8c5ebd78edea0ba20f34feb21bd0e195"
+source = "git+https://github.com/librespot-org/librespot#9c7d75615fc093bdcbdb29adbce3fed38c531852"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2955,7 +2955,7 @@ dependencies = [
 [[package]]
 name = "librespot-oauth"
 version = "0.8.0"
-source = "git+https://github.com/librespot-org/librespot#db1ef7ab8c5ebd78edea0ba20f34feb21bd0e195"
+source = "git+https://github.com/librespot-org/librespot#9c7d75615fc093bdcbdb29adbce3fed38c531852"
 dependencies = [
  "log",
  "oauth2",
@@ -2968,7 +2968,7 @@ dependencies = [
 [[package]]
 name = "librespot-playback"
 version = "0.8.0"
-source = "git+https://github.com/librespot-org/librespot#db1ef7ab8c5ebd78edea0ba20f34feb21bd0e195"
+source = "git+https://github.com/librespot-org/librespot#9c7d75615fc093bdcbdb29adbce3fed38c531852"
 dependencies = [
  "cpal",
  "form_urlencoded",
@@ -2991,7 +2991,7 @@ dependencies = [
 [[package]]
 name = "librespot-protocol"
 version = "0.8.0"
-source = "git+https://github.com/librespot-org/librespot#db1ef7ab8c5ebd78edea0ba20f34feb21bd0e195"
+source = "git+https://github.com/librespot-org/librespot#9c7d75615fc093bdcbdb29adbce3fed38c531852"
 dependencies = [
  "protobuf",
  "protobuf-codegen",
@@ -3833,9 +3833,9 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "open"
-version = "5.3.6"
+version = "5.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd8d3b65c44123a56e0133d2cd06ce4361bd3ca99d41198b2f25e3c3db9b8b4a"
+checksum = "a0b3d059e795d52b8a72fef45658620edd4d9c359b338564aa14391ffa511ed5"
 dependencies = [
  "is-wsl",
  "libc",
