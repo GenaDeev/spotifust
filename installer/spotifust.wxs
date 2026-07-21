@@ -2,6 +2,7 @@
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package Name="Spotifust" Manufacturer="Spotifust Team" Version="$(var.AppVersion)" UpgradeCode="78A55B2E-54CD-485A-A6A4-D9D7C235ED98">
     <MajorUpgrade DowngradeErrorMessage="A newer version of Spotifust is already installed." />
+    <MediaTemplate EmbedCab="yes" />
 
     <!-- UI Configuration -->
     <Property Id="ARPCOMMENTS" Value="Lightweight Spotify desktop application built in Rust" />
