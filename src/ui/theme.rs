@@ -1,91 +1,152 @@
-//! Branding constants for Spotifust's visual identity.
+//! Branding constants and Design System for Spotifust.
 //!
-//! Replicating the modern 2025-2026 Spotify UI palette.
+//! Visual identity centered around Spotifust's signature Rust Orange palette.
 
-/// Brand accent color — Rust Orange
-pub const ACCENT: iced::Color = iced::Color {
+use iced::Color;
+
+// --- Brand Accent Colors (Spotifust Rust Orange) ---
+
+/// Core Brand Accent — Rust Orange (`#F4A261`)
+pub const ACCENT: Color = Color {
     r: 0.957,
-    g: 0.647,
-    b: 0.510,
+    g: 0.635,
+    b: 0.380,
     a: 1.0,
 };
 
-/// Brand accent color hover — Deeper Rust Orange
-pub const ACCENT_HOVER: iced::Color = iced::Color {
-    r: 0.957,
-    g: 0.510,
-    b: 0.392,
+/// Brand Accent Hover — Bright Rust Orange (`#F58A4B`)
+pub const ACCENT_HOVER: Color = Color {
+    r: 0.961,
+    g: 0.541,
+    b: 0.294,
     a: 1.0,
 };
 
-// --- Surface colors (dark theme) ---
-
-/// Main Content background (`#121212`)
-pub const BG_BASE: iced::Color = iced::Color {
-    r: 0.07,
-    g: 0.07,
-    b: 0.07,
+/// Brand Accent Pressed — Deep Rust Orange (`#D96B27`)
+pub const ACCENT_PRESSED: Color = Color {
+    r: 0.851,
+    g: 0.420,
+    b: 0.153,
     a: 1.0,
 };
 
-/// Shell background (Top Bar, Sidebars, Player Bar) (`#000000`)
-pub const SURFACE_0: iced::Color = iced::Color {
+// Aliases for compatibility
+#[allow(dead_code)]
+pub const GREEN: Color = ACCENT;
+#[allow(dead_code)]
+pub const GREEN_HOVER: Color = ACCENT_HOVER;
+#[allow(dead_code)]
+pub const GREEN_PRESSED: Color = ACCENT_PRESSED;
+
+// --- Surface & Background Elevation (Dark Mode) ---
+
+/// Main Shell / Window Background (`#000000`)
+pub const BG_BASE: Color = Color {
     r: 0.0,
     g: 0.0,
     b: 0.0,
     a: 1.0,
 };
 
-/// Cards normal / Elevated surfaces (`#181818`)
-pub const SURFACE_1: iced::Color = iced::Color {
+/// Main View Area Background (`#121212`)
+pub const SURFACE_MAIN: Color = Color {
+    r: 0.071,
+    g: 0.071,
+    b: 0.071,
+    a: 1.0,
+};
+
+/// Card / Container Normal (`#181818`)
+pub const SURFACE_CARD: Color = Color {
     r: 0.094,
     g: 0.094,
     b: 0.094,
     a: 1.0,
 };
 
-/// Cards hover / Popups (`#282828`)
-pub const SURFACE_2: iced::Color = iced::Color {
+/// Card / Button Hover (`#282828`)
+pub const SURFACE_HOVER: Color = Color {
     r: 0.157,
     g: 0.157,
     b: 0.157,
     a: 1.0,
 };
 
-// --- Text colors ---
+/// Active / Selected Surface (`#2A2A2A`)
+pub const SURFACE_ACTIVE: Color = Color {
+    r: 0.165,
+    g: 0.165,
+    b: 0.165,
+    a: 1.0,
+};
 
-/// Primary text — White (`#FFFFFF`)
-pub const TEXT_PRIMARY: iced::Color = iced::Color {
+/// Popups & Floating Panels (`#1F1F1F`)
+#[allow(dead_code)]
+pub const SURFACE_ELEVATED: Color = Color {
+    r: 0.122,
+    g: 0.122,
+    b: 0.122,
+    a: 1.0,
+};
+
+// --- Text Colors ---
+
+/// Primary Text — Crisp White (`#FFFFFF`)
+pub const TEXT_PRIMARY: Color = Color {
     r: 1.0,
     g: 1.0,
     b: 1.0,
     a: 1.0,
 };
 
-/// Secondary text — Muted Grey (`#B3B3B3`)
-pub const TEXT_SECONDARY: iced::Color = iced::Color {
+/// Secondary Text — Muted Silver (`#B3B3B3`)
+pub const TEXT_SECONDARY: Color = Color {
     r: 0.702,
     g: 0.702,
     b: 0.702,
     a: 1.0,
 };
 
-/// Tertiary text / Disabled (`#6A6A6A`)
+/// Tertiary / Disabled Text — Charcoal (`#6A6A6A`)
 #[allow(dead_code)]
-pub const TEXT_TERTIARY: iced::Color = iced::Color {
+pub const TEXT_TERTIARY: Color = Color {
     r: 0.416,
     g: 0.416,
     b: 0.416,
     a: 1.0,
 };
 
-// --- Border / Separator ---
+// --- Border & Dividers ---
 
-/// Subtle border color for containers (`#2A2A2A`)
-#[allow(dead_code)]
-pub const BORDER_SUBTLE: iced::Color = iced::Color {
-    r: 0.165,
-    g: 0.165,
-    b: 0.165,
-    a: 1.0,
+/// Subtle border for cards & panels
+pub const BORDER_SUBTLE: Color = Color {
+    r: 1.0,
+    g: 1.0,
+    b: 1.0,
+    a: 0.08,
 };
+
+/// Strong border for focused / highlighted elements
+#[allow(dead_code)]
+pub const BORDER_STRONG: Color = Color {
+    r: 1.0,
+    g: 1.0,
+    b: 1.0,
+    a: 0.18,
+};
+
+// --- Legacy Surface Aliases ---
+#[allow(dead_code)]
+pub const SURFACE_0: Color = BG_BASE;
+#[allow(dead_code)]
+pub const SURFACE_1: Color = SURFACE_CARD;
+#[allow(dead_code)]
+pub const SURFACE_2: Color = SURFACE_HOVER;
+
+// --- Corner Radius Tokens ---
+
+pub const RADIUS_SM: f32 = 4.0;
+pub const RADIUS_MD: f32 = 8.0;
+pub const RADIUS_LG: f32 = 12.0;
+pub const RADIUS_XL: f32 = 16.0;
+pub const RADIUS_PILL: f32 = 9999.0;

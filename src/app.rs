@@ -31,6 +31,7 @@ pub enum RightPanelTab {
 pub struct TrackInfo {
     pub title: String,
     pub artist: String,
+    #[allow(dead_code)]
     pub album: String,
     pub duration_ms: u32,
 }

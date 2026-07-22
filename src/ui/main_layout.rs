@@ -3,9 +3,11 @@ use crate::ui::icons::Icon;
 use crate::ui::theme;
 use iced::widget::mouse_area;
 use iced::{
-    Alignment, Background, Border, Element, Length, Theme,
-    widget::{Button, Column, Container, Row, Scrollable, Space, Text, container, slider},
+    Alignment, Background, Border, Color, Element, Length, Theme,
+    widget::{Button, Column, Container, Image, Row, Scrollable, Space, Text, container, slider},
 };
+
+const LOGO_BYTES: &[u8] = include_bytes!("../../assets/spotifust.png");
 
 pub fn view<'a>(
     nav_item: &'a NavigationItem,
@@ -47,7 +49,7 @@ pub fn view<'a>(
         .width(Length::Fill)
         .height(Length::Fill)
         .style(|_theme: &Theme| container::Style {
-            background: Some(Background::Color(theme::SURFACE_0)),
+            background: Some(Background::Color(theme::BG_BASE)),
             ..Default::default()
         })
         .into()
@@ -55,10 +57,16 @@ pub fn view<'a>(
 
 #[allow(clippy::too_many_lines)]
 fn view_top_bar(current_nav: NavigationItem) -> Element<'static, Message> {
+    let logo_handle = iced::widget::image::Handle::from_bytes(LOGO_BYTES);
+    let logo_img = Image::new(logo_handle)
+        .width(Length::Fixed(32.0))
+        .height(Length::Fixed(32.0))
+        .filter_method(iced::widget::image::FilterMethod::Linear);
+
     let logo_section = Row::new()
-        .spacing(8)
+        .spacing(10)
         .align_y(Alignment::Center)
-        .push(Icon::Play.view_colored(28.0, theme::ACCENT))
+        .push(logo_img)
         .push(
             Text::new("Spotifust")
                 .size(20)
@@ -78,92 +86,106 @@ fn view_top_bar(current_nav: NavigationItem) -> Element<'static, Message> {
     let search_bar = Container::new(
         Row::new()
             .align_y(Alignment::Center)
-            .spacing(12)
-            .push(Icon::Search.view_colored(20.0, theme::TEXT_SECONDARY))
+            .spacing(10)
+            .push(Icon::Search.view_colored(18.0, theme::TEXT_SECONDARY))
             .push(
                 Text::new("What do you want to play?")
                     .color(theme::TEXT_SECONDARY)
                     .size(14),
             ),
     )
-    .height(Length::Fixed(48.0))
+    .height(Length::Fixed(40.0))
+    .width(Length::Fixed(400.0))
     .padding([0, 16])
-    .width(Length::Fixed(360.0))
+    .align_y(iced::alignment::Vertical::Center)
     .style(|_theme: &Theme| container::Style {
-        background: Some(Background::Color(theme::SURFACE_2)),
+        background: Some(Background::Color(theme::SURFACE_CARD)),
         border: Border {
-            radius: 999.0.into(),
-            ..Default::default()
+            radius: theme::RADIUS_PILL.into(),
+            color: theme::BORDER_SUBTLE,
+            width: 1.0,
         },
         text_color: Some(theme::TEXT_SECONDARY),
         ..Default::default()
     });
 
-    let right_controls = Row::new()
-        .spacing(16)
-        .align_y(Alignment::Center)
-        .push(
-            Button::new(Text::new("Explore Premium").size(12).font(iced::Font {
-                weight: iced::font::Weight::Bold,
-                ..Default::default()
-            }))
-            .padding([8, 16])
-            .style(|_theme: &Theme, status| {
-                let base = iced::widget::button::Style {
-                    background: Some(Background::Color(iced::Color::TRANSPARENT)),
-                    text_color: theme::TEXT_PRIMARY,
-                    border: Border {
-                        color: theme::TEXT_PRIMARY,
-                        width: 1.0,
-                        radius: 999.0.into(),
-                    },
-                    ..Default::default()
-                };
-                match status {
-                    iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                        background: Some(Background::Color(theme::SURFACE_2)),
-                        ..base
-                    },
-                    _ => base,
-                }
-            })
-            .on_press(Message::MockAction),
-        )
-        .push(icon_button(Icon::Album, Message::MockAction)) // mock download/install
-        .push(icon_button(Icon::Plus, Message::MockAction)) // mock bell
-        .push(icon_button(Icon::User, Message::MockAction)) // mock friends
-        .push(
-            Button::new(
-                Container::new(Text::new("G").size(14).font(iced::Font {
+    let explore_premium_btn = Button::new(
+        Container::new(
+            Text::new("Explore Premium")
+                .size(13)
+                .font(iced::Font {
                     weight: iced::font::Weight::Bold,
                     ..Default::default()
-                }))
-                .width(Length::Fixed(48.0))
-                .height(Length::Fixed(48.0))
-                .align_x(iced::alignment::Horizontal::Center)
-                .align_y(iced::alignment::Vertical::Center),
-            )
-            .padding(0)
-            .on_press(Message::MockAction)
-            .style(|_theme: &Theme, status| {
-                let base = iced::widget::button::Style {
-                    background: Some(Background::Color(theme::SURFACE_2)),
-                    text_color: theme::TEXT_PRIMARY,
-                    border: Border {
-                        radius: 16.0.into(),
-                        ..Default::default()
-                    },
+                })
+                .color(theme::TEXT_PRIMARY),
+        )
+        .height(Length::Fixed(40.0))
+        .align_y(iced::alignment::Vertical::Center),
+    )
+    .padding([0, 18])
+    .height(Length::Fixed(40.0))
+    .style(|_theme: &Theme, status| {
+        let base = iced::widget::button::Style {
+            background: Some(Background::Color(theme::SURFACE_CARD)),
+            text_color: theme::TEXT_PRIMARY,
+            border: Border {
+                color: theme::BORDER_SUBTLE,
+                width: 1.0,
+                radius: theme::RADIUS_PILL.into(),
+            },
+            ..Default::default()
+        };
+        match status {
+            iced::widget::button::Status::Hovered => iced::widget::button::Style {
+                background: Some(Background::Color(theme::SURFACE_HOVER)),
+                border: Border {
+                    color: theme::BORDER_STRONG,
+                    width: 1.0,
+                    radius: theme::RADIUS_PILL.into(),
+                },
+                ..base
+            },
+            _ => base,
+        }
+    })
+    .on_press(Message::MockAction);
+
+    let user_avatar_btn = Button::new(
+        Container::new(
+            Text::new("G")
+                .size(14)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
                     ..Default::default()
-                };
-                match status {
-                    iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                        background: Some(Background::Color(theme::SURFACE_1)),
-                        ..base
-                    },
-                    _ => base,
-                }
-            }),
-        );
+                })
+                .color(Color::BLACK),
+        )
+        .width(Length::Fixed(40.0))
+        .height(Length::Fixed(40.0))
+        .align_x(iced::alignment::Horizontal::Center)
+        .align_y(iced::alignment::Vertical::Center)
+        .style(|_theme| container::Style {
+            background: Some(Background::Color(theme::ACCENT)),
+            border: Border {
+                radius: theme::RADIUS_PILL.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        }),
+    )
+    .padding(0)
+    .on_press(Message::MockAction)
+    .style(|_theme, _status| iced::widget::button::Style {
+        background: Some(Background::Color(Color::TRANSPARENT)),
+        ..Default::default()
+    });
+
+    let right_controls = Row::new()
+        .spacing(12)
+        .align_y(Alignment::Center)
+        .push(explore_premium_btn)
+        .push(icon_button_circle(Icon::Plus, Message::MockAction))
+        .push(user_avatar_btn);
 
     Container::new(
         Row::new()
@@ -181,10 +203,15 @@ fn view_top_bar(current_nav: NavigationItem) -> Element<'static, Message> {
             .push(right_controls),
     )
     .width(Length::Fill)
-    .height(Length::Fixed(64.0))
-    .padding([0, 16])
+    .height(Length::Fixed(72.0))
+    .padding(iced::Padding {
+        top: 12.0,
+        right: 24.0,
+        bottom: 6.0,
+        left: 24.0,
+    })
     .style(|_theme: &Theme| container::Style {
-        background: Some(Background::Color(theme::SURFACE_0)),
+        background: Some(Background::Color(theme::BG_BASE)),
         ..Default::default()
     })
     .into()
@@ -196,10 +223,10 @@ fn view_sidebar_panel(width: f32) -> Element<'static, Message> {
 
     if is_compact {
         let mut list = Column::new().spacing(12).align_x(Alignment::Center);
-        // Liked Songs compact icon
+
         list = list.push(
             Button::new(
-                Container::new(Icon::Heart.view_colored(20.0, theme::BG_BASE))
+                Container::new(Icon::Heart.view_colored(18.0, Color::WHITE))
                     .width(Length::Fixed(40.0))
                     .height(Length::Fixed(40.0))
                     .align_x(iced::alignment::Horizontal::Center)
@@ -207,7 +234,7 @@ fn view_sidebar_panel(width: f32) -> Element<'static, Message> {
                     .style(|_theme| container::Style {
                         background: Some(Background::Color(theme::ACCENT)),
                         border: Border {
-                            radius: 4.0.into(),
+                            radius: theme::RADIUS_MD.into(),
                             ..Default::default()
                         },
                         ..Default::default()
@@ -217,12 +244,12 @@ fn view_sidebar_panel(width: f32) -> Element<'static, Message> {
             .on_press(Message::MockAction)
             .style(|_theme, status| {
                 let base = iced::widget::button::Style {
-                    background: Some(Background::Color(iced::Color::TRANSPARENT)),
+                    background: Some(Background::Color(Color::TRANSPARENT)),
                     ..Default::default()
                 };
                 match status {
                     iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                        background: Some(Background::Color(theme::SURFACE_1)),
+                        background: Some(Background::Color(theme::SURFACE_HOVER)),
                         ..base
                     },
                     _ => base,
@@ -231,23 +258,23 @@ fn view_sidebar_panel(width: f32) -> Element<'static, Message> {
         );
 
         let library_items = [
-            Icon::Album,     // Synthwave Architect
-            Icon::User,      // The Midnight
-            Icon::MusicNote, // Rustaceans Unite
+            Icon::Album,
+            Icon::User,
+            Icon::MusicNote,
         ];
 
         for icon in library_items {
             list = list.push(
                 Button::new(
-                    Container::new(icon.view_colored(20.0, theme::TEXT_SECONDARY))
+                    Container::new(icon.view_colored(18.0, theme::TEXT_SECONDARY))
                         .width(Length::Fixed(40.0))
                         .height(Length::Fixed(40.0))
                         .align_x(iced::alignment::Horizontal::Center)
                         .align_y(iced::alignment::Vertical::Center)
                         .style(|_theme| container::Style {
-                            background: Some(Background::Color(theme::SURFACE_2)),
+                            background: Some(Background::Color(theme::SURFACE_CARD)),
                             border: Border {
-                                radius: 4.0.into(),
+                                radius: theme::RADIUS_MD.into(),
                                 ..Default::default()
                             },
                             ..Default::default()
@@ -257,12 +284,12 @@ fn view_sidebar_panel(width: f32) -> Element<'static, Message> {
                 .on_press(Message::MockAction)
                 .style(|_theme, status| {
                     let base = iced::widget::button::Style {
-                        background: Some(Background::Color(iced::Color::TRANSPARENT)),
+                        background: Some(Background::Color(Color::TRANSPARENT)),
                         ..Default::default()
                     };
                     match status {
                         iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                            background: Some(Background::Color(theme::SURFACE_1)),
+                            background: Some(Background::Color(theme::SURFACE_HOVER)),
                             ..base
                         },
                         _ => base,
@@ -277,16 +304,16 @@ fn view_sidebar_panel(width: f32) -> Element<'static, Message> {
             Column::new()
                 .spacing(16)
                 .align_x(Alignment::Center)
-                .push(Icon::Library.view_colored(24.0, theme::TEXT_SECONDARY))
+                .push(Icon::Library.view_colored(22.0, theme::TEXT_SECONDARY))
                 .push(scrollable_list),
         )
         .width(Length::Fixed(width))
         .height(Length::Fill)
         .padding([16, 0])
         .style(|_theme: &Theme| container::Style {
-            background: Some(Background::Color(theme::BG_BASE)),
+            background: Some(Background::Color(theme::SURFACE_MAIN)),
             border: Border {
-                radius: 8.0.into(),
+                radius: theme::RADIUS_LG.into(),
                 ..Default::default()
             },
             ..Default::default()
@@ -301,17 +328,22 @@ fn view_sidebar_panel(width: f32) -> Element<'static, Message> {
                 Row::new()
                     .spacing(12)
                     .align_y(Alignment::Center)
-                    .push(Icon::Library.view(24.0))
-                    .push(Text::new("Your Library").size(16).font(iced::Font {
-                        weight: iced::font::Weight::Bold,
-                        ..Default::default()
-                    })),
+                    .push(Icon::Library.view_colored(22.0, theme::TEXT_SECONDARY))
+                    .push(
+                        Text::new("Your Library")
+                            .size(15)
+                            .font(iced::Font {
+                                weight: iced::font::Weight::Bold,
+                                ..Default::default()
+                            })
+                            .color(theme::TEXT_SECONDARY),
+                    ),
             )
-            .padding([8, 12])
+            .padding(0)
             .on_press(Message::MockAction)
-            .style(|_theme: &Theme, status| {
+            .style(|_theme, status| {
                 let base = iced::widget::button::Style {
-                    text_color: theme::TEXT_SECONDARY,
+                    background: Some(Background::Color(Color::TRANSPARENT)),
                     ..Default::default()
                 };
                 match status {
@@ -324,392 +356,445 @@ fn view_sidebar_panel(width: f32) -> Element<'static, Message> {
             }),
         )
         .push(Space::new().width(Length::Fill))
-        .push(icon_button(Icon::Plus, Message::MockAction))
-        .push(icon_button(Icon::ChevronRight, Message::MockAction));
+        .push(icon_button_circle(Icon::Plus, Message::MockAction));
 
-    let filters = Scrollable::new(
-        Row::new()
-            .spacing(8)
-            .push(filter_chip("Playlists"))
-            .push(filter_chip("Artists"))
-            .push(filter_chip("Albums")),
-    )
-    .direction(iced::widget::scrollable::Direction::Horizontal(
-        iced::widget::scrollable::Scrollbar::new(),
-    ));
+    let filter_chips = Row::new()
+        .spacing(8)
+        .push(filter_chip("Playlists", true))
+        .push(filter_chip("Artists", false))
+        .push(filter_chip("Albums", false));
 
-    let search_sort = Row::new()
-        .align_y(Alignment::Center)
-        .push(icon_button(Icon::Search, Message::MockAction))
-        .push(Space::new().width(Length::Fill))
-        .push(
-            Button::new(
-                Row::new()
-                    .spacing(4)
-                    .align_y(Alignment::Center)
-                    .push(Text::new("Recents").size(12).color(theme::TEXT_SECONDARY))
-                    .push(Icon::ChevronDown.view(16.0)),
-            )
-            .padding(0)
-            .on_press(Message::MockAction)
-            .style(|_theme: &Theme, _status| iced::widget::button::Style {
-                text_color: theme::TEXT_SECONDARY,
-                ..Default::default()
-            }),
-        );
+    let mut list = Column::new().spacing(4);
 
-    let mut list = Column::new().spacing(0);
-    list = list.push(library_row(
+    let liked_item = sidebar_item(
         "Liked Songs",
-        "Playlist • 120 songs",
+        "Playlist • 142 songs",
+        Icon::Heart,
         true,
         true,
-    ));
+    );
+    list = list.push(liked_item);
 
-    let library_items = [
-        ("Synthwave Architect", "Playlist • GenaDeev", false),
-        ("The Midnight", "Artist", false),
-        ("Rustaceans Unite", "Playlist • 45 songs", false),
-        ("Daily Mix 1", "Made for you", false),
-        ("Discover Weekly", "Playlist • Spotify", false),
+    let items = [
+        ("Synthwave Architect", "Album • The Midnight", Icon::Album, false),
+        ("Rustaceans Unite", "Playlist • Spotifust", Icon::MusicNote, false),
+        ("Chill Lofi Beats", "Playlist • Spotifust", Icon::Queue, false),
+        ("Gunship", "Artist", Icon::User, false),
     ];
 
-    for (title, sub, is_pinned) in library_items {
-        list = list.push(library_row(title, sub, is_pinned, false));
+    for (title, sub, icon, active) in items {
+        list = list.push(sidebar_item(title, sub, icon, active, false));
     }
 
     let scrollable_list = Scrollable::new(list).height(Length::Fill);
 
-    Container::new(
-        Column::new()
-            .push(header)
-            .push(
-                Space::new()
-                    .width(Length::Fixed(1.0))
-                    .height(Length::Fixed(12.0)),
-            )
-            .push(Container::new(filters).padding([0, 16]))
-            .push(
-                Space::new()
-                    .width(Length::Fixed(1.0))
-                    .height(Length::Fixed(12.0)),
-            )
-            .push(Container::new(search_sort).padding([0, 16]))
-            .push(
-                Space::new()
-                    .width(Length::Fixed(1.0))
-                    .height(Length::Fixed(8.0)),
-            )
-            .push(scrollable_list),
-    )
-    .width(Length::Fixed(width))
-    .height(Length::Fill)
-    .style(|_theme: &Theme| container::Style {
-        background: Some(Background::Color(theme::BG_BASE)),
-        border: Border {
-            radius: 8.0.into(),
-            ..Default::default()
-        },
-        ..Default::default()
-    })
-    .into()
-}
+    let content = Column::new()
+        .spacing(14)
+        .push(header)
+        .push(filter_chips)
+        .push(scrollable_list);
 
-fn filter_chip(label: &str) -> Element<'_, Message> {
-    Button::new(Text::new(label).size(13))
-        .padding([6, 12])
-        .on_press(Message::MockAction)
-        .style(|_theme: &Theme, status| {
-            let base = iced::widget::button::Style {
-                background: Some(Background::Color(theme::SURFACE_2)),
-                text_color: theme::TEXT_PRIMARY,
-                border: Border {
-                    radius: 999.0.into(),
-                    ..Default::default()
-                },
+    Container::new(content)
+        .width(Length::Fixed(width))
+        .height(Length::Fill)
+        .padding(16)
+        .style(|_theme: &Theme| container::Style {
+            background: Some(Background::Color(theme::SURFACE_MAIN)),
+            border: Border {
+                radius: theme::RADIUS_LG.into(),
                 ..Default::default()
-            };
-            match status {
-                iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                    background: Some(Background::Color(iced::Color {
-                        r: 0.2,
-                        g: 0.2,
-                        b: 0.2,
-                        a: 1.0,
-                    })),
-                    ..base
-                },
-                _ => base,
-            }
+            },
+            ..Default::default()
         })
         .into()
 }
 
-fn library_row<'a>(
-    title: &'a str,
-    subtitle: &'a str,
-    is_pinned: bool,
-    is_liked: bool,
-) -> Element<'a, Message> {
-    let cover = Container::new(if is_liked {
-        Icon::Heart.view_colored(24.0, theme::BG_BASE)
-    } else {
-        Icon::Album.view_colored(24.0, theme::TEXT_SECONDARY)
-    })
-    .width(Length::Fixed(48.0))
-    .height(Length::Fixed(48.0))
-    .align_x(iced::alignment::Horizontal::Center)
-    .align_y(iced::alignment::Vertical::Center)
-    .style(move |_theme: &Theme| container::Style {
-        background: Some(Background::Color(if is_liked {
-            theme::ACCENT
-        } else {
-            theme::SURFACE_2
-        })),
-        text_color: Some(if is_liked {
-            theme::BG_BASE
-        } else {
-            theme::TEXT_SECONDARY
-        }),
-        border: Border {
-            radius: 4.0.into(),
-            ..Default::default()
-        },
-        ..Default::default()
-    });
-
-    let title_text = Text::new(title)
-        .size(16)
-        .color(if is_liked {
-            theme::ACCENT
-        } else {
-            theme::TEXT_PRIMARY
-        })
-        .font(iced::Font {
-            weight: iced::font::Weight::Bold,
-            ..Default::default()
-        });
-
-    let pin = if is_pinned {
-        Icon::Pin.view(12.0)
-    } else {
-        Space::new()
-            .width(Length::Fixed(0.0))
-            .height(Length::Fixed(0.0))
-            .into()
+#[allow(clippy::too_many_lines)]
+fn view_main_content(current_nav: NavigationItem) -> Element<'static, Message> {
+    let title_text = match current_nav {
+        NavigationItem::Home => "Good evening",
+        NavigationItem::Search => "Search",
+        NavigationItem::Library => "Your Library",
     };
 
-    let content = Row::new()
-        .spacing(12)
-        .align_y(Alignment::Center)
-        .push(cover)
-        .push(
-            Column::new().push(title_text).push(
-                Row::new()
-                    .spacing(4)
-                    .align_y(Alignment::Center)
-                    .push(
-                        Container::new(pin).style(|_theme: &Theme| container::Style {
-                            text_color: Some(theme::ACCENT),
-                            ..Default::default()
-                        }),
-                    )
-                    .push(Text::new(subtitle).size(13).color(theme::TEXT_SECONDARY)),
-            ),
-        );
-
-    Button::new(content)
-        .width(Length::Fill)
-        .padding([8, 16])
-        .on_press(Message::MockAction)
-        .style(|_theme: &Theme, status| {
-            let base = iced::widget::button::Style {
-                background: Some(Background::Color(iced::Color::TRANSPARENT)),
-                ..Default::default()
-            };
-            match status {
-                iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                    background: Some(Background::Color(theme::SURFACE_1)),
-                    ..base
-                },
-                _ => base,
-            }
-        })
-        .into()
-}
-
-fn view_main_content<'a>(_nav: NavigationItem) -> Element<'a, Message> {
-    let chips = Row::new()
-        .spacing(8)
-        .push(filter_chip("All"))
-        .push(filter_chip("Music"))
-        .push(filter_chip("Podcasts"));
-
-    let featured_title = Text::new("Welcome back")
-        .size(24)
+    let header = Text::new(title_text)
+        .size(30)
         .font(iced::Font {
             weight: iced::font::Weight::Bold,
             ..Default::default()
         })
         .color(theme::TEXT_PRIMARY);
 
-    let main_layout = Column::new()
-        .spacing(24)
-        .push(chips)
-        .push(featured_title)
+    let quick_grid = Column::new()
+        .spacing(12)
         .push(
-            Container::new(
-                Column::new()
-                    .spacing(12)
-                    .push(
-                        Text::new("Spotifust Native Desktop")
-                            .size(18)
-                            .color(theme::ACCENT)
-                            .font(iced::Font {
-                                weight: iced::font::Weight::Bold,
-                                ..Default::default()
-                            }),
-                    )
-                    .push(
-                        Text::new(
-                            "This is a modular, ultra-lightweight client built from scratch in Rust. Drag the borders of the panels to resize the layout just like Spotify!",
-                        )
-                        .size(14)
-                        .color(theme::TEXT_SECONDARY),
-                    ),
-            )
-            .padding(24)
-            .width(Length::Fill)
-            .style(|_theme| container::Style {
-                background: Some(Background::Color(theme::SURFACE_1)),
-                border: Border {
-                    radius: 8.0.into(),
-                    ..Default::default()
-                },
-                ..Default::default()
-            }),
+            Row::new()
+                .spacing(12)
+                .push(quick_card("Liked Songs", Icon::Heart, true))
+                .push(quick_card("Synthwave Architect", Icon::Album, false))
+                .push(quick_card("Rustaceans Unite", Icon::MusicNote, false)),
+        )
+        .push(
+            Row::new()
+                .spacing(12)
+                .push(quick_card("Chill Lofi Beats", Icon::Queue, false))
+                .push(quick_card("Deep Focus", Icon::Search, false))
+                .push(quick_card("Top Gaming Tracks", Icon::Play, false)),
         );
 
-    Container::new(main_layout)
+    let section_1_header = Row::new()
+        .align_y(Alignment::Center)
+        .push(
+            Text::new("Made For You")
+                .size(22)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_PRIMARY),
+        )
+        .push(Space::new().width(Length::Fill))
+        .push(
+            Text::new("Show all")
+                .size(13)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_SECONDARY),
+        );
+
+    let section_1_cards = Row::new()
+        .spacing(16)
+        .push(media_card("Daily Mix 1", "Gunship, The Midnight, Carpenter Brut", Icon::MusicNote))
+        .push(media_card("Discover Weekly", "Your weekly mixtape of fresh music.", Icon::Search))
+        .push(media_card("Release Radar", "Catch all the latest music from artists you follow.", Icon::Album))
+        .push(media_card("Chill Mix", "Lofi and ambient beats to keep you focused.", Icon::Queue));
+
+    let section_2_header = Row::new()
+        .align_y(Alignment::Center)
+        .push(
+            Text::new("Recently Played")
+                .size(22)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_PRIMARY),
+        )
+        .push(Space::new().width(Length::Fill))
+        .push(
+            Text::new("Show all")
+                .size(13)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_SECONDARY),
+        );
+
+    let section_2_cards = Row::new()
+        .spacing(16)
+        .push(media_card("Endless Summer", "The Midnight • Album", Icon::Album))
+        .push(media_card("Dark All Day", "GUNSHIP • Album", Icon::MusicNote))
+        .push(media_card("Techno Bunker", "Hard hitting synth and techno tracks.", Icon::Queue))
+        .push(media_card("Coding Mode", "Zero distractions, pure synthwave.", Icon::Play));
+
+    let scroll_content = Column::new()
+        .spacing(24)
+        .padding(iced::Padding {
+            top: 0.0,
+            right: 16.0,
+            bottom: 0.0,
+            left: 0.0,
+        })
+        .push(header)
+        .push(quick_grid)
+        .push(section_1_header)
+        .push(section_1_cards)
+        .push(section_2_header)
+        .push(section_2_cards);
+
+    let scrollable = Scrollable::new(scroll_content)
+        .direction(iced::widget::scrollable::Direction::Vertical(
+            iced::widget::scrollable::Scrollbar::new()
+                .width(6.0)
+                .margin(2.0)
+                .scroller_width(6.0),
+        ))
+        .style(|theme: &Theme, status| {
+            let mut s = iced::widget::scrollable::default(theme, status);
+            s.vertical_rail.background = None;
+            s.vertical_rail.scroller.background = Background::Color(Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 0.18,
+            });
+            s.vertical_rail.scroller.border = Border {
+                radius: theme::RADIUS_PILL.into(),
+                ..Border::default()
+            };
+            s
+        })
+        .width(Length::Fill)
+        .height(Length::Fill);
+
+    Container::new(scrollable)
         .width(Length::Fill)
         .height(Length::Fill)
+        .padding(iced::Padding {
+            top: 20.0,
+            right: 12.0,
+            bottom: 20.0,
+            left: 20.0,
+        })
         .style(|_theme: &Theme| container::Style {
-            background: Some(Background::Color(theme::BG_BASE)),
+            background: Some(Background::Color(theme::SURFACE_MAIN)),
             border: Border {
-                radius: 8.0.into(),
+                radius: theme::RADIUS_LG.into(),
                 ..Default::default()
             },
             ..Default::default()
         })
-        .padding(24)
         .into()
 }
 
-#[allow(dead_code)]
-fn icon_button_circle<'a>(icon: Icon, message: Message, disabled: bool) -> Element<'a, Message> {
-    Button::new(
-        Container::new(icon.view_colored(
-            16.0,
-            if disabled {
-                theme::TEXT_TERTIARY
-            } else {
-                theme::TEXT_PRIMARY
-            },
-        ))
-        .width(Length::Fixed(32.0))
-        .height(Length::Fixed(32.0))
-        .center_x(Length::Fill)
-        .center_y(Length::Fill),
-    )
-    .padding(0)
-    .on_press(message)
-    .style(move |_theme: &Theme, status| {
-        let base = iced::widget::button::Style {
-            background: Some(Background::Color(iced::Color {
-                r: 0.0,
-                g: 0.0,
-                b: 0.0,
-                a: 0.7,
-            })),
-            border: Border {
-                radius: 16.0.into(),
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-        if disabled {
-            return base;
-        }
-        match status {
-            iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                background: Some(Background::Color(theme::SURFACE_2)),
-                ..base
-            },
-            _ => base,
-        }
-    })
-    .into()
-}
+#[allow(clippy::too_many_lines)]
+fn view_right_panel(
+    active_tab: Option<RightPanelTab>,
+    width: f32,
+) -> Element<'static, Message> {
+    let Some(tab) = active_tab else {
+        return Container::new(Space::new()).into();
+    };
 
-fn icon_button_circle_active<'a>(
-    icon: Icon,
-    message: Message,
-    is_active: bool,
-) -> Element<'a, Message> {
-    Button::new(
-        Container::new(icon.view_colored(
-            24.0,
-            if is_active {
-                theme::BG_BASE
-            } else {
-                theme::TEXT_PRIMARY
-            },
-        ))
-        .width(Length::Fixed(48.0))
-        .height(Length::Fixed(48.0))
-        .align_x(iced::alignment::Horizontal::Center)
-        .align_y(iced::alignment::Vertical::Center),
-    )
-    .padding(0)
-    .on_press(message)
-    .style(move |_theme: &Theme, status| {
-        let base = iced::widget::button::Style {
-            background: Some(Background::Color(if is_active {
-                theme::TEXT_PRIMARY
-            } else {
-                theme::SURFACE_2
-            })),
+    let title_text = match tab {
+        RightPanelTab::NowPlaying => "Now Playing",
+        RightPanelTab::Queue => "Queue",
+        RightPanelTab::Lyrics => "Lyrics",
+    };
+
+    let header = Row::new()
+        .align_y(Alignment::Center)
+        .push(
+            Text::new(title_text)
+                .size(18)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_PRIMARY),
+        )
+        .push(Space::new().width(Length::Fill))
+        .push(icon_button_circle(Icon::X, Message::ToggleRightPanel(tab)));
+
+    let body: Element<'static, Message> = match tab {
+        RightPanelTab::Lyrics => {
+            let lyrics_card = Container::new(
+                Column::new()
+                    .spacing(12)
+                    .push(
+                        Text::new("♫ Synchronized Lyrics")
+                            .size(16)
+                            .font(iced::Font {
+                                weight: iced::font::Weight::Bold,
+                                ..Default::default()
+                            })
+                            .color(theme::ACCENT),
+                    )
+                    .push(
+                        Text::new("Lyrics provider connected.")
+                            .size(14)
+                            .color(theme::TEXT_SECONDARY),
+                    ),
+            )
+            .padding(20)
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(theme::SURFACE_CARD)),
+                border: Border {
+                    radius: theme::RADIUS_MD.into(),
+                    color: theme::BORDER_SUBTLE,
+                    width: 1.0,
+                },
+                ..Default::default()
+            });
+
+            Column::new()
+                .spacing(16)
+                .push(lyrics_card)
+                .into()
+        }
+        RightPanelTab::NowPlaying => {
+            let art_placeholder = Container::new(Icon::Album.view_colored(64.0, theme::TEXT_SECONDARY))
+                .width(Length::Fill)
+                .height(Length::Fixed(240.0))
+                .align_x(iced::alignment::Horizontal::Center)
+                .align_y(iced::alignment::Vertical::Center)
+                .style(|_theme| container::Style {
+                    background: Some(Background::Color(theme::SURFACE_CARD)),
+                    border: Border {
+                        radius: theme::RADIUS_LG.into(),
+                        color: theme::BORDER_SUBTLE,
+                        width: 1.0,
+                    },
+                    ..Default::default()
+                });
+
+            let track_title = Text::new("Synthetic Horizon")
+                .size(20)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_PRIMARY);
+
+            let artist_name = Text::new("Spotifust Audio Engine")
+                .size(14)
+                .color(theme::TEXT_SECONDARY);
+
+            let artist_card = Container::new(
+                Column::new()
+                    .spacing(8)
+                    .push(
+                        Text::new("About the artist")
+                            .size(14)
+                            .font(iced::Font {
+                                weight: iced::font::Weight::Bold,
+                                ..Default::default()
+                            })
+                            .color(theme::TEXT_PRIMARY),
+                    )
+                    .push(
+                        Text::new("Spotifust is a high-performance, single-binary Rust client built for extreme speed and low RAM footprint.")
+                            .size(12)
+                            .color(theme::TEXT_SECONDARY),
+                    ),
+            )
+            .padding(16)
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(theme::SURFACE_CARD)),
+                border: Border {
+                    radius: theme::RADIUS_MD.into(),
+                    color: theme::BORDER_SUBTLE,
+                    width: 1.0,
+                },
+                ..Default::default()
+            });
+
+            Column::new()
+                .spacing(16)
+                .push(art_placeholder)
+                .push(track_title)
+                .push(artist_name)
+                .push(artist_card)
+                .into()
+        }
+        RightPanelTab::Queue => {
+            let current_header = Text::new("Now Playing")
+                .size(14)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_PRIMARY);
+
+            let current_item = sidebar_item("Synthetic Horizon", "Spotifust Audio Engine", Icon::Play, true, false);
+
+            let next_header = Text::new("Next in Queue")
+                .size(14)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_PRIMARY);
+
+            let queue_list = Column::new()
+                .spacing(4)
+                .push(sidebar_item("Sunset Drive", "The Midnight", Icon::MusicNote, false, false))
+                .push(sidebar_item("Tech Noir", "GUNSHIP", Icon::Album, false, false))
+                .push(sidebar_item("Resonance", "HOME", Icon::Queue, false, false));
+
+            Column::new()
+                .spacing(16)
+                .push(current_header)
+                .push(current_item)
+                .push(next_header)
+                .push(queue_list)
+                .into()
+        }
+    };
+
+    let content = Column::new()
+        .spacing(16)
+        .push(header)
+        .push(Scrollable::new(body).height(Length::Fill));
+
+    Container::new(content)
+        .width(Length::Fixed(width))
+        .height(Length::Fill)
+        .padding(16)
+        .style(|_theme: &Theme| container::Style {
+            background: Some(Background::Color(theme::SURFACE_MAIN)),
             border: Border {
-                radius: 24.0.into(),
+                radius: theme::RADIUS_LG.into(),
                 ..Default::default()
             },
             ..Default::default()
-        };
-        match status {
-            iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                background: Some(Background::Color(if is_active {
-                    theme::TEXT_PRIMARY
-                } else {
-                    iced::Color {
-                        r: 0.2,
-                        g: 0.2,
-                        b: 0.2,
-                        a: 1.0,
-                    }
-                })),
-                ..base
-            },
-            _ => base,
-        }
-    })
-    .into()
+        })
+        .into()
 }
 
 #[allow(clippy::too_many_lines, clippy::cast_precision_loss)]
 fn view_playback_bar(
     playback: &PlaybackState,
     active_right_panel: Option<RightPanelTab>,
-) -> Element<'_, Message> {
+) -> Element<'static, Message> {
+    let (track_name, artist_name) = if let Some(track) = &playback.current_track {
+        (track.title.clone(), track.artist.clone())
+    } else {
+        ("No track playing".to_string(), "Spotifust".to_string())
+    };
+
+    let track_info = Row::new()
+        .align_y(Alignment::Center)
+        .spacing(12)
+        .push(
+            Container::new(Icon::MusicNote.view_colored(20.0, theme::TEXT_SECONDARY))
+                .width(Length::Fixed(48.0))
+                .height(Length::Fixed(48.0))
+                .align_x(iced::alignment::Horizontal::Center)
+                .align_y(iced::alignment::Vertical::Center)
+                .style(|_theme| container::Style {
+                    background: Some(Background::Color(theme::SURFACE_CARD)),
+                    border: Border {
+                        radius: theme::RADIUS_MD.into(),
+                        color: theme::BORDER_SUBTLE,
+                        width: 1.0,
+                    },
+                    ..Default::default()
+                }),
+        )
+        .push(
+            Column::new()
+                .spacing(2)
+                .push(
+                    Text::new(track_name)
+                        .size(13)
+                        .font(iced::Font {
+                            weight: iced::font::Weight::Bold,
+                            ..Default::default()
+                        })
+                        .color(theme::TEXT_PRIMARY),
+                )
+                .push(
+                    Text::new(artist_name)
+                        .size(11)
+                        .color(theme::TEXT_SECONDARY),
+                ),
+        )
+        .push(icon_button_active(Icon::Heart, Message::MockAction, true));
+
     let play_icon = if playback.is_playing {
         Icon::Pause
     } else {
@@ -717,85 +802,41 @@ fn view_playback_bar(
     };
 
     let play_btn = Button::new(
-        Container::new(play_icon.view_colored(16.0, theme::BG_BASE))
-            .width(Length::Fixed(32.0))
-            .height(Length::Fixed(32.0))
+        Container::new(play_icon.view_colored(16.0, Color::BLACK))
+            .width(Length::Fixed(36.0))
+            .height(Length::Fixed(36.0))
             .align_x(iced::alignment::Horizontal::Center)
             .align_y(iced::alignment::Vertical::Center),
     )
     .padding(0)
     .on_press(Message::TogglePlayback)
-    .style(|_theme: &Theme, status| {
+    .style(|_theme, status| {
         let base = iced::widget::button::Style {
-            background: Some(Background::Color(theme::TEXT_PRIMARY)),
-            text_color: theme::BG_BASE,
+            background: Some(Background::Color(theme::ACCENT)),
+            text_color: Color::BLACK,
             border: Border {
-                radius: 16.0.into(),
+                radius: theme::RADIUS_PILL.into(),
                 ..Default::default()
             },
             ..Default::default()
         };
-
         match status {
             iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                background: Some(Background::Color(iced::Color::WHITE)),
+                background: Some(Background::Color(theme::ACCENT_HOVER)),
+                ..base
+            },
+            iced::widget::button::Status::Pressed => iced::widget::button::Style {
+                background: Some(Background::Color(theme::ACCENT_PRESSED)),
                 ..base
             },
             _ => base,
         }
     });
 
+    let shuffle = icon_button(Icon::Shuffle, Message::MockAction);
     let skip_prev = icon_button(Icon::SkipPrev, Message::SkipPrev);
     let skip_next = icon_button(Icon::SkipNext, Message::SkipNext);
-    let shuffle = icon_button_active(Icon::Shuffle, Message::SkipPrev, false);
-    let repeat = icon_button_active(Icon::Repeat, Message::SkipNext, false);
-
-    let track_info = if let Some(track) = &playback.current_track {
-        Row::new()
-            .align_y(Alignment::Center)
-            .spacing(16)
-            .push(
-                Container::new(Icon::MusicNote.view_colored(24.0, theme::TEXT_SECONDARY))
-                    .width(Length::Fixed(56.0))
-                    .height(Length::Fixed(56.0))
-                    .align_x(iced::alignment::Horizontal::Center)
-                    .align_y(iced::alignment::Vertical::Center)
-                    .style(|_theme: &Theme| container::Style {
-                        background: Some(Background::Color(theme::SURFACE_2)),
-                        text_color: Some(theme::TEXT_SECONDARY),
-                        border: Border {
-                            radius: 4.0.into(),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    }),
-            )
-            .push(
-                Column::new()
-                    .spacing(2)
-                    .push(
-                        Text::new(&track.title)
-                            .size(14)
-                            .color(theme::TEXT_PRIMARY)
-                            .font(iced::Font {
-                                weight: iced::font::Weight::Bold,
-                                ..Default::default()
-                            }),
-                    )
-                    .push(
-                        Text::new(if track.album.is_empty() {
-                            track.artist.clone()
-                        } else {
-                            format!("{} — {}", track.artist, track.album)
-                        })
-                        .size(12)
-                        .color(theme::TEXT_SECONDARY),
-                    ),
-            )
-            .push(icon_button_active(Icon::Heart, Message::MockAction, true)) // Mock active liked
-    } else {
-        Row::new()
-    };
+    let repeat = icon_button(Icon::Repeat, Message::MockAction);
 
     let progress_percent = if let Some(track) = &playback.current_track {
         if track.duration_ms > 0 {
@@ -829,11 +870,11 @@ fn view_playback_bar(
 
     let playback_controls = Column::new()
         .align_x(Alignment::Center)
-        .spacing(8)
+        .spacing(6)
         .push(
             Row::new()
                 .align_y(Alignment::Center)
-                .spacing(24)
+                .spacing(20)
                 .push(shuffle)
                 .push(skip_prev)
                 .push(play_btn)
@@ -852,7 +893,7 @@ fn view_playback_bar(
                 .push(
                     slider(0.0..=1.0, progress_percent, Message::SeekTo)
                         .step(0.001_f32)
-                        .width(Length::Fill)
+                        .width(Length::Fixed(460.0))
                         .style(|_theme: &Theme, status| iced::widget::slider::Style {
                             rail: iced::widget::slider::Rail {
                                 backgrounds: (
@@ -860,13 +901,13 @@ fn view_playback_bar(
                                         if status == iced::widget::slider::Status::Hovered {
                                             theme::ACCENT_HOVER
                                         } else {
-                                            theme::TEXT_PRIMARY
+                                            theme::ACCENT
                                         },
                                     ),
-                                    Background::Color(iced::Color {
-                                        r: 0.3,
-                                        g: 0.3,
-                                        b: 0.3,
+                                    Background::Color(Color {
+                                        r: 0.25,
+                                        g: 0.25,
+                                        b: 0.25,
                                         a: 1.0,
                                     }),
                                 ),
@@ -886,7 +927,7 @@ fn view_playback_bar(
                                 },
                                 background: Background::Color(theme::TEXT_PRIMARY),
                                 border_width: 0.0,
-                                border_color: iced::Color::TRANSPARENT,
+                                border_color: Color::TRANSPARENT,
                             },
                         }),
                 )
@@ -898,7 +939,7 @@ fn view_playback_bar(
 
     let extra_controls = Row::new()
         .align_y(Alignment::Center)
-        .spacing(16)
+        .spacing(12)
         .push(icon_button_active(
             Icon::Album,
             Message::ToggleRightPanel(RightPanelTab::NowPlaying),
@@ -909,23 +950,17 @@ fn view_playback_bar(
             Message::ToggleRightPanel(RightPanelTab::Queue),
             queue_active,
         ))
-        .push(icon_button(Icon::Devices, Message::MockAction))
         .push(
             Row::new()
                 .align_y(Alignment::Center)
                 .spacing(8)
                 .push(
-                    Container::new(Icon::Volume.view(16.0)).style(|_theme: &Theme| {
-                        container::Style {
-                            text_color: Some(theme::TEXT_SECONDARY),
-                            ..Default::default()
-                        }
-                    }),
+                    Container::new(Icon::Volume.view_colored(16.0, theme::TEXT_SECONDARY)),
                 )
                 .push(
                     slider(0.0..=1.0, playback.volume, Message::VolumeChanged)
                         .step(0.01_f32)
-                        .width(Length::Fixed(100.0))
+                        .width(Length::Fixed(96.0))
                         .style(|_theme: &Theme, status| iced::widget::slider::Style {
                             rail: iced::widget::slider::Rail {
                                 backgrounds: (
@@ -936,10 +971,10 @@ fn view_playback_bar(
                                             theme::TEXT_PRIMARY
                                         },
                                     ),
-                                    Background::Color(iced::Color {
-                                        r: 0.3,
-                                        g: 0.3,
-                                        b: 0.3,
+                                    Background::Color(Color {
+                                        r: 0.25,
+                                        g: 0.25,
+                                        b: 0.25,
                                         a: 1.0,
                                     }),
                                 ),
@@ -952,72 +987,71 @@ fn view_playback_bar(
                             handle: iced::widget::slider::Handle {
                                 shape: iced::widget::slider::HandleShape::Circle {
                                     radius: if status == iced::widget::slider::Status::Hovered {
-                                        6.0
+                                        5.0
                                     } else {
                                         0.0
                                     },
                                 },
                                 background: Background::Color(theme::TEXT_PRIMARY),
                                 border_width: 0.0,
-                                border_color: iced::Color::TRANSPARENT,
+                                border_color: Color::TRANSPARENT,
                             },
                         }),
                 ),
-        )
-        .push(icon_button(Icon::ChevronRight, Message::MockAction)); // Fullscreen
+        );
 
     Container::new(
         Row::new()
             .align_y(Alignment::Center)
-            .push(Container::new(track_info).width(Length::FillPortion(1)))
-            .push(
-                Container::new(playback_controls)
-                    .width(Length::FillPortion(2))
-                    .center_x(Length::Fill),
-            )
-            .push(
-                Container::new(extra_controls)
-                    .width(Length::FillPortion(1))
-                    .align_x(iced::alignment::Horizontal::Right),
-            )
-            .padding([0, 16]),
+            .push(Container::new(track_info).width(Length::Fixed(280.0)))
+            .push(Space::new().width(Length::Fill))
+            .push(playback_controls)
+            .push(Space::new().width(Length::Fill))
+            .push(Container::new(extra_controls).width(Length::Fixed(240.0))),
     )
     .width(Length::Fill)
-    .height(Length::Fixed(90.0))
+    .height(Length::Fixed(80.0))
+    .padding([0, 24])
     .style(|_theme: &Theme| container::Style {
-        background: Some(Background::Color(theme::SURFACE_0)),
+        background: Some(Background::Color(theme::BG_BASE)),
         ..Default::default()
     })
     .into()
 }
 
-fn icon_button<'a>(icon: Icon, message: Message) -> Element<'a, Message> {
-    icon_button_active(icon, message, false)
+// --- Helper UI Widgets ---
+
+fn view_drag_handle(is_left: bool) -> Element<'static, Message> {
+    let handle = Container::new(Space::new())
+        .width(Length::Fixed(4.0))
+        .height(Length::Fill)
+        .style(|_theme: &Theme| container::Style {
+            background: Some(Background::Color(Color::TRANSPARENT)),
+            ..Default::default()
+        });
+
+    mouse_area(handle)
+        .on_press(if is_left {
+            Message::StartSidebarDrag
+        } else {
+            Message::StartRightPanelDrag
+        })
+        .interaction(iced::mouse::Interaction::ResizingHorizontally)
+        .into()
 }
 
-fn icon_button_active<'a>(icon: Icon, message: Message, is_active: bool) -> Element<'a, Message> {
-    let color = if is_active {
-        theme::ACCENT
-    } else {
-        theme::TEXT_SECONDARY
-    };
-    Button::new(Container::new(icon.view_colored(16.0, color)))
+fn icon_button(icon: Icon, on_press: Message) -> Element<'static, Message> {
+    Button::new(icon.view_colored(18.0, theme::TEXT_SECONDARY))
         .padding(8)
-        .on_press(message)
-        .style(move |_theme: &Theme, status| {
+        .on_press(on_press)
+        .style(|_theme, status| {
             let base = iced::widget::button::Style {
-                text_color: color,
-                background: Some(Background::Color(iced::Color::TRANSPARENT)),
+                background: Some(Background::Color(Color::TRANSPARENT)),
                 ..Default::default()
             };
-
             match status {
                 iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                    text_color: if is_active {
-                        theme::ACCENT_HOVER
-                    } else {
-                        theme::TEXT_PRIMARY
-                    },
+                    text_color: theme::TEXT_PRIMARY,
                     ..base
                 },
                 _ => base,
@@ -1026,182 +1060,343 @@ fn icon_button_active<'a>(icon: Icon, message: Message, is_active: bool) -> Elem
         .into()
 }
 
-fn view_drag_handle<'a>(is_sidebar: bool) -> Element<'a, Message> {
-    let msg = if is_sidebar {
-        Message::StartSidebarDrag
+fn icon_button_active(icon: Icon, on_press: Message, active: bool) -> Element<'static, Message> {
+    let color = if active {
+        theme::ACCENT
     } else {
-        Message::StartRightPanelDrag
+        theme::TEXT_SECONDARY
+    };
+    Button::new(icon.view_colored(18.0, color))
+        .padding(8)
+        .on_press(on_press)
+        .style(|_theme, status| {
+            let base = iced::widget::button::Style {
+                background: Some(Background::Color(Color::TRANSPARENT)),
+                ..Default::default()
+            };
+            match status {
+                iced::widget::button::Status::Hovered => iced::widget::button::Style {
+                    text_color: theme::TEXT_PRIMARY,
+                    ..base
+                },
+                _ => base,
+            }
+        })
+        .into()
+}
+
+fn icon_button_circle(icon: Icon, on_press: Message) -> Element<'static, Message> {
+    Button::new(
+        Container::new(icon.view_colored(16.0, theme::TEXT_SECONDARY))
+            .width(Length::Fixed(40.0))
+            .height(Length::Fixed(40.0))
+            .align_x(iced::alignment::Horizontal::Center)
+            .align_y(iced::alignment::Vertical::Center),
+    )
+    .padding(0)
+    .on_press(on_press)
+    .style(|_theme, status| {
+        let base = iced::widget::button::Style {
+            background: Some(Background::Color(theme::SURFACE_CARD)),
+            border: Border {
+                radius: theme::RADIUS_PILL.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        match status {
+            iced::widget::button::Status::Hovered => iced::widget::button::Style {
+                background: Some(Background::Color(theme::SURFACE_HOVER)),
+                ..base
+            },
+            _ => base,
+        }
+    })
+    .into()
+}
+
+fn icon_button_circle_active(icon: Icon, on_press: Message, active: bool) -> Element<'static, Message> {
+    let (bg, icon_color) = if active {
+        (theme::SURFACE_ACTIVE, theme::TEXT_PRIMARY)
+    } else {
+        (theme::SURFACE_CARD, theme::TEXT_SECONDARY)
     };
 
-    let handle_line = Container::new(Space::new())
-        .width(Length::Fixed(1.0))
-        .height(Length::Fill)
-        .style(|_theme| container::Style {
-            background: Some(Background::Color(theme::SURFACE_2)),
+    Button::new(
+        Container::new(icon.view_colored(18.0, icon_color))
+            .width(Length::Fixed(40.0))
+            .height(Length::Fixed(40.0))
+            .align_x(iced::alignment::Horizontal::Center)
+            .align_y(iced::alignment::Vertical::Center),
+    )
+    .padding(0)
+    .on_press(on_press)
+    .style(move |_theme, status| {
+        let base = iced::widget::button::Style {
+            background: Some(Background::Color(bg)),
+            border: Border {
+                radius: theme::RADIUS_PILL.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        match status {
+            iced::widget::button::Status::Hovered => iced::widget::button::Style {
+                background: Some(Background::Color(theme::SURFACE_HOVER)),
+                ..base
+            },
+            _ => base,
+        }
+    })
+    .into()
+}
+
+fn filter_chip(label: &'static str, active: bool) -> Element<'static, Message> {
+    let (bg, text_color) = if active {
+        (theme::ACCENT, Color::BLACK)
+    } else {
+        (theme::SURFACE_CARD, theme::TEXT_PRIMARY)
+    };
+
+    Button::new(
+        Text::new(label)
+            .size(13)
+            .font(iced::Font {
+                weight: iced::font::Weight::Bold,
+                ..Default::default()
+            })
+            .color(text_color),
+    )
+    .padding([8, 16])
+    .on_press(Message::MockAction)
+    .style(move |_theme, status| {
+        let base = iced::widget::button::Style {
+            background: Some(Background::Color(bg)),
+            border: Border {
+                radius: theme::RADIUS_PILL.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        match status {
+            iced::widget::button::Status::Hovered => iced::widget::button::Style {
+                background: Some(Background::Color(if active { theme::ACCENT_HOVER } else { theme::SURFACE_HOVER })),
+                ..base
+            },
+            _ => base,
+        }
+    })
+    .into()
+}
+
+fn sidebar_item(
+    title: &'static str,
+    subtitle: &'static str,
+    icon: Icon,
+    active: bool,
+    is_liked: bool,
+) -> Element<'static, Message> {
+    let icon_bg = if is_liked {
+        theme::ACCENT
+    } else {
+        theme::SURFACE_CARD
+    };
+
+    let icon_color = if is_liked {
+        Color::WHITE
+    } else {
+        theme::TEXT_SECONDARY
+    };
+
+    let icon_box = Container::new(icon.view_colored(18.0, icon_color))
+        .width(Length::Fixed(44.0))
+        .height(Length::Fixed(44.0))
+        .align_x(iced::alignment::Horizontal::Center)
+        .align_y(iced::alignment::Vertical::Center)
+        .style(move |_theme| container::Style {
+            background: Some(Background::Color(icon_bg)),
+            border: Border {
+                radius: theme::RADIUS_MD.into(),
+                ..Default::default()
+            },
             ..Default::default()
         });
 
-    let area = mouse_area(
-        Container::new(handle_line)
-            .width(Length::Fixed(6.0))
-            .height(Length::Fill)
-            .center_x(Length::Fill),
-    )
-    .on_press(msg)
-    .interaction(iced::mouse::Interaction::ResizingHorizontally);
-
-    area.into()
-}
-
-#[allow(clippy::too_many_lines)]
-fn view_right_panel<'a>(view: Option<RightPanelTab>, width: f32) -> Element<'a, Message> {
-    let Some(tab) = view else {
-        return Space::new()
-            .width(Length::Fixed(0.0))
-            .height(Length::Fixed(0.0))
-            .into();
+    let title_color = if active {
+        theme::ACCENT
+    } else {
+        theme::TEXT_PRIMARY
     };
 
-    let title = match tab {
-        RightPanelTab::NowPlaying => "Now Playing",
-        RightPanelTab::Queue => "Play Queue",
-        RightPanelTab::Lyrics => "Lyrics",
-    };
-
-    let header = Row::new()
-        .align_y(Alignment::Center)
+    let details = Column::new()
+        .spacing(2)
         .push(
             Text::new(title)
-                .size(16)
+                .size(14)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(title_color),
+        )
+        .push(
+            Text::new(subtitle)
+                .size(12)
+                .color(theme::TEXT_SECONDARY),
+        );
+
+    let content = Row::new()
+        .spacing(12)
+        .align_y(Alignment::Center)
+        .push(icon_box)
+        .push(details);
+
+    Button::new(content)
+        .padding(8)
+        .width(Length::Fill)
+        .on_press(Message::MockAction)
+        .style(move |_theme, status| {
+            let bg = if active {
+                theme::SURFACE_ACTIVE
+            } else {
+                Color::TRANSPARENT
+            };
+            let base = iced::widget::button::Style {
+                background: Some(Background::Color(bg)),
+                border: Border {
+                    radius: theme::RADIUS_MD.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            match status {
+                iced::widget::button::Status::Hovered => iced::widget::button::Style {
+                    background: Some(Background::Color(theme::SURFACE_HOVER)),
+                    ..base
+                },
+                _ => base,
+            }
+        })
+        .into()
+}
+
+fn quick_card(title: &'static str, icon: Icon, is_liked: bool) -> Element<'static, Message> {
+    let icon_bg = if is_liked {
+        theme::ACCENT
+    } else {
+        theme::SURFACE_CARD
+    };
+
+    let icon_box = Container::new(icon.view_colored(20.0, Color::WHITE))
+        .width(Length::Fixed(56.0))
+        .height(Length::Fixed(56.0))
+        .align_x(iced::alignment::Horizontal::Center)
+        .align_y(iced::alignment::Vertical::Center)
+        .style(move |_theme| container::Style {
+            background: Some(Background::Color(icon_bg)),
+            border: Border {
+                radius: theme::RADIUS_SM.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+    let content = Row::new()
+        .spacing(12)
+        .align_y(Alignment::Center)
+        .push(icon_box)
+        .push(
+            Text::new(title)
+                .size(14)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_PRIMARY),
+        );
+
+    Button::new(content)
+        .padding(0)
+        .width(Length::Fill)
+        .height(Length::Fixed(56.0))
+        .on_press(Message::MockAction)
+        .style(|_theme, status| {
+            let base = iced::widget::button::Style {
+                background: Some(Background::Color(theme::SURFACE_CARD)),
+                border: Border {
+                    radius: theme::RADIUS_MD.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            match status {
+                iced::widget::button::Status::Hovered => iced::widget::button::Style {
+                    background: Some(Background::Color(theme::SURFACE_HOVER)),
+                    ..base
+                },
+                _ => base,
+            }
+        })
+        .into()
+}
+
+fn media_card(title: &'static str, subtitle: &'static str, icon: Icon) -> Element<'static, Message> {
+    let cover = Container::new(icon.view_colored(36.0, theme::TEXT_SECONDARY))
+        .width(Length::Fill)
+        .height(Length::Fixed(150.0))
+        .align_x(iced::alignment::Horizontal::Center)
+        .align_y(iced::alignment::Vertical::Center)
+        .style(|_theme| container::Style {
+            background: Some(Background::Color(theme::SURFACE_CARD)),
+            border: Border {
+                radius: theme::RADIUS_MD.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+    let text_col = Column::new()
+        .spacing(4)
+        .push(
+            Text::new(title)
+                .size(15)
                 .font(iced::Font {
                     weight: iced::font::Weight::Bold,
                     ..Default::default()
                 })
                 .color(theme::TEXT_PRIMARY),
         )
-        .push(Space::new().width(Length::Fill))
         .push(
-            Button::new(Icon::X.view_colored(14.0, theme::TEXT_SECONDARY))
-                .padding(6)
-                .on_press(Message::ToggleRightPanel(tab))
-                .style(|_theme, status| {
-                    let base = iced::widget::button::Style {
-                        background: Some(Background::Color(iced::Color::TRANSPARENT)),
-                        ..Default::default()
-                    };
-                    match status {
-                        iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                            background: Some(Background::Color(theme::SURFACE_2)),
-                            ..base
-                        },
-                        _ => base,
-                    }
-                }),
+            Text::new(subtitle)
+                .size(12)
+                .color(theme::TEXT_SECONDARY),
         );
 
-    let content: Element<'_, Message> = match tab {
-        RightPanelTab::NowPlaying => Column::new()
-            .spacing(16)
-            .push(
-                Container::new(Icon::MusicNote.view_colored(48.0, theme::TEXT_SECONDARY))
-                    .width(Length::Fill)
-                    .height(Length::Fixed(240.0))
-                    .align_x(iced::alignment::Horizontal::Center)
-                    .align_y(iced::alignment::Vertical::Center)
-                    .style(|_theme| container::Style {
-                        background: Some(Background::Color(theme::SURFACE_2)),
-                        border: Border {
-                            radius: 8.0.into(),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    }),
-            )
-            .push(
-                Text::new("Neon Nights")
-                    .size(18)
-                    .font(iced::Font {
-                        weight: iced::font::Weight::Bold,
-                        ..Default::default()
-                    })
-                    .color(theme::TEXT_PRIMARY),
-            )
-            .push(
-                Text::new("Synthwave Architect")
-                    .size(14)
-                    .color(theme::TEXT_SECONDARY),
-            )
-            .into(),
-        RightPanelTab::Queue => Column::new()
-            .spacing(12)
-            .push(
-                Text::new("Now Playing")
-                    .size(12)
-                    .color(theme::TEXT_SECONDARY),
-            )
-            .push(
-                Row::new()
-                    .spacing(8)
-                    .push(Icon::MusicNote.view_colored(16.0, theme::ACCENT))
-                    .push(Text::new("Neon Nights").size(14).color(theme::ACCENT)),
-            )
-            .push(Space::new().height(Length::Fixed(8.0)))
-            .push(
-                Text::new("Next In Queue")
-                    .size(12)
-                    .color(theme::TEXT_SECONDARY),
-            )
-            .push(
-                Text::new("1. Retro Wave — Miami Nights")
-                    .size(13)
-                    .color(theme::TEXT_PRIMARY),
-            )
-            .push(
-                Text::new("2. Laser Diodes — Grid Runner")
-                    .size(13)
-                    .color(theme::TEXT_PRIMARY),
-            )
-            .into(),
-        RightPanelTab::Lyrics => Scrollable::new(
-            Column::new()
-                .spacing(16)
-                .push(
-                    Text::new("Driving through the neon glow...")
-                        .size(16)
-                        .color(theme::TEXT_PRIMARY),
-                )
-                .push(
-                    Text::new("Synth waves moving very slow...")
-                        .size(16)
-                        .color(theme::TEXT_PRIMARY),
-                )
-                .push(
-                    Text::new("Gridlines stretching to the sky...")
-                        .size(16)
-                        .color(theme::TEXT_SECONDARY),
-                )
-                .push(
-                    Text::new("Underneath the purple sky...")
-                        .size(16)
-                        .color(theme::TEXT_SECONDARY),
-                ),
-        )
-        .into(),
-    };
+    let content = Column::new()
+        .spacing(12)
+        .push(cover)
+        .push(text_col);
 
-    let panel_layout = Column::new().spacing(16).push(header).push(content);
-
-    Container::new(panel_layout)
-        .width(Length::Fixed(width))
-        .height(Length::Fill)
-        .padding(16)
-        .style(|_theme| container::Style {
-            background: Some(Background::Color(theme::BG_BASE)),
-            border: Border {
-                radius: 8.0.into(),
+    Button::new(content)
+        .padding(12)
+        .width(Length::Fixed(180.0))
+        .on_press(Message::MockAction)
+        .style(|_theme, status| {
+            let base = iced::widget::button::Style {
+                background: Some(Background::Color(theme::SURFACE_MAIN)),
+                border: Border {
+                    radius: theme::RADIUS_LG.into(),
+                    ..Default::default()
+                },
                 ..Default::default()
-            },
-            ..Default::default()
+            };
+            match status {
+                iced::widget::button::Status::Hovered => iced::widget::button::Style {
+                    background: Some(Background::Color(theme::SURFACE_HOVER)),
+                    ..base
+                },
+                _ => base,
+            }
         })
         .into()
 }

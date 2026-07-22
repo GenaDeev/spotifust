@@ -72,6 +72,7 @@ impl Icon {
     }
 
     /// Renders this icon as an `Svg` widget with the given size and default text color.
+    #[allow(dead_code)]
     pub fn view<M: 'static>(self, size: f32) -> Element<'static, M> {
         Svg::new(self.handle())
             .width(Length::Fixed(size))

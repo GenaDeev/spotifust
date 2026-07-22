@@ -1,10 +1,10 @@
 use crate::app::Message;
+use crate::ui::theme;
 use iced::{
-    Alignment, Background, Border, Color, Element, Length, Shadow, Theme, Vector,
-    widget::{Button, Column, Container, Image, Text},
+    Alignment, Background, Border, Color, Element, Length, Padding, Theme,
+    widget::{Button, Column, Container, Image, Row, Text},
 };
 
-// We use the same logo byte array used for the window icon
 const LOGO_BYTES: &[u8] = include_bytes!("../../assets/spotifust.png");
 
 #[allow(clippy::too_many_lines)]
@@ -16,54 +16,119 @@ pub fn view<'a>(
 ) -> Element<'a, Message> {
     let logo_handle = iced::widget::image::Handle::from_bytes(LOGO_BYTES);
     let logo = Image::new(logo_handle)
-        .width(Length::Fixed(120.0))
-        .height(Length::Fixed(120.0));
+        .width(Length::Fixed(96.0))
+        .height(Length::Fixed(96.0))
+        .filter_method(iced::widget::image::FilterMethod::Linear);
 
     let title = Text::new("Spotifust")
-        .size(56)
+        .size(48)
         .font(iced::Font {
             weight: iced::font::Weight::Bold,
             ..Default::default()
         })
-        .color(Color::WHITE);
+        .color(theme::TEXT_PRIMARY);
 
-    let subtitle = Text::new("Connect your Spotify account to continue")
-        .size(18)
-        .color(Color::from_rgb8(170, 170, 170));
+    let badge = Container::new(
+        Text::new("DESKTOP")
+            .size(10)
+            .font(iced::Font {
+                weight: iced::font::Weight::Bold,
+                ..Default::default()
+            })
+            .color(theme::ACCENT),
+    )
+    .padding([3, 8])
+    .style(|_theme: &Theme| iced::widget::container::Style {
+        background: Some(Background::Color(Color {
+            r: theme::ACCENT.r,
+            g: theme::ACCENT.g,
+            b: theme::ACCENT.b,
+            a: 0.15,
+        })),
+        border: Border {
+            color: theme::ACCENT,
+            width: 1.0,
+            radius: theme::RADIUS_PILL.into(),
+        },
+        ..Default::default()
+    });
+
+    let header_row = Row::new()
+        .align_y(Alignment::Center)
+        .spacing(12)
+        .push(title)
+        .push(badge);
+
+    let subtitle = Text::new("Listen to millions of songs without audio limits.")
+        .size(15)
+        .color(theme::TEXT_SECONDARY);
 
     let mut inner_col = Column::new()
-        .spacing(15)
+        .spacing(16)
         .align_x(Alignment::Center)
         .push(logo)
-        .push(title)
+        .push(header_row)
         .push(subtitle);
 
     if let Some(err) = error {
         inner_col = inner_col.push(
-            Container::new(Text::new(err).color(iced::color!(0x00FF_5555)).size(14))
-                .padding([10, 20])
-                .style(|_theme: &Theme| iced::widget::container::Style {
-                    background: Some(Background::Color(Color::from_rgba8(255, 85, 85, 0.1))),
-                    border: Border {
-                        color: iced::color!(0x00FF_5555),
-                        width: 1.0,
-                        radius: 8.0.into(),
-                    },
-                    ..Default::default()
-                }),
+            Container::new(
+                Row::new()
+                    .align_y(Alignment::Center)
+                    .spacing(8)
+                    .push(Text::new("⚠").size(14).color(Color::from_rgb8(255, 100, 100)))
+                    .push(
+                        Text::new(err)
+                            .color(Color::from_rgb8(255, 120, 120))
+                            .size(13),
+                    ),
+            )
+            .padding([12, 20])
+            .style(|_theme: &Theme| iced::widget::container::Style {
+                background: Some(Background::Color(Color::from_rgba8(255, 80, 80, 0.12))),
+                border: Border {
+                    color: Color::from_rgba8(255, 80, 80, 0.4),
+                    width: 1.0,
+                    radius: theme::RADIUS_MD.into(),
+                },
+                ..Default::default()
+            }),
         );
     }
 
     if is_loading {
-        inner_col = inner_col.push(
-            Text::new("Awaiting browser login...")
-                .size(16)
-                .color(Color::from_rgb8(150, 150, 150)),
-        );
+        let loading_badge = Container::new(
+            Row::new()
+                .align_y(Alignment::Center)
+                .spacing(10)
+                .push(Text::new("⏳").size(16))
+                .push(
+                    Text::new("Awaiting OAuth authentication in your browser...")
+                        .size(14)
+                        .color(theme::TEXT_SECONDARY),
+                ),
+        )
+        .padding([14, 24])
+        .style(|_theme: &Theme| iced::widget::container::Style {
+            background: Some(Background::Color(theme::SURFACE_HOVER)),
+            border: Border {
+                color: theme::BORDER_SUBTLE,
+                width: 1.0,
+                radius: theme::RADIUS_PILL.into(),
+            },
+            ..Default::default()
+        });
+
+        inner_col = inner_col.push(Container::new(loading_badge).padding(Padding {
+            top: 16.0,
+            right: 0.0,
+            bottom: 0.0,
+            left: 0.0,
+        }));
     } else {
         let login_btn = Button::new(
-            Text::new("Login with Spotify")
-                .size(18)
+            Text::new("Log in with Spotify")
+                .size(16)
                 .font(iced::Font {
                     weight: iced::font::Weight::Bold,
                     ..Default::default()
@@ -71,48 +136,33 @@ pub fn view<'a>(
                 .align_x(iced::alignment::Horizontal::Center),
         )
         .on_press(Message::LoginRequested)
-        .padding([16, 48])
+        .padding([16, 44])
         .style(|_theme: &Theme, status| {
             let base = iced::widget::button::Style {
-                background: Some(Background::Color(Color::from_rgb8(29, 185, 84))),
-                text_color: Color::WHITE,
+                background: Some(Background::Color(theme::ACCENT)),
+                text_color: Color::BLACK,
                 border: Border {
-                    radius: 30.0.into(),
+                    radius: theme::RADIUS_PILL.into(),
                     ..Default::default()
-                },
-                shadow: Shadow {
-                    color: Color::from_rgba8(29, 185, 84, 0.3),
-                    offset: Vector::new(0.0, 8.0),
-                    blur_radius: 16.0,
                 },
                 ..Default::default()
             };
 
             match status {
                 iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                    background: Some(Background::Color(Color::from_rgb8(30, 215, 96))),
-                    shadow: Shadow {
-                        color: Color::from_rgba8(29, 185, 84, 0.5),
-                        offset: Vector::new(0.0, 12.0),
-                        blur_radius: 20.0,
-                    },
+                    background: Some(Background::Color(theme::ACCENT_HOVER)),
                     ..base
                 },
                 iced::widget::button::Status::Pressed => iced::widget::button::Style {
-                    background: Some(Background::Color(Color::from_rgb8(20, 131, 59))),
-                    shadow: Shadow {
-                        color: Color::from_rgba8(29, 185, 84, 0.1),
-                        offset: Vector::new(0.0, 4.0),
-                        blur_radius: 8.0,
-                    },
+                    background: Some(Background::Color(theme::ACCENT_PRESSED)),
                     ..base
                 },
                 _ => base,
             }
         });
 
-        inner_col = inner_col.push(Container::new(login_btn).padding(iced::Padding {
-            top: 20.0,
+        inner_col = inner_col.push(Container::new(login_btn).padding(Padding {
+            top: 16.0,
             right: 0.0,
             bottom: 0.0,
             left: 0.0,
@@ -120,18 +170,14 @@ pub fn view<'a>(
     }
 
     let card = Container::new(inner_col)
-        .padding(50)
+        .padding(48)
+        .max_width(460.0)
         .style(|_theme: &Theme| iced::widget::container::Style {
-            background: Some(Background::Color(Color::from_rgb8(24, 24, 24))),
+            background: Some(Background::Color(theme::SURFACE_CARD)),
             border: Border {
-                radius: 24.0.into(),
-                color: Color::from_rgb8(40, 40, 40),
+                radius: theme::RADIUS_XL.into(),
+                color: theme::BORDER_SUBTLE,
                 width: 1.0,
-            },
-            shadow: Shadow {
-                color: Color::from_rgba8(0, 0, 0, 0.5),
-                offset: Vector::new(0.0, 20.0),
-                blur_radius: 40.0,
             },
             ..Default::default()
         });
@@ -142,7 +188,7 @@ pub fn view<'a>(
         .center_x(Length::Fill)
         .center_y(Length::Fill)
         .style(|_theme: &Theme| iced::widget::container::Style {
-            background: Some(Background::Color(Color::from_rgb8(9, 9, 9))),
+            background: Some(Background::Color(theme::BG_BASE)),
             ..Default::default()
         })
         .into()
