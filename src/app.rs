@@ -356,7 +356,9 @@ impl App {
                     PlayerEvent::EndOfTrack { .. } => {
                         if let AppState::Main { playback, .. } = &mut self.state {
                             playback.is_playing = false;
+                            playback.progress_ms = 0;
                         }
+                        return self.update(Message::SkipNext);
                     }
                     _ => {}
                 }

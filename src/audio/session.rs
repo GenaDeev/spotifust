@@ -107,6 +107,8 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                                 }
                                 PlayerEvent::EndOfTrack { .. } => {
                                     is_playing = false;
+                                    position_ms = 0;
+                                    let _ = event_tx.send(AudioSessionEvent::PositionMs(0)).await;
                                 }
                                 _ => {}
                             }

@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Implement end-of-track detection via `PlayerEvent::EndOfTrack` and auto-advance to next track
+- [ ] Validate that the mpsc channel remains bounded under sustained high-throughput decoding
 
 ## Development Backlog
 
@@ -37,7 +37,7 @@
 - [x] Implement Seek: accept a `f32` position ratio from the seek bar and call `player.seek(ms)`
 - [x] Extract current track metadata (title, artist, album, duration) from `PlayerEvent` and emit them as `Message::TrackChanged`
 - [x] Stream playback position (elapsed ms) from the audio task to the UI via the mpsc channel
-- [ ] Implement end-of-track detection via `PlayerEvent::EndOfTrack` and auto-advance to next track
+- [x] Implement end-of-track detection via `PlayerEvent::EndOfTrack` and auto-advance to next track
 - [ ] Validate that the mpsc channel remains bounded under sustained high-throughput decoding
 - [ ] Wire volume control: slider value in UI → `rodio::Sink::set_volume()` (full 0.0–1.0 range, not binary)
 - [ ] Fix seek bar so it travels the full 0–100% range and reflects real playback position
