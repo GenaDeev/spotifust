@@ -798,7 +798,11 @@ fn view_playback_bar(
     };
 
     let progress_percent = if let Some(track) = &playback.current_track {
-        (playback.progress_ms as f32) / (track.duration_ms as f32)
+        if track.duration_ms > 0 {
+            ((playback.progress_ms as f32) / (track.duration_ms as f32)).clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
     } else {
         0.0
     };
@@ -810,7 +814,17 @@ fn view_playback_bar(
         format!("{mins}:{rem_secs:02}")
     };
 
-    let current_time = format_time(playback.progress_ms);
+    let display_progress_ms = if let Some(track) = &playback.current_track {
+        if track.duration_ms > 0 {
+            playback.progress_ms.min(track.duration_ms)
+        } else {
+            playback.progress_ms
+        }
+    } else {
+        playback.progress_ms
+    };
+
+    let current_time = format_time(display_progress_ms);
     let total_time = format_time(playback.current_track.as_ref().map_or(0, |t| t.duration_ms));
 
     let playback_controls = Column::new()

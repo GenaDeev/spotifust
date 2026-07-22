@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Fix seek bar so it travels the full 0–100% range and reflects real playback position
+- [ ] Handle `librespot` session expiry and reconnection without crashing
 
 ## Development Backlog
 
@@ -40,7 +40,7 @@
 - [x] Implement end-of-track detection via `PlayerEvent::EndOfTrack` and auto-advance to next track
 - [x] Validate that the mpsc channel remains bounded under sustained high-throughput decoding
 - [x] Wire volume control: slider value in UI → `rodio::Sink::set_volume()` (full 0.0–1.0 range, not binary)
-- [ ] Fix seek bar so it travels the full 0–100% range and reflects real playback position
+- [x] Fix seek bar so it travels the full 0–100% range and reflects real playback position
 - [ ] Handle `librespot` session expiry and reconnection without crashing
 
 ### Phase 4: RSpotify Web API & Auth

@@ -366,7 +366,15 @@ impl App {
             }
             Message::PlaybackPositionReceived(pos) => {
                 if let AppState::Main { playback, .. } = &mut self.state {
-                    playback.progress_ms = pos;
+                    if let Some(track) = &playback.current_track {
+                        if track.duration_ms > 0 {
+                            playback.progress_ms = pos.min(track.duration_ms);
+                        } else {
+                            playback.progress_ms = pos;
+                        }
+                    } else {
+                        playback.progress_ms = pos;
+                    }
                 }
                 Task::none()
             }
