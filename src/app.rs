@@ -96,6 +96,7 @@ pub enum Message {
     AudioSessionConnected(AudioSession),
     PlayerEventReceived(PlayerEvent),
     PlaybackPositionReceived(u32),
+    SessionExpired,
     // Main UI Messages
     NavigationSelected(NavigationItem),
     TogglePlayback,
@@ -145,6 +146,7 @@ impl iced::advanced::subscription::Recipe for PlayerEventsRecipe {
                             AudioSessionEvent::PositionMs(pos) => {
                                 Message::PlaybackPositionReceived(pos)
                             }
+                            AudioSessionEvent::SessionExpired => Message::SessionExpired,
                         };
                         if output.send(msg).await.is_err() {
                             break;
@@ -376,6 +378,22 @@ impl App {
                         playback.progress_ms = pos;
                     }
                 }
+                Task::none()
+            }
+            Message::SessionExpired => {
+                if let AppState::Main {
+                    audio_session,
+                    playback,
+                    ..
+                } = &mut self.state
+                {
+                    *audio_session = None;
+                    playback.is_playing = false;
+                }
+                self.active_error = Some(
+                    "Spotify audio session expired or disconnected. Re-connection required."
+                        .to_string(),
+                );
                 Task::none()
             }
             Message::LoginFailed(err) => {

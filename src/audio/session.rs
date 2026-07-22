@@ -25,6 +25,7 @@ pub enum PlayerCommand {
 pub enum AudioSessionEvent {
     Player(PlayerEvent),
     PositionMs(u32),
+    SessionExpired,
 }
 
 #[derive(Clone)]
@@ -85,39 +86,43 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
         loop {
             tokio::select! {
                 maybe_event = librespot_rx.recv() => {
-                    match maybe_event {
-                        Some(event) => {
-                            match &event {
-                                PlayerEvent::Seeked { position_ms: pos, .. }
-                                | PlayerEvent::Playing { position_ms: pos, .. } => {
-                                    is_playing = true;
-                                    position_ms = *pos;
-                                    last_update = tokio::time::Instant::now();
-                                    let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
-                                }
-                                PlayerEvent::Paused { position_ms: pos, .. } => {
-                                    is_playing = false;
-                                    position_ms = *pos;
-                                    let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
-                                }
-                                PlayerEvent::Stopped { .. } => {
-                                    is_playing = false;
-                                    position_ms = 0;
-                                    let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
-                                }
-                                PlayerEvent::EndOfTrack { .. } => {
-                                    is_playing = false;
-                                    position_ms = 0;
-                                    let _ = event_tx.send(AudioSessionEvent::PositionMs(0)).await;
-                                }
-                                _ => {}
+                    if let Some(event) = maybe_event {
+                        match &event {
+                            PlayerEvent::Seeked { position_ms: pos, .. }
+                            | PlayerEvent::Playing { position_ms: pos, .. } => {
+                                is_playing = true;
+                                position_ms = *pos;
+                                last_update = tokio::time::Instant::now();
+                                let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
                             }
-
-                            if event_tx.send(AudioSessionEvent::Player(event)).await.is_err() {
-                                break;
+                            PlayerEvent::Paused { position_ms: pos, .. } => {
+                                is_playing = false;
+                                position_ms = *pos;
+                                let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
                             }
+                            PlayerEvent::Stopped { .. } => {
+                                is_playing = false;
+                                position_ms = 0;
+                                let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
+                            }
+                            PlayerEvent::EndOfTrack { .. } => {
+                                is_playing = false;
+                                position_ms = 0;
+                                let _ = event_tx.send(AudioSessionEvent::PositionMs(0)).await;
+                            }
+                            PlayerEvent::Unavailable { .. } => {
+                                is_playing = false;
+                                let _ = event_tx.send(AudioSessionEvent::SessionExpired).await;
+                            }
+                            _ => {}
                         }
-                        None => break,
+
+                        if event_tx.send(AudioSessionEvent::Player(event)).await.is_err() {
+                            break;
+                        }
+                    } else {
+                        let _ = event_tx.send(AudioSessionEvent::SessionExpired).await;
+                        break;
                     }
                 }
                 _ = interval.tick() => {
