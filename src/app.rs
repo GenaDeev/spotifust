@@ -311,6 +311,11 @@ impl App {
                             playback.current_track_uri = Some(track_id.to_uri());
                         }
                     }
+                    PlayerEvent::Seeked { position_ms, .. } => {
+                        if let AppState::Main { playback, .. } = &mut self.state {
+                            playback.progress_ms = *position_ms;
+                        }
+                    }
                     PlayerEvent::Paused { position_ms, .. } => {
                         if let AppState::Main { playback, .. } = &mut self.state {
                             playback.is_playing = false;
@@ -442,7 +447,8 @@ impl App {
                 } = &mut self.state
                 {
                     if let Some(track) = &playback.current_track {
-                        let pos_ms = (percent * track.duration_ms as f32) as u32;
+                        let clamped_percent = percent.clamp(0.0, 1.0);
+                        let pos_ms = (clamped_percent * track.duration_ms as f32) as u32;
                         playback.progress_ms = pos_ms;
 
                         if let Some(session) = audio_session {

@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Implement Seek: accept a `f32` position ratio from the seek bar and call `player.seek(ms)`
+- [ ] Implement end-of-track detection via `PlayerEvent::EndOfTrack` and auto-advance to next track
 
 ## Development Backlog
 
@@ -34,7 +34,7 @@
 - [x] Wire UI Play command to call `player.load()` on the active `librespot` player instance
 - [x] Wire UI Pause / Resume commands to the librespot player
 - [x] Wire UI Skip Next / Skip Previous commands to the librespot player
-- [ ] Implement Seek: accept a `f32` position ratio from the seek bar and call `player.seek(ms)`
+- [x] Implement Seek: accept a `f32` position ratio from the seek bar and call `player.seek(ms)`
 - [x] Extract current track metadata (title, artist, album, duration) from `PlayerEvent` and emit them as `Message::TrackChanged`
 - [x] Stream playback position (elapsed ms) from the audio task to the UI via the mpsc channel
 - [ ] Implement end-of-track detection via `PlayerEvent::EndOfTrack` and auto-advance to next track

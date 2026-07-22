@@ -88,7 +88,8 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                     match maybe_event {
                         Some(event) => {
                             match &event {
-                                PlayerEvent::Playing { position_ms: pos, .. } => {
+                                PlayerEvent::Seeked { position_ms: pos, .. }
+                                | PlayerEvent::Playing { position_ms: pos, .. } => {
                                     is_playing = true;
                                     position_ms = *pos;
                                     last_update = tokio::time::Instant::now();
