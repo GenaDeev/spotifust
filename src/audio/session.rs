@@ -175,7 +175,7 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                     player_cmd.seek(pos_ms);
                 }
                 PlayerCommand::Volume(vol) => {
-                    rodio_sink_cmd.set_volume(vol);
+                    rodio_sink_cmd.set_volume(vol.clamp(0.0, 1.0));
                 }
             }
         }

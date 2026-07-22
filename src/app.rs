@@ -467,9 +467,10 @@ impl App {
                     ..
                 } = &mut self.state
                 {
-                    playback.volume = vol;
+                    let clamped_vol = vol.clamp(0.0, 1.0);
+                    playback.volume = clamped_vol;
                     if let Some(session) = audio_session {
-                        let _ = session.cmd_tx.try_send(PlayerCommand::Volume(vol));
+                        let _ = session.cmd_tx.try_send(PlayerCommand::Volume(clamped_vol));
                     }
                 }
                 Task::none()
