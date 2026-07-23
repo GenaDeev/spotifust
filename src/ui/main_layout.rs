@@ -15,8 +15,9 @@ pub fn view<'a>(
     sidebar_width: f32,
     right_panel_width: f32,
     active_right_panel: Option<RightPanelTab>,
+    user_profile: Option<&'a crate::api::user::UserProfile>,
 ) -> Element<'a, Message> {
-    let top_bar = view_top_bar(*nav_item);
+    let top_bar = view_top_bar(*nav_item, user_profile);
     let sidebar = view_sidebar_panel(sidebar_width);
     let main_content = view_main_content(*nav_item);
     let right_panel = view_right_panel(active_right_panel, right_panel_width);
@@ -56,7 +57,14 @@ pub fn view<'a>(
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_top_bar(current_nav: NavigationItem) -> Element<'static, Message> {
+fn view_top_bar(
+    current_nav: NavigationItem,
+    user_profile: Option<&crate::api::user::UserProfile>,
+) -> Element<'static, Message> {
+    let initial_letter = user_profile
+        .and_then(|p| p.display_name.chars().next())
+        .map_or("G".to_string(), |c| c.to_uppercase().to_string());
+
     let logo_handle = iced::widget::image::Handle::from_bytes(LOGO_BYTES);
     let logo_img = Image::new(logo_handle)
         .width(Length::Fixed(32.0))
@@ -152,7 +160,7 @@ fn view_top_bar(current_nav: NavigationItem) -> Element<'static, Message> {
 
     let user_avatar_btn = Button::new(
         Container::new(
-            Text::new("G")
+            Text::new(initial_letter)
                 .size(14)
                 .font(iced::Font {
                     weight: iced::font::Weight::Bold,

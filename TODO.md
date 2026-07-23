@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Fetch the authenticated user's profile (`/me`) and display name and avatar in the sidebar
+- [ ] Fetch the user's full playlist library (`/me/playlists`, paginated) and stream items into the sidebar list
 
 ## Development Backlog
 
@@ -49,7 +49,7 @@
 - [x] Register `spotifust://callback` custom protocol handler for the OAuth redirect
 - [x] Verify the refresh token is stored exclusively via the OS keychain (`keyring` crate), never as plaintext
 - [x] Implement token refresh on expiry: detect 401 responses and silently re-authenticate
-- [ ] Fetch the authenticated user's profile (`/me`) and display name and avatar in the sidebar
+- [x] Fetch the authenticated user's profile (`/me`) and display name and avatar in the sidebar
 - [ ] Fetch the user's full playlist library (`/me/playlists`, paginated) and stream items into the sidebar list
 - [ ] Fetch playlist track listings on demand when a playlist is selected
 - [ ] Fetch the user's saved albums and expose them in a dedicated Albums view

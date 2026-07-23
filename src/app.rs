@@ -67,6 +67,7 @@ pub enum AppState {
         nav_item: NavigationItem,
         playback: PlaybackState,
         audio_session: Option<AudioSession>,
+        user_profile: Option<crate::api::user::UserProfile>,
         sidebar_width: f32,
         right_panel_width: f32,
         active_right_panel: Option<RightPanelTab>,
@@ -93,6 +94,7 @@ pub enum Message {
     CheckLoginFailed,
     LoginSuccess(Box<rspotify::AuthCodePkceSpotify>),
     LoginFailed(String),
+    UserProfileFetched(Result<crate::api::user::UserProfile, AppError>),
     // Audio Messages
     AudioSessionConnected(AudioSession),
     PlayerEventReceived(PlayerEvent),
@@ -269,6 +271,7 @@ impl App {
                     nav_item: NavigationItem::Home,
                     playback: mock_playback,
                     audio_session: None,
+                    user_profile: None,
                     sidebar_width: sw,
                     right_panel_width: rw,
                     active_right_panel: None,
@@ -277,23 +280,41 @@ impl App {
                     window_width: 1200.0,
                 };
 
-                Task::perform(
-                    async move {
-                        let token_mutex = spotify.get_token();
-                        let token_guard = token_mutex.lock().await.map_err(|e| {
-                            AppError::Auth(format!("Failed to lock token mutex: {e:?}"))
-                        })?;
-                        let token_ref = (*token_guard).as_ref().ok_or_else(|| {
-                            AppError::Auth("No access token available".to_string())
-                        })?;
-                        let access_token = token_ref.access_token.clone();
-                        crate::audio::session::connect_with_token(&access_token).await
-                    },
-                    |res| match res {
-                        Ok(audio_session) => Message::AudioSessionConnected(audio_session),
-                        Err(e) => Message::ErrorEncountered(e),
-                    },
-                )
+                let spotify_arc = Arc::new(*spotify);
+                let spotify_1 = Arc::clone(&spotify_arc);
+                let spotify_2 = Arc::clone(&spotify_arc);
+
+                Task::batch([
+                    Task::perform(
+                        async move {
+                            let token_mutex = spotify_1.get_token();
+                            let token_guard = token_mutex.lock().await.map_err(|e| {
+                                AppError::Auth(format!("Failed to lock token mutex: {e:?}"))
+                            })?;
+                            let token_ref = (*token_guard).as_ref().ok_or_else(|| {
+                                AppError::Auth("No access token available".to_string())
+                            })?;
+                            let access_token = token_ref.access_token.clone();
+                            crate::audio::session::connect_with_token(&access_token).await
+                        },
+                        |res| match res {
+                            Ok(audio_session) => Message::AudioSessionConnected(audio_session),
+                            Err(e) => Message::ErrorEncountered(e),
+                        },
+                    ),
+                    Task::perform(
+                        async move { crate::api::user::fetch_user_profile(&spotify_2).await },
+                        Message::UserProfileFetched,
+                    ),
+                ])
+            }
+            Message::UserProfileFetched(res) => {
+                if let Ok(profile) = res {
+                    if let AppState::Main { user_profile, .. } = &mut self.state {
+                        *user_profile = Some(profile);
+                    }
+                }
+                Task::none()
             }
             Message::AudioSessionConnected(session) => {
                 if let AppState::Main { audio_session, .. } = &mut self.state {
@@ -592,6 +613,7 @@ impl App {
                 sidebar_width,
                 right_panel_width,
                 active_right_panel,
+                user_profile,
                 ..
             } => crate::ui::main_layout::view(
                 nav_item,
@@ -599,6 +621,7 @@ impl App {
                 *sidebar_width,
                 *right_panel_width,
                 *active_right_panel,
+                user_profile.as_ref(),
             ),
         };
 
