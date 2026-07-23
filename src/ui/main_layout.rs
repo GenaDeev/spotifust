@@ -18,11 +18,12 @@ pub fn view<'a>(
     active_right_panel: Option<RightPanelTab>,
     user_profile: Option<&'a crate::api::user::UserProfile>,
     user_playlists: &'a [crate::api::playlist::PlaylistSummary],
+    user_albums: &'a [crate::api::album::AlbumSummary],
     selected_playlist: Option<&'a crate::app::SelectedPlaylistState>,
 ) -> Element<'a, Message> {
     let top_bar = view_top_bar(*nav_item, user_profile);
-    let sidebar = view_sidebar_panel(sidebar_width, user_playlists);
-    let main_content = view_main_content(*nav_item, selected_playlist);
+    let sidebar = view_sidebar_panel(sidebar_width, user_playlists, user_albums);
+    let main_content = view_main_content(*nav_item, selected_playlist, user_albums);
     let right_panel = view_right_panel(active_right_panel, right_panel_width);
     let playback_bar = view_playback_bar(playback, active_right_panel);
 
@@ -232,6 +233,7 @@ fn view_top_bar(
 fn view_sidebar_panel(
     width: f32,
     playlists: &[crate::api::playlist::PlaylistSummary],
+    albums: &[crate::api::album::AlbumSummary],
 ) -> Element<'static, Message> {
     let is_compact = width < 120.0;
 
@@ -390,7 +392,7 @@ fn view_sidebar_panel(
     );
     list = list.push(liked_item);
 
-    if playlists.is_empty() {
+    if playlists.is_empty() && albums.is_empty() {
         let items = [
             ("Synthwave Architect", "Album • The Midnight", Icon::Album, false),
             ("Rustaceans Unite", "Playlist • Spotifust", Icon::MusicNote, false),
@@ -419,6 +421,17 @@ fn view_sidebar_panel(
                 false,
                 false,
                 Message::SelectPlaylist(p_id),
+            ));
+        }
+        for a in albums {
+            let sub = format!("Album • {}", a.artist_name);
+            list = list.push(sidebar_item(
+                a.name.clone(),
+                sub,
+                Icon::Album,
+                false,
+                false,
+                Message::MockAction,
             ));
         }
     }
@@ -450,6 +463,7 @@ fn view_sidebar_panel(
 fn view_main_content<'a>(
     current_nav: NavigationItem,
     selected_playlist: Option<&'a crate::app::SelectedPlaylistState>,
+    user_albums: &'a [crate::api::album::AlbumSummary],
 ) -> Element<'a, Message> {
     if let Some(sp) = selected_playlist {
         let playlist_header = Column::new()
@@ -740,12 +754,21 @@ fn view_main_content<'a>(
                 .color(theme::TEXT_SECONDARY),
         );
 
-    let section_2_cards = Row::new()
-        .spacing(16)
-        .push(media_card("Endless Summer", "The Midnight • Album", Icon::Album))
-        .push(media_card("Dark All Day", "GUNSHIP • Album", Icon::MusicNote))
-        .push(media_card("Techno Bunker", "Hard hitting synth and techno tracks.", Icon::Queue))
-        .push(media_card("Coding Mode", "Zero distractions, pure synthwave.", Icon::Play));
+    let section_2_cards = if user_albums.is_empty() {
+        Row::new()
+            .spacing(16)
+            .push(media_card("Endless Summer", "The Midnight • Album", Icon::Album))
+            .push(media_card("Dark All Day", "GUNSHIP • Album", Icon::MusicNote))
+            .push(media_card("Techno Bunker", "Hard hitting synth and techno tracks.", Icon::Queue))
+            .push(media_card("Coding Mode", "Zero distractions, pure synthwave.", Icon::Play))
+    } else {
+        let mut row = Row::new().spacing(16);
+        for a in user_albums.iter().take(4) {
+            let subtitle = format!("{} • Album", a.artist_name);
+            row = row.push(media_card(&a.name, &subtitle, Icon::Album));
+        }
+        row
+    };
 
     let scroll_content = Column::new()
         .spacing(24)
@@ -1618,7 +1641,14 @@ fn quick_card(title: &'static str, icon: Icon, is_liked: bool) -> Element<'stati
         .into()
 }
 
-fn media_card(title: &'static str, subtitle: &'static str, icon: Icon) -> Element<'static, Message> {
+fn media_card<'a>(
+    title: impl Into<String>,
+    subtitle: impl Into<String>,
+    icon: Icon,
+) -> Element<'a, Message> {
+    let title_str = title.into();
+    let subtitle_str = subtitle.into();
+
     let cover = Container::new(icon.view_colored(36.0, theme::TEXT_SECONDARY))
         .width(Length::Fill)
         .height(Length::Fixed(150.0))
@@ -1636,7 +1666,7 @@ fn media_card(title: &'static str, subtitle: &'static str, icon: Icon) -> Elemen
     let text_col = Column::new()
         .spacing(4)
         .push(
-            Text::new(title)
+            Text::new(title_str)
                 .size(15)
                 .font(iced::Font {
                     weight: iced::font::Weight::Bold,
@@ -1645,7 +1675,7 @@ fn media_card(title: &'static str, subtitle: &'static str, icon: Icon) -> Elemen
                 .color(theme::TEXT_PRIMARY),
         )
         .push(
-            Text::new(subtitle)
+            Text::new(subtitle_str)
                 .size(12)
                 .color(theme::TEXT_SECONDARY),
         );

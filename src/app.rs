@@ -77,6 +77,7 @@ pub enum AppState {
         audio_session: Option<AudioSession>,
         user_profile: Option<crate::api::user::UserProfile>,
         user_playlists: Vec<crate::api::playlist::PlaylistSummary>,
+        user_albums: Vec<crate::api::album::AlbumSummary>,
         selected_playlist: Option<SelectedPlaylistState>,
         spotify_client: Option<Arc<rspotify::AuthCodePkceSpotify>>,
         sidebar_width: f32,
@@ -107,6 +108,7 @@ pub enum Message {
     LoginFailed(String),
     UserProfileFetched(Result<crate::api::user::UserProfile, AppError>),
     UserPlaylistsFetched(Result<Vec<crate::api::playlist::PlaylistSummary>, AppError>),
+    UserAlbumsFetched(Result<Vec<crate::api::album::AlbumSummary>, AppError>),
     SelectPlaylist(String),
     PlaylistTracksFetched(
         String,
@@ -292,6 +294,7 @@ impl App {
                     audio_session: None,
                     user_profile: None,
                     user_playlists: Vec::new(),
+                    user_albums: Vec::new(),
                     selected_playlist: None,
                     spotify_client: Some(Arc::clone(&spotify_arc)),
                     sidebar_width: sw,
@@ -305,6 +308,7 @@ impl App {
                 let spotify_1 = Arc::clone(&spotify_arc);
                 let spotify_2 = Arc::clone(&spotify_arc);
                 let spotify_3 = Arc::clone(&spotify_arc);
+                let spotify_4 = Arc::clone(&spotify_arc);
 
                 Task::batch([
                     Task::perform(
@@ -332,6 +336,10 @@ impl App {
                         async move { crate::api::playlist::fetch_user_playlists(&spotify_3).await },
                         Message::UserPlaylistsFetched,
                     ),
+                    Task::perform(
+                        async move { crate::api::album::fetch_saved_albums(&spotify_4).await },
+                        Message::UserAlbumsFetched,
+                    ),
                 ])
             }
             Message::UserProfileFetched(res) => {
@@ -346,6 +354,14 @@ impl App {
                 if let Ok(playlists) = res {
                     if let AppState::Main { user_playlists, .. } = &mut self.state {
                         *user_playlists = playlists;
+                    }
+                }
+                Task::none()
+            }
+            Message::UserAlbumsFetched(res) => {
+                if let Ok(albums) = res {
+                    if let AppState::Main { user_albums, .. } = &mut self.state {
+                        *user_albums = albums;
                     }
                 }
                 Task::none()
@@ -699,6 +715,7 @@ impl App {
                 active_right_panel,
                 user_profile,
                 user_playlists,
+                user_albums,
                 selected_playlist,
                 ..
             } => crate::ui::main_layout::view(
@@ -709,6 +726,7 @@ impl App {
                 *active_right_panel,
                 user_profile.as_ref(),
                 user_playlists,
+                user_albums,
                 selected_playlist.as_ref(),
             ),
         };

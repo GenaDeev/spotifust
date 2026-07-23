@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Fetch the user's saved albums and expose them in a dedicated Albums view
+- [ ] Fetch the user's top tracks and expose them in a Home/For You view
 
 ## Development Backlog
 
@@ -52,7 +52,7 @@
 - [x] Fetch the authenticated user's profile (`/me`) and display name and avatar in the sidebar
 - [x] Fetch the user's full playlist library (`/me/playlists`, paginated) and stream items into the sidebar list
 - [x] Fetch playlist track listings on demand when a playlist is selected
-- [ ] Fetch the user's saved albums and expose them in a dedicated Albums view
+- [x] Fetch the user's saved albums and expose them in a dedicated Albums view
 - [ ] Fetch the user's top tracks and expose them in a Home/For You view
 - [ ] Implement search: send queries to `/search` and display track, album, and artist results
 - [ ] Implement album detail view: fetch `/albums/{id}` and list its tracks
