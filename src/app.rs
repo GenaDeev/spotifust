@@ -114,6 +114,7 @@ pub enum Message {
     UserPlaylistsFetched(Result<Vec<crate::api::playlist::PlaylistSummary>, AppError>),
     UserAlbumsFetched(Result<Vec<crate::api::album::AlbumSummary>, AppError>),
     UserTopTracksFetched(Result<Vec<crate::api::tracks::TopTrack>, AppError>),
+    CurrentlyPlayingFetched(Result<Option<crate::api::tracks::CurrentlyPlayingInfo>, AppError>),
     SearchInputChanged(String),
     SearchResultsFetched(Result<crate::api::search::SearchResults, AppError>),
     SelectPlaylist(String),
@@ -321,6 +322,7 @@ impl App {
                 let spotify_3 = Arc::clone(&spotify_arc);
                 let spotify_4 = Arc::clone(&spotify_arc);
                 let spotify_5 = Arc::clone(&spotify_arc);
+                let spotify_6 = Arc::clone(&spotify_arc);
 
                 Task::batch([
                     Task::perform(
@@ -356,6 +358,10 @@ impl App {
                         async move { crate::api::tracks::fetch_top_tracks(&spotify_5).await },
                         Message::UserTopTracksFetched,
                     ),
+                    Task::perform(
+                        async move { crate::api::tracks::fetch_currently_playing(&spotify_6).await },
+                        Message::CurrentlyPlayingFetched,
+                    ),
                 ])
             }
             Message::UserProfileFetched(res) => {
@@ -386,6 +392,22 @@ impl App {
                 if let Ok(tracks) = res {
                     if let AppState::Main { user_top_tracks, .. } = &mut self.state {
                         *user_top_tracks = tracks;
+                    }
+                }
+                Task::none()
+            }
+            Message::CurrentlyPlayingFetched(res) => {
+                if let Ok(Some(info)) = res {
+                    if let AppState::Main { playback, .. } = &mut self.state {
+                        playback.current_track = Some(TrackInfo {
+                            title: info.title,
+                            artist: info.artist,
+                            album: info.album,
+                            duration_ms: info.duration_ms,
+                        });
+                        playback.progress_ms = info.progress_ms;
+                        playback.is_playing = info.is_playing;
+                        playback.current_track_uri = Some(info.uri);
                     }
                 }
                 Task::none()

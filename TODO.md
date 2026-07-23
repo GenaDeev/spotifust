@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Fetch currently playing track via `/me/player/currently-playing` on startup and sync UI state
+- [ ] Implement album art fetching: download cover images asynchronously and cache to disk in `src/api/cache.rs`
 
 ## Development Backlog
 
@@ -57,7 +57,7 @@
 - [x] Implement search: send queries to `/search` and display track, album, and artist results
 - [x] Implement album detail view: fetch `/albums/{id}` and list its tracks
 - [x] Implement artist detail view: fetch `/artists/{id}` with top tracks and discography
-- [ ] Fetch currently playing track via `/me/player/currently-playing` on startup and sync UI state
+- [x] Fetch currently playing track via `/me/player/currently-playing` on startup and sync UI state
 - [ ] Implement album art fetching: download cover images asynchronously and cache to disk in `src/api/cache.rs`
 - [ ] Implement a metadata cache layer in `src/api/cache.rs` to avoid redundant API calls (TTL-based)
 - [ ] Implement rate-limit handling: respect `Retry-After` headers from the Spotify API
