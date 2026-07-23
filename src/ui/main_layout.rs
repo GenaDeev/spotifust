@@ -9,6 +9,7 @@ use iced::{
 
 const LOGO_BYTES: &[u8] = include_bytes!("../../assets/spotifust.png");
 
+#[allow(clippy::too_many_arguments)]
 pub fn view<'a>(
     nav_item: &'a NavigationItem,
     playback: &'a PlaybackState,
@@ -17,10 +18,11 @@ pub fn view<'a>(
     active_right_panel: Option<RightPanelTab>,
     user_profile: Option<&'a crate::api::user::UserProfile>,
     user_playlists: &'a [crate::api::playlist::PlaylistSummary],
+    selected_playlist: Option<&'a crate::app::SelectedPlaylistState>,
 ) -> Element<'a, Message> {
     let top_bar = view_top_bar(*nav_item, user_profile);
     let sidebar = view_sidebar_panel(sidebar_width, user_playlists);
-    let main_content = view_main_content(*nav_item);
+    let main_content = view_main_content(*nav_item, selected_playlist);
     let right_panel = view_right_panel(active_right_panel, right_panel_width);
     let playback_bar = view_playback_bar(playback, active_right_panel);
 
@@ -384,6 +386,7 @@ fn view_sidebar_panel(
         Icon::Heart,
         true,
         true,
+        Message::MockAction,
     );
     list = list.push(liked_item);
 
@@ -396,12 +399,27 @@ fn view_sidebar_panel(
         ];
 
         for (title, sub, icon, active) in items {
-            list = list.push(sidebar_item(title, sub, icon, active, false));
+            list = list.push(sidebar_item(
+                title,
+                sub,
+                icon,
+                active,
+                false,
+                Message::MockAction,
+            ));
         }
     } else {
         for p in playlists {
             let sub = format!("Playlist • {} tracks", p.total_tracks);
-            list = list.push(sidebar_item(p.name.clone(), sub, Icon::MusicNote, false, false));
+            let p_id = p.id.clone();
+            list = list.push(sidebar_item(
+                p.name.clone(),
+                sub,
+                Icon::MusicNote,
+                false,
+                false,
+                Message::SelectPlaylist(p_id),
+            ));
         }
     }
 
@@ -429,7 +447,217 @@ fn view_sidebar_panel(
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_main_content(current_nav: NavigationItem) -> Element<'static, Message> {
+fn view_main_content<'a>(
+    current_nav: NavigationItem,
+    selected_playlist: Option<&'a crate::app::SelectedPlaylistState>,
+) -> Element<'a, Message> {
+    if let Some(sp) = selected_playlist {
+        let playlist_header = Column::new()
+            .spacing(6)
+            .push(
+                Text::new("PLAYLIST")
+                    .size(11)
+                    .font(iced::Font {
+                        weight: iced::font::Weight::Bold,
+                        ..Default::default()
+                    })
+                    .color(theme::ACCENT),
+            )
+            .push(
+                Text::new(&sp.name)
+                    .size(32)
+                    .font(iced::Font {
+                        weight: iced::font::Weight::Bold,
+                        ..Default::default()
+                    })
+                    .color(theme::TEXT_PRIMARY),
+            )
+            .push(
+                Text::new(format!("{} tracks loaded", sp.tracks.len()))
+                    .size(13)
+                    .color(theme::TEXT_SECONDARY),
+            );
+
+        let content_body: Element<'a, Message> = if sp.is_loading {
+            Container::new(
+                Text::new("Loading playlist tracks...")
+                    .size(15)
+                    .color(theme::TEXT_SECONDARY),
+            )
+            .padding(32)
+            .into()
+        } else if sp.tracks.is_empty() {
+            Container::new(
+                Text::new("No tracks found in this playlist.")
+                    .size(15)
+                    .color(theme::TEXT_SECONDARY),
+            )
+            .padding(32)
+            .into()
+        } else {
+            let mut tracks_column = Column::new().spacing(6);
+
+            // Table Header
+            let table_header = Row::new()
+                .spacing(12)
+                .align_y(Alignment::Center)
+                .push(
+                    Text::new("#")
+                        .size(13)
+                        .color(theme::TEXT_SECONDARY)
+                        .width(Length::Fixed(24.0)),
+                )
+                .push(
+                    Text::new("Title")
+                        .size(13)
+                        .font(iced::Font {
+                            weight: iced::font::Weight::Bold,
+                            ..Default::default()
+                        })
+                        .color(theme::TEXT_SECONDARY)
+                        .width(Length::FillPortion(3)),
+                )
+                .push(
+                    Text::new("Artist")
+                        .size(13)
+                        .color(theme::TEXT_SECONDARY)
+                        .width(Length::FillPortion(2)),
+                )
+                .push(
+                    Text::new("Album")
+                        .size(13)
+                        .color(theme::TEXT_SECONDARY)
+                        .width(Length::FillPortion(2)),
+                )
+                .push(
+                    Text::new("Duration")
+                        .size(13)
+                        .color(theme::TEXT_SECONDARY)
+                        .width(Length::Fixed(60.0)),
+                );
+
+            tracks_column = tracks_column.push(
+                Container::new(table_header)
+                    .padding([8, 12])
+                    .style(|_theme| container::Style {
+                        border: Border {
+                            color: theme::BORDER_SUBTLE,
+                            width: 1.0,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }),
+            );
+
+            for (idx, track) in sp.tracks.iter().enumerate() {
+                let track_num = (idx + 1).to_string();
+                let dur_str = format_duration(track.duration_ms);
+
+                let track_row = Row::new()
+                    .spacing(12)
+                    .align_y(Alignment::Center)
+                    .push(
+                        Text::new(track_num)
+                            .size(13)
+                            .color(theme::TEXT_SECONDARY)
+                            .width(Length::Fixed(24.0)),
+                    )
+                    .push(
+                        Text::new(&track.title)
+                            .size(14)
+                            .font(iced::Font {
+                                weight: iced::font::Weight::Bold,
+                                ..Default::default()
+                            })
+                            .color(theme::TEXT_PRIMARY)
+                            .width(Length::FillPortion(3)),
+                    )
+                    .push(
+                        Text::new(&track.artist)
+                            .size(13)
+                            .color(theme::TEXT_SECONDARY)
+                            .width(Length::FillPortion(2)),
+                    )
+                    .push(
+                        Text::new(&track.album)
+                            .size(13)
+                            .color(theme::TEXT_SECONDARY)
+                            .width(Length::FillPortion(2)),
+                    )
+                    .push(
+                        Text::new(dur_str)
+                            .size(13)
+                            .color(theme::TEXT_SECONDARY)
+                            .width(Length::Fixed(60.0)),
+                    );
+
+                let track_item = Button::new(
+                    Container::new(track_row)
+                        .padding([8, 12])
+                        .width(Length::Fill),
+                )
+                .padding(0)
+                .on_press(Message::MockAction)
+                .style(|_theme, status| {
+                    let base = iced::widget::button::Style {
+                        background: Some(Background::Color(Color::TRANSPARENT)),
+                        border: Border {
+                            radius: theme::RADIUS_MD.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    };
+                    match status {
+                        iced::widget::button::Status::Hovered => iced::widget::button::Style {
+                            background: Some(Background::Color(theme::SURFACE_HOVER)),
+                            ..base
+                        },
+                        _ => base,
+                    }
+                });
+
+                tracks_column = tracks_column.push(track_item);
+            }
+
+            tracks_column.into()
+        };
+
+        let page_column = Column::new()
+            .spacing(20)
+            .push(playlist_header)
+            .push(content_body);
+
+        let scrollable = Scrollable::new(
+            Container::new(page_column).padding(iced::Padding {
+                top: 0.0,
+                right: 16.0,
+                bottom: 0.0,
+                left: 0.0,
+            }),
+        )
+        .direction(iced::widget::scrollable::Direction::Vertical(
+            iced::widget::scrollable::Scrollbar::new()
+                .width(6.0)
+                .margin(2.0)
+                .scroller_width(6.0),
+        ))
+        .height(Length::Fill);
+
+        return Container::new(scrollable)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(24)
+            .style(|_theme: &Theme| container::Style {
+                background: Some(Background::Color(theme::SURFACE_MAIN)),
+                border: Border {
+                    radius: theme::RADIUS_LG.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .into();
+    }
+
     let title_text = match current_nav {
         NavigationItem::Home => "Good evening",
         NavigationItem::Search => "Search",
@@ -718,7 +946,14 @@ fn view_right_panel(
                 })
                 .color(theme::TEXT_PRIMARY);
 
-            let current_item = sidebar_item("Synthetic Horizon", "Spotifust Audio Engine", Icon::Play, true, false);
+            let current_item = sidebar_item(
+                "Synthetic Horizon",
+                "Spotifust Audio Engine",
+                Icon::Play,
+                true,
+                false,
+                Message::MockAction,
+            );
 
             let next_header = Text::new("Next in Queue")
                 .size(14)
@@ -730,9 +965,30 @@ fn view_right_panel(
 
             let queue_list = Column::new()
                 .spacing(4)
-                .push(sidebar_item("Sunset Drive", "The Midnight", Icon::MusicNote, false, false))
-                .push(sidebar_item("Tech Noir", "GUNSHIP", Icon::Album, false, false))
-                .push(sidebar_item("Resonance", "HOME", Icon::Queue, false, false));
+                .push(sidebar_item(
+                    "Sunset Drive",
+                    "The Midnight",
+                    Icon::MusicNote,
+                    false,
+                    false,
+                    Message::MockAction,
+                ))
+                .push(sidebar_item(
+                    "Tech Noir",
+                    "GUNSHIP",
+                    Icon::Album,
+                    false,
+                    false,
+                    Message::MockAction,
+                ))
+                .push(sidebar_item(
+                    "Resonance",
+                    "HOME",
+                    Icon::Queue,
+                    false,
+                    false,
+                    Message::MockAction,
+                ));
 
             Column::new()
                 .spacing(16)
@@ -1214,6 +1470,7 @@ fn sidebar_item<'a>(
     icon: Icon,
     active: bool,
     is_liked: bool,
+    on_press: Message,
 ) -> Element<'a, Message> {
     let title_str = title.into();
     let subtitle_str = subtitle.into();
@@ -1275,7 +1532,7 @@ fn sidebar_item<'a>(
     Button::new(content)
         .padding(8)
         .width(Length::Fill)
-        .on_press(Message::MockAction)
+        .on_press(on_press)
         .style(move |_theme, status| {
             let bg = if active {
                 theme::SURFACE_ACTIVE
@@ -1420,4 +1677,11 @@ fn media_card(title: &'static str, subtitle: &'static str, icon: Icon) -> Elemen
             }
         })
         .into()
+}
+
+fn format_duration(ms: u32) -> String {
+    let total_secs = ms / 1000;
+    let mins = total_secs / 60;
+    let secs = total_secs % 60;
+    format!("{mins}:{secs:02}")
 }

@@ -1,8 +1,8 @@
 # Project State Machine
 
-### Current Focus
+## Current Focus
 
-- [ ] Fetch playlist track listings on demand when a playlist is selected
+- [ ] Fetch the user's saved albums and expose them in a dedicated Albums view
 
 ## Development Backlog
 
@@ -51,7 +51,7 @@
 - [x] Implement token refresh on expiry: detect 401 responses and silently re-authenticate
 - [x] Fetch the authenticated user's profile (`/me`) and display name and avatar in the sidebar
 - [x] Fetch the user's full playlist library (`/me/playlists`, paginated) and stream items into the sidebar list
-- [ ] Fetch playlist track listings on demand when a playlist is selected
+- [x] Fetch playlist track listings on demand when a playlist is selected
 - [ ] Fetch the user's saved albums and expose them in a dedicated Albums view
 - [ ] Fetch the user's top tracks and expose them in a Home/For You view
 - [ ] Implement search: send queries to `/search` and display track, album, and artist results

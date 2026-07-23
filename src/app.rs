@@ -57,6 +57,14 @@ impl Default for PlaybackState {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SelectedPlaylistState {
+    pub id: String,
+    pub name: String,
+    pub tracks: Vec<crate::api::playlist::PlaylistTrack>,
+    pub is_loading: bool,
+}
+
 #[allow(clippy::large_enum_variant)]
 pub enum AppState {
     Login {
@@ -69,6 +77,8 @@ pub enum AppState {
         audio_session: Option<AudioSession>,
         user_profile: Option<crate::api::user::UserProfile>,
         user_playlists: Vec<crate::api::playlist::PlaylistSummary>,
+        selected_playlist: Option<SelectedPlaylistState>,
+        spotify_client: Option<Arc<rspotify::AuthCodePkceSpotify>>,
         sidebar_width: f32,
         right_panel_width: f32,
         active_right_panel: Option<RightPanelTab>,
@@ -97,6 +107,11 @@ pub enum Message {
     LoginFailed(String),
     UserProfileFetched(Result<crate::api::user::UserProfile, AppError>),
     UserPlaylistsFetched(Result<Vec<crate::api::playlist::PlaylistSummary>, AppError>),
+    SelectPlaylist(String),
+    PlaylistTracksFetched(
+        String,
+        Result<Vec<crate::api::playlist::PlaylistTrack>, AppError>,
+    ),
     // Audio Messages
     AudioSessionConnected(AudioSession),
     PlayerEventReceived(PlayerEvent),
@@ -269,12 +284,16 @@ impl App {
 
                 let (sw, rw) = load_layout();
 
+                let spotify_arc = Arc::new(*spotify);
+
                 self.state = AppState::Main {
                     nav_item: NavigationItem::Home,
                     playback: mock_playback,
                     audio_session: None,
                     user_profile: None,
                     user_playlists: Vec::new(),
+                    selected_playlist: None,
+                    spotify_client: Some(Arc::clone(&spotify_arc)),
                     sidebar_width: sw,
                     right_panel_width: rw,
                     active_right_panel: None,
@@ -283,7 +302,6 @@ impl App {
                     window_width: 1200.0,
                 };
 
-                let spotify_arc = Arc::new(*spotify);
                 let spotify_1 = Arc::clone(&spotify_arc);
                 let spotify_2 = Arc::clone(&spotify_arc);
                 let spotify_3 = Arc::clone(&spotify_arc);
@@ -328,6 +346,56 @@ impl App {
                 if let Ok(playlists) = res {
                     if let AppState::Main { user_playlists, .. } = &mut self.state {
                         *user_playlists = playlists;
+                    }
+                }
+                Task::none()
+            }
+            Message::SelectPlaylist(playlist_id) => {
+                if let AppState::Main {
+                    user_playlists,
+                    selected_playlist,
+                    spotify_client,
+                    ..
+                } = &mut self.state
+                {
+                    let playlist_name = user_playlists
+                        .iter()
+                        .find(|p| p.id == playlist_id)
+                        .map_or_else(|| "Playlist".to_string(), |p| p.name.clone());
+
+                    *selected_playlist = Some(SelectedPlaylistState {
+                        id: playlist_id.clone(),
+                        name: playlist_name,
+                        tracks: Vec::new(),
+                        is_loading: true,
+                    });
+
+                    if let Some(client) = spotify_client.clone() {
+                        let pid = playlist_id.clone();
+                        return Task::perform(
+                            async move {
+                                let res =
+                                    crate::api::playlist::fetch_playlist_tracks(&client, &pid)
+                                        .await;
+                                (pid, res)
+                            },
+                            |(pid, res)| Message::PlaylistTracksFetched(pid, res),
+                        );
+                    }
+                }
+                Task::none()
+            }
+            Message::PlaylistTracksFetched(playlist_id, res) => {
+                if let AppState::Main {
+                    selected_playlist: Some(selected),
+                    ..
+                } = &mut self.state
+                {
+                    if selected.id == playlist_id {
+                        selected.is_loading = false;
+                        if let Ok(tracks) = res {
+                            selected.tracks = tracks;
+                        }
                     }
                 }
                 Task::none()
@@ -631,6 +699,7 @@ impl App {
                 active_right_panel,
                 user_profile,
                 user_playlists,
+                selected_playlist,
                 ..
             } => crate::ui::main_layout::view(
                 nav_item,
@@ -640,6 +709,7 @@ impl App {
                 *active_right_panel,
                 user_profile.as_ref(),
                 user_playlists,
+                selected_playlist.as_ref(),
             ),
         };
 
