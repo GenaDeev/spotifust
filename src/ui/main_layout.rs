@@ -19,11 +19,12 @@ pub fn view<'a>(
     user_profile: Option<&'a crate::api::user::UserProfile>,
     user_playlists: &'a [crate::api::playlist::PlaylistSummary],
     user_albums: &'a [crate::api::album::AlbumSummary],
+    user_top_tracks: &'a [crate::api::tracks::TopTrack],
     selected_playlist: Option<&'a crate::app::SelectedPlaylistState>,
 ) -> Element<'a, Message> {
     let top_bar = view_top_bar(*nav_item, user_profile);
     let sidebar = view_sidebar_panel(sidebar_width, user_playlists, user_albums);
-    let main_content = view_main_content(*nav_item, selected_playlist, user_albums);
+    let main_content = view_main_content(*nav_item, selected_playlist, user_albums, user_top_tracks);
     let right_panel = view_right_panel(active_right_panel, right_panel_width);
     let playback_bar = view_playback_bar(playback, active_right_panel);
 
@@ -464,6 +465,7 @@ fn view_main_content<'a>(
     current_nav: NavigationItem,
     selected_playlist: Option<&'a crate::app::SelectedPlaylistState>,
     user_albums: &'a [crate::api::album::AlbumSummary],
+    user_top_tracks: &'a [crate::api::tracks::TopTrack],
 ) -> Element<'a, Message> {
     if let Some(sp) = selected_playlist {
         let playlist_header = Column::new()
@@ -725,12 +727,21 @@ fn view_main_content<'a>(
                 .color(theme::TEXT_SECONDARY),
         );
 
-    let section_1_cards = Row::new()
-        .spacing(16)
-        .push(media_card("Daily Mix 1", "Gunship, The Midnight, Carpenter Brut", Icon::MusicNote))
-        .push(media_card("Discover Weekly", "Your weekly mixtape of fresh music.", Icon::Search))
-        .push(media_card("Release Radar", "Catch all the latest music from artists you follow.", Icon::Album))
-        .push(media_card("Chill Mix", "Lofi and ambient beats to keep you focused.", Icon::Queue));
+    let section_1_cards = if user_top_tracks.is_empty() {
+        Row::new()
+            .spacing(16)
+            .push(media_card("Daily Mix 1", "Gunship, The Midnight, Carpenter Brut", Icon::MusicNote))
+            .push(media_card("Discover Weekly", "Your weekly mixtape of fresh music.", Icon::Search))
+            .push(media_card("Release Radar", "Catch all the latest music from artists you follow.", Icon::Album))
+            .push(media_card("Chill Mix", "Lofi and ambient beats to keep you focused.", Icon::Queue))
+    } else {
+        let mut row = Row::new().spacing(16);
+        for track in user_top_tracks.iter().take(4) {
+            let subtitle = format!("{} • Track", track.artist);
+            row = row.push(media_card(&track.title, &subtitle, Icon::MusicNote));
+        }
+        row
+    };
 
     let section_2_header = Row::new()
         .align_y(Alignment::Center)

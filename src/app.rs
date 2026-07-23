@@ -78,6 +78,7 @@ pub enum AppState {
         user_profile: Option<crate::api::user::UserProfile>,
         user_playlists: Vec<crate::api::playlist::PlaylistSummary>,
         user_albums: Vec<crate::api::album::AlbumSummary>,
+        user_top_tracks: Vec<crate::api::tracks::TopTrack>,
         selected_playlist: Option<SelectedPlaylistState>,
         spotify_client: Option<Arc<rspotify::AuthCodePkceSpotify>>,
         sidebar_width: f32,
@@ -109,6 +110,7 @@ pub enum Message {
     UserProfileFetched(Result<crate::api::user::UserProfile, AppError>),
     UserPlaylistsFetched(Result<Vec<crate::api::playlist::PlaylistSummary>, AppError>),
     UserAlbumsFetched(Result<Vec<crate::api::album::AlbumSummary>, AppError>),
+    UserTopTracksFetched(Result<Vec<crate::api::tracks::TopTrack>, AppError>),
     SelectPlaylist(String),
     PlaylistTracksFetched(
         String,
@@ -295,6 +297,7 @@ impl App {
                     user_profile: None,
                     user_playlists: Vec::new(),
                     user_albums: Vec::new(),
+                    user_top_tracks: Vec::new(),
                     selected_playlist: None,
                     spotify_client: Some(Arc::clone(&spotify_arc)),
                     sidebar_width: sw,
@@ -309,6 +312,7 @@ impl App {
                 let spotify_2 = Arc::clone(&spotify_arc);
                 let spotify_3 = Arc::clone(&spotify_arc);
                 let spotify_4 = Arc::clone(&spotify_arc);
+                let spotify_5 = Arc::clone(&spotify_arc);
 
                 Task::batch([
                     Task::perform(
@@ -340,6 +344,10 @@ impl App {
                         async move { crate::api::album::fetch_saved_albums(&spotify_4).await },
                         Message::UserAlbumsFetched,
                     ),
+                    Task::perform(
+                        async move { crate::api::tracks::fetch_top_tracks(&spotify_5).await },
+                        Message::UserTopTracksFetched,
+                    ),
                 ])
             }
             Message::UserProfileFetched(res) => {
@@ -362,6 +370,14 @@ impl App {
                 if let Ok(albums) = res {
                     if let AppState::Main { user_albums, .. } = &mut self.state {
                         *user_albums = albums;
+                    }
+                }
+                Task::none()
+            }
+            Message::UserTopTracksFetched(res) => {
+                if let Ok(tracks) = res {
+                    if let AppState::Main { user_top_tracks, .. } = &mut self.state {
+                        *user_top_tracks = tracks;
                     }
                 }
                 Task::none()
@@ -716,6 +732,7 @@ impl App {
                 user_profile,
                 user_playlists,
                 user_albums,
+                user_top_tracks,
                 selected_playlist,
                 ..
             } => crate::ui::main_layout::view(
@@ -727,6 +744,7 @@ impl App {
                 user_profile.as_ref(),
                 user_playlists,
                 user_albums,
+                user_top_tracks,
                 selected_playlist.as_ref(),
             ),
         };
