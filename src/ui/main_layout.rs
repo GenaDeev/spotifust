@@ -16,9 +16,10 @@ pub fn view<'a>(
     right_panel_width: f32,
     active_right_panel: Option<RightPanelTab>,
     user_profile: Option<&'a crate::api::user::UserProfile>,
+    user_playlists: &'a [crate::api::playlist::PlaylistSummary],
 ) -> Element<'a, Message> {
     let top_bar = view_top_bar(*nav_item, user_profile);
-    let sidebar = view_sidebar_panel(sidebar_width);
+    let sidebar = view_sidebar_panel(sidebar_width, user_playlists);
     let main_content = view_main_content(*nav_item);
     let right_panel = view_right_panel(active_right_panel, right_panel_width);
     let playback_bar = view_playback_bar(playback, active_right_panel);
@@ -226,7 +227,10 @@ fn view_top_bar(
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_sidebar_panel(width: f32) -> Element<'static, Message> {
+fn view_sidebar_panel(
+    width: f32,
+    playlists: &[crate::api::playlist::PlaylistSummary],
+) -> Element<'static, Message> {
     let is_compact = width < 120.0;
 
     if is_compact {
@@ -383,15 +387,22 @@ fn view_sidebar_panel(width: f32) -> Element<'static, Message> {
     );
     list = list.push(liked_item);
 
-    let items = [
-        ("Synthwave Architect", "Album • The Midnight", Icon::Album, false),
-        ("Rustaceans Unite", "Playlist • Spotifust", Icon::MusicNote, false),
-        ("Chill Lofi Beats", "Playlist • Spotifust", Icon::Queue, false),
-        ("Gunship", "Artist", Icon::User, false),
-    ];
+    if playlists.is_empty() {
+        let items = [
+            ("Synthwave Architect", "Album • The Midnight", Icon::Album, false),
+            ("Rustaceans Unite", "Playlist • Spotifust", Icon::MusicNote, false),
+            ("Chill Lofi Beats", "Playlist • Spotifust", Icon::Queue, false),
+            ("Gunship", "Artist", Icon::User, false),
+        ];
 
-    for (title, sub, icon, active) in items {
-        list = list.push(sidebar_item(title, sub, icon, active, false));
+        for (title, sub, icon, active) in items {
+            list = list.push(sidebar_item(title, sub, icon, active, false));
+        }
+    } else {
+        for p in playlists {
+            let sub = format!("Playlist • {} tracks", p.total_tracks);
+            list = list.push(sidebar_item(p.name.clone(), sub, Icon::MusicNote, false, false));
+        }
     }
 
     let scrollable_list = Scrollable::new(list).height(Length::Fill);
@@ -1197,13 +1208,15 @@ fn filter_chip(label: &'static str, active: bool) -> Element<'static, Message> {
     .into()
 }
 
-fn sidebar_item(
-    title: &'static str,
-    subtitle: &'static str,
+fn sidebar_item<'a>(
+    title: impl Into<String>,
+    subtitle: impl Into<String>,
     icon: Icon,
     active: bool,
     is_liked: bool,
-) -> Element<'static, Message> {
+) -> Element<'a, Message> {
+    let title_str = title.into();
+    let subtitle_str = subtitle.into();
     let icon_bg = if is_liked {
         theme::ACCENT
     } else {
@@ -1239,7 +1252,7 @@ fn sidebar_item(
     let details = Column::new()
         .spacing(2)
         .push(
-            Text::new(title)
+            Text::new(title_str)
                 .size(14)
                 .font(iced::Font {
                     weight: iced::font::Weight::Bold,
@@ -1248,7 +1261,7 @@ fn sidebar_item(
                 .color(title_color),
         )
         .push(
-            Text::new(subtitle)
+            Text::new(subtitle_str)
                 .size(12)
                 .color(theme::TEXT_SECONDARY),
         );
