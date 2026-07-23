@@ -26,7 +26,9 @@ pub async fn fetch_saved_albums(
             let page = spotify
                 .current_user_saved_albums_manual(None, Some(limit), Some(offset))
                 .await
-                .map_err(|e| AppError::Network(format!("Failed to fetch saved albums page: {e}")))?;
+                .map_err(|e| {
+                    AppError::Network(format!("Failed to fetch saved albums page: {e}"))
+                })?;
 
             let page_count = page.items.len();
             let has_next = page.next.is_some();
@@ -131,10 +133,7 @@ pub async fn fetch_album_details(
                 .id
                 .as_ref()
                 .map_or_else(String::new, ToString::to_string);
-            let uri = simple_track
-                .id
-                .as_ref()
-                .map_or_else(String::new, Id::uri);
+            let uri = simple_track.id.as_ref().map_or_else(String::new, Id::uri);
 
             tracks.push(AlbumDetailTrack {
                 id: track_id,

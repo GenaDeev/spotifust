@@ -91,7 +91,9 @@ pub async fn fetch_playlist_tracks(
             let page = spotify
                 .playlist_items_manual(pid.clone(), None, None, Some(limit), Some(offset))
                 .await
-                .map_err(|e| AppError::Network(format!("Failed to fetch playlist tracks page: {e}")))?;
+                .map_err(|e| {
+                    AppError::Network(format!("Failed to fetch playlist tracks page: {e}"))
+                })?;
 
             let page_count = page.items.len();
             let has_next = page.next.is_some();
@@ -112,17 +114,15 @@ pub async fn fetch_playlist_tracks(
                         .id
                         .as_ref()
                         .map_or_else(String::new, ToString::to_string);
-                    let uri = full_track
-                        .id
-                        .as_ref()
-                        .map_or_else(String::new, Id::uri);
+                    let uri = full_track.id.as_ref().map_or_else(String::new, Id::uri);
 
                     tracks.push(PlaylistTrack {
                         id: track_id,
                         title: full_track.name,
                         artist,
                         album: full_track.album.name,
-                        duration_ms: u32::try_from(full_track.duration.num_milliseconds()).unwrap_or(0),
+                        duration_ms: u32::try_from(full_track.duration.num_milliseconds())
+                            .unwrap_or(0),
                         uri,
                         image_url,
                     });

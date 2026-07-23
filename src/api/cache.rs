@@ -107,16 +107,21 @@ mod tests {
         let fn1 = url_to_filename("https://example.com/cover1.jpg");
         let fn2 = url_to_filename("https://example.com/cover2.jpg");
         assert_ne!(fn1, fn2);
-        assert!(std::path::Path::new(&fn1)
-            .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("img")));
+        assert!(
+            std::path::Path::new(&fn1)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("img"))
+        );
     }
 
     #[test]
     fn test_metadata_cache_ttl() {
         let cache = MetadataCache::<String, String>::new(60);
         cache.insert("artist_1".to_string(), "The Midnight".to_string());
-        assert_eq!(cache.get(&"artist_1".to_string()), Some("The Midnight".to_string()));
+        assert_eq!(
+            cache.get(&"artist_1".to_string()),
+            Some("The Midnight".to_string())
+        );
         assert_eq!(cache.get(&"unknown".to_string()), None);
     }
 }

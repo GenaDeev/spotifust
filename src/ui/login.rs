@@ -76,7 +76,11 @@ pub fn view<'a>(
                 Row::new()
                     .align_y(Alignment::Center)
                     .spacing(8)
-                    .push(Text::new("⚠").size(14).color(Color::from_rgb8(255, 100, 100)))
+                    .push(
+                        Text::new("⚠")
+                            .size(14)
+                            .color(Color::from_rgb8(255, 100, 100)),
+                    )
                     .push(
                         Text::new(err)
                             .color(Color::from_rgb8(255, 120, 120))

@@ -49,14 +49,7 @@ pub async fn execute_search(
 
     with_auto_reauth(spotify, || async {
         let result = spotify
-            .search(
-                query,
-                SearchType::Track,
-                None,
-                None,
-                Some(10),
-                Some(0),
-            )
+            .search(query, SearchType::Track, None, None, Some(10), Some(0))
             .await
             .map_err(|e| AppError::Network(format!("Search request failed: {e}")))?;
 
@@ -76,10 +69,7 @@ pub async fn execute_search(
                     .id
                     .as_ref()
                     .map_or_else(String::new, ToString::to_string);
-                let uri = track
-                    .id
-                    .as_ref()
-                    .map_or_else(String::new, Id::uri);
+                let uri = track.id.as_ref().map_or_else(String::new, Id::uri);
 
                 search_results.tracks.push(SearchResultTrack {
                     id: track_id,

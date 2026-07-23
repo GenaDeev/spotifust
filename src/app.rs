@@ -390,7 +390,10 @@ impl App {
             }
             Message::UserTopTracksFetched(res) => {
                 if let Ok(tracks) = res {
-                    if let AppState::Main { user_top_tracks, .. } = &mut self.state {
+                    if let AppState::Main {
+                        user_top_tracks, ..
+                    } = &mut self.state
+                    {
                         *user_top_tracks = tracks;
                     }
                 }
@@ -433,9 +436,7 @@ impl App {
                         if let Some(client) = spotify_client.clone() {
                             let q = query;
                             return Task::perform(
-                                async move {
-                                    crate::api::search::execute_search(&client, &q).await
-                                },
+                                async move { crate::api::search::execute_search(&client, &q).await },
                                 Message::SearchResultsFetched,
                             );
                         }

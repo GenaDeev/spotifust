@@ -16,9 +16,7 @@ pub struct TopTrack {
 
 /// Fetches the user's top tracks (`/me/top/tracks`).
 #[allow(clippy::missing_errors_doc)]
-pub async fn fetch_top_tracks(
-    spotify: &AuthCodePkceSpotify,
-) -> Result<Vec<TopTrack>, AppError> {
+pub async fn fetch_top_tracks(spotify: &AuthCodePkceSpotify) -> Result<Vec<TopTrack>, AppError> {
     with_auto_reauth(spotify, || async {
         let page = spotify
             .current_user_top_tracks_manual(None, Some(20), None)
@@ -39,10 +37,7 @@ pub async fn fetch_top_tracks(
                 .id
                 .as_ref()
                 .map_or_else(String::new, ToString::to_string);
-            let uri = full_track
-                .id
-                .as_ref()
-                .map_or_else(String::new, Id::uri);
+            let uri = full_track.id.as_ref().map_or_else(String::new, Id::uri);
 
             tracks.push(TopTrack {
                 id: track_id,
@@ -85,8 +80,12 @@ pub async fn fetch_currently_playing(
             .await
             .map_err(|e| AppError::Network(format!("Failed to fetch currently playing: {e}")))?;
 
-        let Some(ctx) = playing_context else { return Ok(None) };
-        let Some(item) = ctx.item else { return Ok(None) };
+        let Some(ctx) = playing_context else {
+            return Ok(None);
+        };
+        let Some(item) = ctx.item else {
+            return Ok(None);
+        };
 
         if let PlayableItem::Track(full_track) = item {
             let artist = full_track

@@ -4,7 +4,10 @@ use crate::ui::theme;
 use iced::widget::mouse_area;
 use iced::{
     Alignment, Background, Border, Color, Element, Length, Theme,
-    widget::{Button, Column, Container, Image, Row, Scrollable, Space, Text, TextInput, container, slider},
+    widget::{
+        Button, Column, Container, Image, Row, Scrollable, Space, Text, TextInput, container,
+        slider,
+    },
 };
 
 const LOGO_BYTES: &[u8] = include_bytes!("../../assets/spotifust.png");
@@ -27,7 +30,14 @@ pub fn view<'a>(
 ) -> Element<'a, Message> {
     let top_bar = view_top_bar(*nav_item, user_profile, search_query);
     let sidebar = view_sidebar_panel(sidebar_width, user_playlists, user_albums);
-    let main_content = view_main_content(*nav_item, selected_playlist, user_albums, user_top_tracks, search_results, is_searching);
+    let main_content = view_main_content(
+        *nav_item,
+        selected_playlist,
+        user_albums,
+        user_top_tracks,
+        search_results,
+        is_searching,
+    );
     let right_panel = view_right_panel(active_right_panel, right_panel_width);
     let playback_bar = view_playback_bar(playback, active_right_panel);
 
@@ -279,11 +289,7 @@ fn view_sidebar_panel(
             }),
         );
 
-        let library_items = [
-            Icon::Album,
-            Icon::User,
-            Icon::MusicNote,
-        ];
+        let library_items = [Icon::Album, Icon::User, Icon::MusicNote];
 
         for icon in library_items {
             list = list.push(
@@ -400,9 +406,24 @@ fn view_sidebar_panel(
 
     if playlists.is_empty() && albums.is_empty() {
         let items = [
-            ("Synthwave Architect", "Album • The Midnight", Icon::Album, false),
-            ("Rustaceans Unite", "Playlist • Spotifust", Icon::MusicNote, false),
-            ("Chill Lofi Beats", "Playlist • Spotifust", Icon::Queue, false),
+            (
+                "Synthwave Architect",
+                "Album • The Midnight",
+                Icon::Album,
+                false,
+            ),
+            (
+                "Rustaceans Unite",
+                "Playlist • Spotifust",
+                Icon::MusicNote,
+                false,
+            ),
+            (
+                "Chill Lofi Beats",
+                "Playlist • Spotifust",
+                Icon::Queue,
+                false,
+            ),
             ("Gunship", "Artist", Icon::User, false),
         ];
 
@@ -654,14 +675,12 @@ fn view_main_content<'a>(
             .push(playlist_header)
             .push(content_body);
 
-        let scrollable = Scrollable::new(
-            Container::new(page_column).padding(iced::Padding {
-                top: 0.0,
-                right: 16.0,
-                bottom: 0.0,
-                left: 0.0,
-            }),
-        )
+        let scrollable = Scrollable::new(Container::new(page_column).padding(iced::Padding {
+            top: 0.0,
+            right: 16.0,
+            bottom: 0.0,
+            left: 0.0,
+        }))
         .direction(iced::widget::scrollable::Direction::Vertical(
             iced::widget::scrollable::Scrollbar::new()
                 .width(6.0)
@@ -741,10 +760,26 @@ fn view_main_content<'a>(
     let section_1_cards = if user_top_tracks.is_empty() {
         Row::new()
             .spacing(16)
-            .push(media_card("Daily Mix 1", "Gunship, The Midnight, Carpenter Brut", Icon::MusicNote))
-            .push(media_card("Discover Weekly", "Your weekly mixtape of fresh music.", Icon::Search))
-            .push(media_card("Release Radar", "Catch all the latest music from artists you follow.", Icon::Album))
-            .push(media_card("Chill Mix", "Lofi and ambient beats to keep you focused.", Icon::Queue))
+            .push(media_card(
+                "Daily Mix 1",
+                "Gunship, The Midnight, Carpenter Brut",
+                Icon::MusicNote,
+            ))
+            .push(media_card(
+                "Discover Weekly",
+                "Your weekly mixtape of fresh music.",
+                Icon::Search,
+            ))
+            .push(media_card(
+                "Release Radar",
+                "Catch all the latest music from artists you follow.",
+                Icon::Album,
+            ))
+            .push(media_card(
+                "Chill Mix",
+                "Lofi and ambient beats to keep you focused.",
+                Icon::Queue,
+            ))
     } else {
         let mut row = Row::new().spacing(16);
         for track in user_top_tracks.iter().take(4) {
@@ -779,10 +814,26 @@ fn view_main_content<'a>(
     let section_2_cards = if user_albums.is_empty() {
         Row::new()
             .spacing(16)
-            .push(media_card("Endless Summer", "The Midnight • Album", Icon::Album))
-            .push(media_card("Dark All Day", "GUNSHIP • Album", Icon::MusicNote))
-            .push(media_card("Techno Bunker", "Hard hitting synth and techno tracks.", Icon::Queue))
-            .push(media_card("Coding Mode", "Zero distractions, pure synthwave.", Icon::Play))
+            .push(media_card(
+                "Endless Summer",
+                "The Midnight • Album",
+                Icon::Album,
+            ))
+            .push(media_card(
+                "Dark All Day",
+                "GUNSHIP • Album",
+                Icon::MusicNote,
+            ))
+            .push(media_card(
+                "Techno Bunker",
+                "Hard hitting synth and techno tracks.",
+                Icon::Queue,
+            ))
+            .push(media_card(
+                "Coding Mode",
+                "Zero distractions, pure synthwave.",
+                Icon::Play,
+            ))
     } else {
         let mut row = Row::new().spacing(16);
         for a in user_albums.iter().take(4) {
@@ -853,10 +904,7 @@ fn view_main_content<'a>(
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_right_panel(
-    active_tab: Option<RightPanelTab>,
-    width: f32,
-) -> Element<'static, Message> {
+fn view_right_panel(active_tab: Option<RightPanelTab>, width: f32) -> Element<'static, Message> {
     let Some(tab) = active_tab else {
         return Container::new(Space::new()).into();
     };
@@ -912,26 +960,24 @@ fn view_right_panel(
                 ..Default::default()
             });
 
-            Column::new()
-                .spacing(16)
-                .push(lyrics_card)
-                .into()
+            Column::new().spacing(16).push(lyrics_card).into()
         }
         RightPanelTab::NowPlaying => {
-            let art_placeholder = Container::new(Icon::Album.view_colored(64.0, theme::TEXT_SECONDARY))
-                .width(Length::Fill)
-                .height(Length::Fixed(240.0))
-                .align_x(iced::alignment::Horizontal::Center)
-                .align_y(iced::alignment::Vertical::Center)
-                .style(|_theme| container::Style {
-                    background: Some(Background::Color(theme::SURFACE_CARD)),
-                    border: Border {
-                        radius: theme::RADIUS_LG.into(),
-                        color: theme::BORDER_SUBTLE,
-                        width: 1.0,
-                    },
-                    ..Default::default()
-                });
+            let art_placeholder =
+                Container::new(Icon::Album.view_colored(64.0, theme::TEXT_SECONDARY))
+                    .width(Length::Fill)
+                    .height(Length::Fixed(240.0))
+                    .align_x(iced::alignment::Horizontal::Center)
+                    .align_y(iced::alignment::Vertical::Center)
+                    .style(|_theme| container::Style {
+                        background: Some(Background::Color(theme::SURFACE_CARD)),
+                        border: Border {
+                            radius: theme::RADIUS_LG.into(),
+                            color: theme::BORDER_SUBTLE,
+                            width: 1.0,
+                        },
+                        ..Default::default()
+                    });
 
             let track_title = Text::new("Synthetic Horizon")
                 .size(20)
@@ -1107,11 +1153,7 @@ fn view_playback_bar(
                         })
                         .color(theme::TEXT_PRIMARY),
                 )
-                .push(
-                    Text::new(artist_name)
-                        .size(11)
-                        .color(theme::TEXT_SECONDARY),
-                ),
+                .push(Text::new(artist_name).size(11).color(theme::TEXT_SECONDARY)),
         )
         .push(icon_button_active(Icon::Heart, Message::MockAction, true));
 
@@ -1274,9 +1316,9 @@ fn view_playback_bar(
             Row::new()
                 .align_y(Alignment::Center)
                 .spacing(8)
-                .push(
-                    Container::new(Icon::Volume.view_colored(16.0, theme::TEXT_SECONDARY)),
-                )
+                .push(Container::new(
+                    Icon::Volume.view_colored(16.0, theme::TEXT_SECONDARY),
+                ))
                 .push(
                     slider(0.0..=1.0, playback.volume, Message::VolumeChanged)
                         .step(0.01_f32)
@@ -1435,7 +1477,11 @@ fn icon_button_circle(icon: Icon, on_press: Message) -> Element<'static, Message
     .into()
 }
 
-fn icon_button_circle_active(icon: Icon, on_press: Message, active: bool) -> Element<'static, Message> {
+fn icon_button_circle_active(
+    icon: Icon,
+    on_press: Message,
+    active: bool,
+) -> Element<'static, Message> {
     let (bg, icon_color) = if active {
         (theme::SURFACE_ACTIVE, theme::TEXT_PRIMARY)
     } else {
@@ -1500,7 +1546,11 @@ fn filter_chip(label: &'static str, active: bool) -> Element<'static, Message> {
         };
         match status {
             iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                background: Some(Background::Color(if active { theme::ACCENT_HOVER } else { theme::SURFACE_HOVER })),
+                background: Some(Background::Color(if active {
+                    theme::ACCENT_HOVER
+                } else {
+                    theme::SURFACE_HOVER
+                })),
                 ..base
             },
             _ => base,
@@ -1702,10 +1752,7 @@ fn media_card<'a>(
                 .color(theme::TEXT_SECONDARY),
         );
 
-    let content = Column::new()
-        .spacing(12)
-        .push(cover)
-        .push(text_col);
+    let content = Column::new().spacing(12).push(cover).push(text_col);
 
     Button::new(content)
         .padding(12)
@@ -1822,10 +1869,5 @@ fn view_search_results(
         )
         .push(tracks_col);
 
-    Scrollable::new(
-        Container::new(content)
-            .width(Length::Fill)
-            .padding(24),
-    )
-    .into()
+    Scrollable::new(Container::new(content).width(Length::Fill).padding(24)).into()
 }
