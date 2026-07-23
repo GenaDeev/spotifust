@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Implement artist detail view: fetch `/artists/{id}` with top tracks and discography
+- [ ] Fetch currently playing track via `/me/player/currently-playing` on startup and sync UI state
 
 ## Development Backlog
 
@@ -56,7 +56,7 @@
 - [x] Fetch the user's top tracks and expose them in a Home/For You view
 - [x] Implement search: send queries to `/search` and display track, album, and artist results
 - [x] Implement album detail view: fetch `/albums/{id}` and list its tracks
-- [ ] Implement artist detail view: fetch `/artists/{id}` with top tracks and discography
+- [x] Implement artist detail view: fetch `/artists/{id}` with top tracks and discography
 - [ ] Fetch currently playing track via `/me/player/currently-playing` on startup and sync UI state
 - [ ] Implement album art fetching: download cover images asynchronously and cache to disk in `src/api/cache.rs`
 - [ ] Implement a metadata cache layer in `src/api/cache.rs` to avoid redundant API calls (TTL-based)
