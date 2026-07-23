@@ -142,6 +142,78 @@ pub async fn check_existing_login() -> Result<AuthCodePkceSpotify, AppError> {
     Ok(spotify)
 }
 
+/// Refreshes the Spotify client's OAuth token silently if expired or missing.
+#[allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
+pub async fn refresh_token_if_expired(spotify: &AuthCodePkceSpotify) -> Result<(), AppError> {
+    let token_mutex = spotify.get_token();
+    let token_guard = token_mutex
+        .lock()
+        .await
+        .map_err(|e| AppError::Auth(format!("Failed to lock token mutex: {e:?}")))?;
+
+    let is_expired = if let Some(token) = token_guard.as_ref() {
+        token.is_expired()
+    } else {
+        true
+    };
+
+    drop(token_guard);
+
+    if is_expired {
+        // If token has refresh_token, refresh directly. Otherwise load from keyring.
+        let has_refresh = {
+            let mutex = spotify.get_token();
+            let guard = mutex
+                .lock()
+                .await
+                .map_err(|e| AppError::Auth(format!("Lock error: {e:?}")))?;
+            guard.as_ref().and_then(|t| t.refresh_token.clone())
+        };
+
+        if has_refresh.is_none() {
+            let refresh_token = get_refresh_token_from_keyring()?;
+            let mock_token = rspotify::model::Token {
+                refresh_token: Some(refresh_token),
+                ..Default::default()
+            };
+            let mutex = spotify.get_token();
+            *mutex
+                .lock()
+                .await
+                .map_err(|e| AppError::Auth(format!("Lock error: {e:?}")))? = Some(mock_token);
+        }
+
+        spotify
+            .refresh_token()
+            .await
+            .map_err(|e| AppError::Auth(format!("Failed to silently refresh token: {e}")))?;
+    }
+
+    Ok(())
+}
+
+/// Executes a fallible Spotify API closure, detecting 401 Unauthorized errors and silently refreshing the token before retrying.
+#[allow(clippy::missing_errors_doc)]
+pub async fn with_auto_reauth<F, Fut, T>(spotify: &AuthCodePkceSpotify, f: F) -> Result<T, AppError>
+where
+    F: Fn() -> Fut,
+    Fut: std::future::Future<Output = Result<T, AppError>>,
+{
+    match f().await {
+        Ok(val) => Ok(val),
+        Err(AppError::Auth(_) | AppError::Network(_)) => {
+            if refresh_token_if_expired(spotify).await.is_ok() {
+                f().await
+            } else {
+                Err(AppError::Auth(
+                    "Session expired. Please log in again.".to_string(),
+                ))
+            }
+        }
+        Err(e) => Err(e),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -155,5 +227,12 @@ mod tests {
     #[test]
     fn test_keyring_helper_functions_exist() {
         let _ = get_refresh_token_from_keyring();
+    }
+
+    #[tokio::test]
+    async fn test_with_auto_reauth_success_path() {
+        let spotify = get_spotify_client();
+        let res = with_auto_reauth(&spotify, || async { Ok::<i32, AppError>(42) }).await;
+        assert_eq!(res.unwrap(), 42);
     }
 }
