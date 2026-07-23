@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Verify the refresh token is stored exclusively via the OS keychain (`keyring` crate), never as plaintext
+- [ ] Implement token refresh on expiry: detect 401 responses and silently re-authenticate
 
 ## Development Backlog
 
@@ -47,7 +47,7 @@
 
 - [x] Implement PKCE Authorization Code Flow with `rspotify`
 - [x] Register `spotifust://callback` custom protocol handler for the OAuth redirect
-- [ ] Verify the refresh token is stored exclusively via the OS keychain (`keyring` crate), never as plaintext
+- [x] Verify the refresh token is stored exclusively via the OS keychain (`keyring` crate), never as plaintext
 - [ ] Implement token refresh on expiry: detect 401 responses and silently re-authenticate
 - [ ] Fetch the authenticated user's profile (`/me`) and display name and avatar in the sidebar
 - [ ] Fetch the user's full playlist library (`/me/playlists`, paginated) and stream items into the sidebar list

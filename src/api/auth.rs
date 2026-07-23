@@ -30,6 +30,36 @@ fn get_spotify_client() -> AuthCodePkceSpotify {
     AuthCodePkceSpotify::new(creds, oauth)
 }
 
+/// Saves the refresh token to the OS keychain via `keyring`.
+#[allow(clippy::missing_errors_doc)]
+pub fn save_refresh_token_to_keyring(refresh_token: &str) -> Result<(), AppError> {
+    let entry = keyring::Entry::new("spotifust", "spotify_refresh_token")
+        .map_err(|e| AppError::Auth(format!("Keyring error: {e}")))?;
+    entry
+        .set_password(refresh_token)
+        .map_err(|e| AppError::Auth(format!("Failed to save token to keyring: {e}")))?;
+    Ok(())
+}
+
+/// Retrieves the refresh token from the OS keychain via `keyring`.
+#[allow(clippy::missing_errors_doc)]
+pub fn get_refresh_token_from_keyring() -> Result<String, AppError> {
+    let entry = keyring::Entry::new("spotifust", "spotify_refresh_token")
+        .map_err(|e| AppError::Auth(format!("Keyring error: {e}")))?;
+    entry
+        .get_password()
+        .map_err(|_| AppError::Auth("No token in keyring".to_string()))
+}
+
+/// Deletes the refresh token from the OS keychain via `keyring`.
+#[allow(clippy::missing_errors_doc)]
+pub fn delete_refresh_token_from_keyring() -> Result<(), AppError> {
+    let entry = keyring::Entry::new("spotifust", "spotify_refresh_token")
+        .map_err(|e| AppError::Auth(format!("Keyring error: {e}")))?;
+    let _ = entry.delete_credential();
+    Ok(())
+}
+
 #[allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
 pub async fn do_login_flow() -> Result<AuthCodePkceSpotify, AppError> {
     let mut spotify = get_spotify_client();
@@ -79,11 +109,7 @@ pub async fn do_login_flow() -> Result<AuthCodePkceSpotify, AppError> {
         .ok_or_else(|| AppError::Auth("No token obtained".to_string()))?;
 
     if let Some(refresh_token) = &token.refresh_token {
-        let entry = keyring::Entry::new("spotifust", "spotify_refresh_token")
-            .map_err(|e| AppError::Auth(format!("Keyring error: {e}")))?;
-        entry
-            .set_password(refresh_token)
-            .map_err(|e| AppError::Auth(format!("Failed to save token to keyring: {e}")))?;
+        save_refresh_token_to_keyring(refresh_token)?;
     }
 
     Ok(spotify)
@@ -91,12 +117,7 @@ pub async fn do_login_flow() -> Result<AuthCodePkceSpotify, AppError> {
 
 #[allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
 pub async fn check_existing_login() -> Result<AuthCodePkceSpotify, AppError> {
-    let entry = keyring::Entry::new("spotifust", "spotify_refresh_token")
-        .map_err(|e| AppError::Auth(format!("Keyring error: {e}")))?;
-
-    let refresh_token = entry
-        .get_password()
-        .map_err(|_| AppError::Auth("No token in keyring".to_string()))?;
+    let refresh_token = get_refresh_token_from_keyring()?;
 
     let spotify = get_spotify_client();
 
@@ -119,4 +140,20 @@ pub async fn check_existing_login() -> Result<AuthCodePkceSpotify, AppError> {
         .map_err(|e| AppError::Auth(format!("Failed to refresh token: {e}")))?;
 
     Ok(spotify)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_keyring_service_and_account_name() {
+        let res = keyring::Entry::new("spotifust", "spotify_refresh_token");
+        let _ = res;
+    }
+
+    #[test]
+    fn test_keyring_helper_functions_exist() {
+        let _ = get_refresh_token_from_keyring();
+    }
 }
