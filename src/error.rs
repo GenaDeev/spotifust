@@ -14,4 +14,7 @@ pub enum AppError {
 
     #[error("Cache error: {0}")]
     Cache(String),
+
+    #[error("Rate limited: retry after {0} seconds")]
+    RateLimited(u64),
 }

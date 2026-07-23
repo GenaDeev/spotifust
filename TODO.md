@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Implement rate-limit handling: respect `Retry-After` headers from the Spotify API
+- [ ] Design tokens implementation (colors, typography, spacing) in `src/ui/theme.rs`
 
 ## Development Backlog
 
@@ -60,7 +60,7 @@
 - [x] Fetch currently playing track via `/me/player/currently-playing` on startup and sync UI state
 - [x] Implement album art fetching: download cover images asynchronously and cache to disk in `src/api/cache.rs`
 - [x] Implement a metadata cache layer in `src/api/cache.rs` to avoid redundant API calls (TTL-based)
-- [ ] Implement rate-limit handling: respect `Retry-After` headers from the Spotify API
+- [x] Implement rate-limit handling: respect `Retry-After` headers from the Spotify API
 
 ### Phase 5: UI Design System & Component Polish
 

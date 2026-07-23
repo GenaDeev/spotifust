@@ -192,7 +192,8 @@ pub async fn refresh_token_if_expired(spotify: &AuthCodePkceSpotify) -> Result<(
     Ok(())
 }
 
-/// Executes a fallible Spotify API closure, detecting 401 Unauthorized errors and silently refreshing the token before retrying.
+/// Executes a fallible Spotify API closure, detecting 401 Unauthorized errors (refreshing token)
+/// and handling rate limiting (429 Too Many Requests) by awaiting `Retry-After` seconds.
 #[allow(clippy::missing_errors_doc)]
 pub async fn with_auto_reauth<F, Fut, T>(spotify: &AuthCodePkceSpotify, f: F) -> Result<T, AppError>
 where
@@ -201,6 +202,10 @@ where
 {
     match f().await {
         Ok(val) => Ok(val),
+        Err(AppError::RateLimited(secs)) => {
+            tokio::time::sleep(std::time::Duration::from_secs(secs)).await;
+            f().await
+        }
         Err(AppError::Auth(_) | AppError::Network(_)) => {
             if refresh_token_if_expired(spotify).await.is_ok() {
                 f().await
