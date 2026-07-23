@@ -79,6 +79,9 @@ pub enum AppState {
         user_playlists: Vec<crate::api::playlist::PlaylistSummary>,
         user_albums: Vec<crate::api::album::AlbumSummary>,
         user_top_tracks: Vec<crate::api::tracks::TopTrack>,
+        search_query: String,
+        search_results: crate::api::search::SearchResults,
+        is_searching: bool,
         selected_playlist: Option<SelectedPlaylistState>,
         spotify_client: Option<Arc<rspotify::AuthCodePkceSpotify>>,
         sidebar_width: f32,
@@ -111,6 +114,8 @@ pub enum Message {
     UserPlaylistsFetched(Result<Vec<crate::api::playlist::PlaylistSummary>, AppError>),
     UserAlbumsFetched(Result<Vec<crate::api::album::AlbumSummary>, AppError>),
     UserTopTracksFetched(Result<Vec<crate::api::tracks::TopTrack>, AppError>),
+    SearchInputChanged(String),
+    SearchResultsFetched(Result<crate::api::search::SearchResults, AppError>),
     SelectPlaylist(String),
     PlaylistTracksFetched(
         String,
@@ -298,6 +303,9 @@ impl App {
                     user_playlists: Vec::new(),
                     user_albums: Vec::new(),
                     user_top_tracks: Vec::new(),
+                    search_query: String::new(),
+                    search_results: crate::api::search::SearchResults::default(),
+                    is_searching: false,
                     selected_playlist: None,
                     spotify_client: Some(Arc::clone(&spotify_arc)),
                     sidebar_width: sw,
@@ -378,6 +386,51 @@ impl App {
                 if let Ok(tracks) = res {
                     if let AppState::Main { user_top_tracks, .. } = &mut self.state {
                         *user_top_tracks = tracks;
+                    }
+                }
+                Task::none()
+            }
+            Message::SearchInputChanged(query) => {
+                if let AppState::Main {
+                    search_query,
+                    search_results,
+                    is_searching,
+                    spotify_client,
+                    nav_item,
+                    ..
+                } = &mut self.state
+                {
+                    search_query.clone_from(&query);
+                    *nav_item = NavigationItem::Search;
+
+                    if query.trim().is_empty() {
+                        *search_results = crate::api::search::SearchResults::default();
+                        *is_searching = false;
+                    } else {
+                        *is_searching = true;
+                        if let Some(client) = spotify_client.clone() {
+                            let q = query;
+                            return Task::perform(
+                                async move {
+                                    crate::api::search::execute_search(&client, &q).await
+                                },
+                                Message::SearchResultsFetched,
+                            );
+                        }
+                    }
+                }
+                Task::none()
+            }
+            Message::SearchResultsFetched(res) => {
+                if let AppState::Main {
+                    search_results,
+                    is_searching,
+                    ..
+                } = &mut self.state
+                {
+                    *is_searching = false;
+                    if let Ok(results) = res {
+                        *search_results = results;
                     }
                 }
                 Task::none()
@@ -733,6 +786,9 @@ impl App {
                 user_playlists,
                 user_albums,
                 user_top_tracks,
+                search_query,
+                search_results,
+                is_searching,
                 selected_playlist,
                 ..
             } => crate::ui::main_layout::view(
@@ -745,6 +801,9 @@ impl App {
                 user_playlists,
                 user_albums,
                 user_top_tracks,
+                search_query,
+                search_results,
+                *is_searching,
                 selected_playlist.as_ref(),
             ),
         };

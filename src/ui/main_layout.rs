@@ -4,7 +4,7 @@ use crate::ui::theme;
 use iced::widget::mouse_area;
 use iced::{
     Alignment, Background, Border, Color, Element, Length, Theme,
-    widget::{Button, Column, Container, Image, Row, Scrollable, Space, Text, container, slider},
+    widget::{Button, Column, Container, Image, Row, Scrollable, Space, Text, TextInput, container, slider},
 };
 
 const LOGO_BYTES: &[u8] = include_bytes!("../../assets/spotifust.png");
@@ -20,11 +20,14 @@ pub fn view<'a>(
     user_playlists: &'a [crate::api::playlist::PlaylistSummary],
     user_albums: &'a [crate::api::album::AlbumSummary],
     user_top_tracks: &'a [crate::api::tracks::TopTrack],
+    search_query: &'a str,
+    search_results: &'a crate::api::search::SearchResults,
+    is_searching: bool,
     selected_playlist: Option<&'a crate::app::SelectedPlaylistState>,
 ) -> Element<'a, Message> {
-    let top_bar = view_top_bar(*nav_item, user_profile);
+    let top_bar = view_top_bar(*nav_item, user_profile, search_query);
     let sidebar = view_sidebar_panel(sidebar_width, user_playlists, user_albums);
-    let main_content = view_main_content(*nav_item, selected_playlist, user_albums, user_top_tracks);
+    let main_content = view_main_content(*nav_item, selected_playlist, user_albums, user_top_tracks, search_results, is_searching);
     let right_panel = view_right_panel(active_right_panel, right_panel_width);
     let playback_bar = view_playback_bar(playback, active_right_panel);
 
@@ -62,10 +65,11 @@ pub fn view<'a>(
 }
 
 #[allow(clippy::too_many_lines)]
-fn view_top_bar(
+fn view_top_bar<'a>(
     current_nav: NavigationItem,
     user_profile: Option<&crate::api::user::UserProfile>,
-) -> Element<'static, Message> {
+    search_query: &'a str,
+) -> Element<'a, Message> {
     let initial_letter = user_profile
         .and_then(|p| p.display_name.chars().next())
         .map_or("G".to_string(), |c| c.to_uppercase().to_string());
@@ -96,16 +100,17 @@ fn view_top_bar(
         current_nav == NavigationItem::Home,
     );
 
+    let search_input = TextInput::new("What do you want to play?", search_query)
+        .on_input(Message::SearchInputChanged)
+        .size(14)
+        .width(Length::Fill);
+
     let search_bar = Container::new(
         Row::new()
             .align_y(Alignment::Center)
             .spacing(10)
             .push(Icon::Search.view_colored(18.0, theme::TEXT_SECONDARY))
-            .push(
-                Text::new("What do you want to play?")
-                    .color(theme::TEXT_SECONDARY)
-                    .size(14),
-            ),
+            .push(search_input),
     )
     .height(Length::Fixed(40.0))
     .width(Length::Fixed(400.0))
@@ -466,7 +471,13 @@ fn view_main_content<'a>(
     selected_playlist: Option<&'a crate::app::SelectedPlaylistState>,
     user_albums: &'a [crate::api::album::AlbumSummary],
     user_top_tracks: &'a [crate::api::tracks::TopTrack],
+    search_results: &'a crate::api::search::SearchResults,
+    is_searching: bool,
 ) -> Element<'a, Message> {
+    if current_nav == NavigationItem::Search {
+        return view_search_results(search_results, is_searching);
+    }
+
     if let Some(sp) = selected_playlist {
         let playlist_header = Column::new()
             .spacing(6)
@@ -1725,4 +1736,96 @@ fn format_duration(ms: u32) -> String {
     let mins = total_secs / 60;
     let secs = total_secs % 60;
     format!("{mins}:{secs:02}")
+}
+
+fn view_search_results(
+    results: &crate::api::search::SearchResults,
+    is_searching: bool,
+) -> Element<'_, Message> {
+    if is_searching {
+        return Container::new(
+            Text::new("Searching...")
+                .size(16)
+                .color(theme::TEXT_SECONDARY),
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .align_x(iced::alignment::Horizontal::Center)
+        .align_y(iced::alignment::Vertical::Center)
+        .into();
+    }
+
+    if results.tracks.is_empty() && results.albums.is_empty() && results.artists.is_empty() {
+        return Container::new(
+            Text::new("Type to search for tracks, albums, or artists")
+                .size(16)
+                .color(theme::TEXT_SECONDARY),
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .align_x(iced::alignment::Horizontal::Center)
+        .align_y(iced::alignment::Vertical::Center)
+        .into();
+    }
+
+    let mut tracks_col = Column::new().spacing(8);
+    for (idx, track) in results.tracks.iter().enumerate() {
+        let formatted_dur = format_duration(track.duration_ms);
+
+        let row = Row::new()
+            .align_y(Alignment::Center)
+            .spacing(16)
+            .push(
+                Text::new(format!("{}", idx + 1))
+                    .size(13)
+                    .color(theme::TEXT_SECONDARY)
+                    .width(Length::Fixed(24.0)),
+            )
+            .push(
+                Column::new()
+                    .spacing(2)
+                    .push(
+                        Text::new(&track.title)
+                            .size(14)
+                            .font(iced::Font {
+                                weight: iced::font::Weight::Bold,
+                                ..Default::default()
+                            })
+                            .color(theme::TEXT_PRIMARY),
+                    )
+                    .push(
+                        Text::new(format!("{} • {}", track.artist, track.album))
+                            .size(12)
+                            .color(theme::TEXT_SECONDARY),
+                    ),
+            )
+            .push(Space::new().width(Length::Fill))
+            .push(
+                Text::new(formatted_dur)
+                    .size(13)
+                    .color(theme::TEXT_SECONDARY),
+            );
+
+        tracks_col = tracks_col.push(row);
+    }
+
+    let content = Column::new()
+        .spacing(24)
+        .push(
+            Text::new("Search Results")
+                .size(28)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_PRIMARY),
+        )
+        .push(tracks_col);
+
+    Scrollable::new(
+        Container::new(content)
+            .width(Length::Fill)
+            .padding(24),
+    )
+    .into()
 }

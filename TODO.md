@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Implement search: send queries to `/search` and display track, album, and artist results
+- [ ] Implement album detail view: fetch `/albums/{id}` and list its tracks
 
 ## Development Backlog
 
@@ -54,7 +54,7 @@
 - [x] Fetch playlist track listings on demand when a playlist is selected
 - [x] Fetch the user's saved albums and expose them in a dedicated Albums view
 - [x] Fetch the user's top tracks and expose them in a Home/For You view
-- [ ] Implement search: send queries to `/search` and display track, album, and artist results
+- [x] Implement search: send queries to `/search` and display track, album, and artist results
 - [ ] Implement album detail view: fetch `/albums/{id}` and list its tracks
 - [ ] Implement artist detail view: fetch `/artists/{id}` with top tracks and discography
 - [ ] Fetch currently playing track via `/me/player/currently-playing` on startup and sync UI state
