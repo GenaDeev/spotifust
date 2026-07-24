@@ -81,6 +81,7 @@ impl Default for PlaybackState {
 pub struct SelectedPlaylistState {
     pub id: String,
     pub name: String,
+    pub image_url: Option<String>,
     pub tracks: Vec<crate::api::playlist::PlaylistTrack>,
     pub is_loading: bool,
 }
@@ -573,26 +574,33 @@ impl App {
                     user_playlists,
                     selected_playlist,
                     selected_album,
+                    loaded_images,
                     spotify_client,
                     ..
                 } = &mut self.state
                 {
                     *selected_album = None;
-                    let playlist_name = user_playlists
+                    let (playlist_name, image_url) = user_playlists
                         .iter()
                         .find(|p| p.id == playlist_id)
-                        .map_or_else(|| "Playlist".to_string(), |p| p.name.clone());
+                        .map_or_else(
+                            || ("Playlist".to_string(), None),
+                            |p| (p.name.clone(), p.image_url.clone()),
+                        );
 
                     *selected_playlist = Some(SelectedPlaylistState {
                         id: playlist_id.clone(),
                         name: playlist_name,
+                        image_url: image_url.clone(),
                         tracks: Vec::new(),
                         is_loading: true,
                     });
 
+                    let mut tasks = load_image_tasks(std::iter::once(image_url), loaded_images);
+
                     if let Some(client) = spotify_client.clone() {
                         let pid = playlist_id.clone();
-                        return Task::perform(
+                        tasks.push(Task::perform(
                             async move {
                                 let res =
                                     crate::api::playlist::fetch_playlist_tracks(&client, &pid)
@@ -600,7 +608,10 @@ impl App {
                                 (pid, res)
                             },
                             |(pid, res)| Message::PlaylistTracksFetched(pid, res),
-                        );
+                        ));
+                    }
+                    if !tasks.is_empty() {
+                        return Task::batch(tasks);
                     }
                 }
                 Task::none()

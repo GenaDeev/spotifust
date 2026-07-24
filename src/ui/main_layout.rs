@@ -594,15 +594,20 @@ fn view_main_content<'a>(
     }
 
     if let Some(sp) = selected_playlist {
+        let playlist_cover_url = sp
+            .image_url
+            .as_deref()
+            .or_else(|| sp.tracks.first().and_then(|t| t.image_url.as_deref()));
+
         let playlist_header = Row::new()
-            .spacing(20)
+            .spacing(24)
             .align_y(Alignment::Center)
             .push(view_image_or_icon(
-                sp.tracks.first().and_then(|t| t.image_url.as_deref()),
+                playlist_cover_url,
                 loaded_images,
                 Icon::MusicNote,
-                140.0,
-                theme::RADIUS_MD,
+                230.0,
+                theme::RADIUS_LG,
             ))
             .push(
                 Column::new()
@@ -815,12 +820,12 @@ fn view_main_content<'a>(
             sa.image_url.as_deref(),
             loaded_images,
             Icon::Album,
-            140.0,
-            theme::RADIUS_MD,
+            230.0,
+            theme::RADIUS_LG,
         );
 
         let album_header = Row::new()
-            .spacing(20)
+            .spacing(24)
             .align_y(Alignment::Center)
             .push(cover)
             .push(
