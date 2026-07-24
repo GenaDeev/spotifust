@@ -101,13 +101,19 @@ pub fn view<'a>(
     }
 
     if is_loading {
+        let loading_text = if error.is_none() {
+            "Connecting to Spotify..."
+        } else {
+            "Awaiting OAuth authentication in your browser..."
+        };
+
         let loading_badge = Container::new(
             Row::new()
                 .align_y(Alignment::Center)
                 .spacing(10)
                 .push(Text::new("⏳").size(16))
                 .push(
-                    Text::new("Awaiting OAuth authentication in your browser...")
+                    Text::new(loading_text)
                         .size(14)
                         .color(theme::TEXT_SECONDARY),
                 ),
