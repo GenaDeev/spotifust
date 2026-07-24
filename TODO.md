@@ -81,7 +81,7 @@
 - [x] Add keyboard shortcuts for Play/Pause (Space), Skip (→/←), Volume (↑/↓)
 - [ ] Implement a mini-player / compact mode for when the window is resized to small dimensions
 - [ ] Implement drag-and-drop track reordering within a playlist queue view
-- [ ] Add toast / snackbar notifications for user-facing errors and confirmations
+- [x] Add toast / snackbar notifications for user-facing errors and confirmations
 - [ ] Audit and refine all font sizes, weights, and line heights for visual consistency
 - [ ] Ensure the entire UI is navigable via keyboard (tab order, focus rings)
 

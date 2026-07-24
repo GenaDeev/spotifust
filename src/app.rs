@@ -1200,7 +1200,11 @@ impl App {
                     .push(Icon::X.view_colored(16.0, theme::TEXT_PRIMARY))
                     .push(
                         Text::new(err)
-                            .size(14)
+                            .size(13)
+                            .font(iced::Font {
+                                weight: iced::font::Weight::Bold,
+                                ..Default::default()
+                            })
                             .color(theme::TEXT_PRIMARY)
                             .width(Length::Fill),
                     )
@@ -1216,7 +1220,9 @@ impl App {
                                 match status {
                                     iced::widget::button::Status::Hovered => {
                                         iced::widget::button::Style {
-                                            background: Some(Background::Color(theme::SURFACE_2)),
+                                            background: Some(Background::Color(
+                                                theme::SURFACE_HOVER,
+                                            )),
                                             ..base
                                         }
                                     }
@@ -1225,25 +1231,22 @@ impl App {
                             }),
                     ),
             )
-            .padding([8, 16])
+            .padding([10, 16])
             .width(Length::Fill)
             .style(|_theme| container::Style {
-                background: Some(Background::Color(iced::Color {
-                    r: 0.7,
-                    g: 0.15,
-                    b: 0.15,
-                    a: 1.0,
-                })),
+                background: Some(Background::Color(theme::COLOR_ERROR)),
                 border: Border {
-                    radius: 4.0.into(),
-                    ..Default::default()
+                    radius: theme::RADIUS_MD.into(),
+                    color: theme::BORDER_SUBTLE,
+                    width: 1.0,
                 },
+                text_color: Some(theme::TEXT_PRIMARY),
                 ..Default::default()
             });
 
             Column::new()
                 .spacing(8)
-                .push(error_banner)
+                .push(Container::new(error_banner).padding([8, 12]))
                 .push(content)
                 .into()
         } else {
