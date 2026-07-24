@@ -100,12 +100,7 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                                 position_ms = *pos;
                                 let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
                             }
-                            PlayerEvent::Stopped { .. } => {
-                                is_playing = false;
-                                position_ms = 0;
-                                let _ = event_tx.send(AudioSessionEvent::PositionMs(0)).await;
-                            }
-                            PlayerEvent::EndOfTrack { .. } => {
+                            PlayerEvent::Stopped { .. } | PlayerEvent::EndOfTrack { .. } => {
                                 is_playing = false;
                                 position_ms = 0;
                                 let _ = event_tx.send(AudioSessionEvent::PositionMs(0)).await;
@@ -153,10 +148,10 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                     if uri.trim().is_empty() {
                         eprintln!("Cannot play track with empty Spotify URI");
                     } else {
-                        let uri_to_parse = if !uri.starts_with("spotify:") {
-                            format!("spotify:track:{uri}")
-                        } else {
+                        let uri_to_parse = if uri.starts_with("spotify:") {
                             uri.clone()
+                        } else {
+                            format!("spotify:track:{uri}")
                         };
                         match SpotifyUri::from_uri(&uri_to_parse) {
                             Ok(spotify_uri) => {
@@ -177,10 +172,10 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                 }
                 PlayerCommand::SkipNext | PlayerCommand::SkipPrev => {
                     if let Some(ref uri) = current_uri {
-                        let uri_to_parse = if !uri.starts_with("spotify:") {
-                            format!("spotify:track:{uri}")
-                        } else {
+                        let uri_to_parse = if uri.starts_with("spotify:") {
                             uri.clone()
+                        } else {
+                            format!("spotify:track:{uri}")
                         };
                         match SpotifyUri::from_uri(&uri_to_parse) {
                             Ok(spotify_uri) => {

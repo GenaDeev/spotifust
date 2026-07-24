@@ -1015,24 +1015,7 @@ fn view_main_content<'a>(
             }
             list
         } else {
-            vec![
-                ("Liked Songs", None, Icon::Heart, Message::MockAction),
-                (
-                    "Synthwave Architect",
-                    None,
-                    Icon::Album,
-                    Message::MockAction,
-                ),
-                (
-                    "Rustaceans Unite",
-                    None,
-                    Icon::MusicNote,
-                    Message::MockAction,
-                ),
-                ("Chill Lofi Beats", None, Icon::Queue, Message::MockAction),
-                ("Deep Focus", None, Icon::Search, Message::MockAction),
-                ("Top Gaming Tracks", None, Icon::Play, Message::MockAction),
-            ]
+            Vec::new()
         };
 
     for (idx, (title, img_url, icon, msg)) in items_source.into_iter().enumerate() {
@@ -1060,18 +1043,11 @@ fn view_main_content<'a>(
         .push(Space::new().width(Length::Fill));
 
     let section_1_cards = if user_top_tracks.is_empty() {
-        Row::new()
-            .spacing(16)
-            .push(media_card(
-                "Daily Mix 1",
-                "Gunship, The Midnight",
-                Icon::MusicNote,
-            ))
-            .push(media_card(
-                "Discover Weekly",
-                "Your weekly mixtape",
-                Icon::Search,
-            ))
+        Row::new().push(
+            Text::new("No top tracks available")
+                .size(13)
+                .color(theme::TEXT_SECONDARY),
+        )
     } else {
         let mut row = Row::new().spacing(16);
         for track in user_top_tracks.iter().take(5) {
@@ -1103,18 +1079,11 @@ fn view_main_content<'a>(
         .push(Space::new().width(Length::Fill));
 
     let section_2_cards = if user_albums.is_empty() {
-        Row::new()
-            .spacing(16)
-            .push(media_card(
-                "Endless Summer",
-                "The Midnight • Album",
-                Icon::Album,
-            ))
-            .push(media_card(
-                "Dark All Day",
-                "GUNSHIP • Album",
-                Icon::MusicNote,
-            ))
+        Row::new().push(
+            Text::new("No saved albums available")
+                .size(13)
+                .color(theme::TEXT_SECONDARY),
+        )
     } else {
         let mut row = Row::new().spacing(16);
         for a in user_albums.iter().take(5) {
@@ -1277,7 +1246,7 @@ fn view_right_panel<'a>(
                         track.image_url.as_deref(),
                     )
                 } else {
-                    ("Synthetic Horizon", "Spotifust Audio Engine", None)
+                    ("No track playing", "Select a song to start playback", None)
                 };
 
             let art_placeholder =
@@ -2140,71 +2109,6 @@ fn quick_card_with_image<'a>(
                 background: Some(Background::Color(theme::SURFACE_CARD)),
                 border: Border {
                     radius: theme::RADIUS_MD.into(),
-                    ..Default::default()
-                },
-                ..Default::default()
-            };
-            match status {
-                iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                    background: Some(Background::Color(theme::SURFACE_HOVER)),
-                    ..base
-                },
-                _ => base,
-            }
-        })
-        .into()
-}
-
-fn media_card<'a>(
-    title: impl Into<String>,
-    subtitle: impl Into<String>,
-    icon: Icon,
-) -> Element<'a, Message> {
-    let title_str = title.into();
-    let subtitle_str = subtitle.into();
-
-    let cover = Container::new(icon.view_colored(36.0, theme::TEXT_SECONDARY))
-        .width(Length::Fill)
-        .height(Length::Fixed(150.0))
-        .align_x(iced::alignment::Horizontal::Center)
-        .align_y(iced::alignment::Vertical::Center)
-        .style(|_theme| container::Style {
-            background: Some(Background::Color(theme::SURFACE_CARD)),
-            border: Border {
-                radius: theme::RADIUS_MD.into(),
-                ..Default::default()
-            },
-            ..Default::default()
-        });
-
-    let text_col = Column::new()
-        .spacing(4)
-        .push(
-            Text::new(title_str)
-                .size(15)
-                .font(iced::Font {
-                    weight: iced::font::Weight::Bold,
-                    ..Default::default()
-                })
-                .color(theme::TEXT_PRIMARY),
-        )
-        .push(
-            Text::new(subtitle_str)
-                .size(12)
-                .color(theme::TEXT_SECONDARY),
-        );
-
-    let content = Column::new().spacing(12).push(cover).push(text_col);
-
-    Button::new(content)
-        .padding(12)
-        .width(Length::Fixed(180.0))
-        .on_press(Message::MockAction)
-        .style(|_theme, status| {
-            let base = iced::widget::button::Style {
-                background: Some(Background::Color(theme::SURFACE_MAIN)),
-                border: Border {
-                    radius: theme::RADIUS_LG.into(),
                     ..Default::default()
                 },
                 ..Default::default()
