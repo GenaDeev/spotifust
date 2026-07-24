@@ -79,8 +79,8 @@ pub async fn fetch_playlist_tracks(
     spotify: &AuthCodePkceSpotify,
     playlist_id: &str,
 ) -> Result<Vec<PlaylistTrack>, AppError> {
-    let pid = rspotify::model::PlaylistId::from_id(playlist_id)
-        .map_err(|e| AppError::Network(format!("Invalid playlist ID: {e}")))?;
+    let pid = rspotify::model::PlaylistId::from_id_or_uri(playlist_id)
+        .map_err(|e| AppError::Network(format!("Invalid playlist ID '{playlist_id}': {e}")))?;
 
     with_auto_reauth(spotify, || async {
         let mut tracks = Vec::new();

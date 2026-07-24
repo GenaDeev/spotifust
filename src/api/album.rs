@@ -101,7 +101,7 @@ pub async fn fetch_album_details(
     use rspotify::model::AlbumId;
     use rspotify::prelude::Id;
 
-    let aid = AlbumId::from_id(album_id_str)
+    let aid = AlbumId::from_id_or_uri(album_id_str)
         .map_err(|e| AppError::Network(format!("Invalid album ID '{album_id_str}': {e}")))?;
 
     with_auto_reauth(spotify, || async {
