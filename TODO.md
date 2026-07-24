@@ -77,7 +77,7 @@
 - [ ] Add waveform or animated equalizer bars to the Now Playing area during active playback
 - [ ] Implement smooth progress bar animation that interpolates position between tick updates
 - [ ] Add context menus (right-click) on tracks and playlist items (Add to queue, Go to album, etc.)
-- [ ] Implement a proper volume slider that covers the full 0–100% range with a mute toggle
+- [x] Implement a proper volume slider that covers the full 0–100% range with a mute toggle
 - [x] Add keyboard shortcuts for Play/Pause (Space), Skip (→/←), Volume (↑/↓)
 - [ ] Implement a mini-player / compact mode for when the window is resized to small dimensions
 - [ ] Implement drag-and-drop track reordering within a playlist queue view

@@ -1589,10 +1589,18 @@ fn view_playback_bar<'a>(
             }
         });
 
+    let volume_icon = if playback.is_muted || playback.volume == 0.0 {
+        Icon::X
+    } else {
+        Icon::Volume
+    };
+
+    let volume_btn = icon_button_plain(volume_icon, Message::ToggleMute);
+
     let volume_controls = Row::new()
         .spacing(8)
         .align_y(Alignment::Center)
-        .push(Icon::Volume.view_colored(16.0, theme::TEXT_SECONDARY))
+        .push(volume_btn)
         .push(volume_slider);
 
     let right_utility_controls = Row::new()

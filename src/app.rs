@@ -63,6 +63,8 @@ pub struct PlaybackState {
     pub progress_ms: u32,
     pub volume: f32,
     pub current_track_uri: Option<String>,
+    pub is_muted: bool,
+    pub last_volume: f32,
 }
 
 impl Default for PlaybackState {
@@ -73,6 +75,8 @@ impl Default for PlaybackState {
             progress_ms: 0,
             volume: 1.0,
             current_track_uri: None,
+            is_muted: false,
+            last_volume: 1.0,
         }
     }
 }
@@ -165,6 +169,7 @@ pub enum Message {
     SeekTo(f32),        // 0.0 to 1.0
     VolumeChanged(f32), // 0.0 to 1.0
     AdjustVolume(f32),  // relative delta e.g. +0.05 / -0.05
+    ToggleMute,
     // Mock UI Actions
     MockAction,
     // Error Actions
@@ -336,6 +341,8 @@ impl App {
                     progress_ms: 0,
                     volume: 0.8,
                     current_track_uri: None,
+                    is_muted: false,
+                    last_volume: 0.8,
                 };
 
                 let (sw, rw) = load_layout();
@@ -1043,6 +1050,10 @@ impl App {
                 {
                     let clamped_vol = vol.clamp(0.0, 1.0);
                     playback.volume = clamped_vol;
+                    if clamped_vol > 0.0 {
+                        playback.is_muted = false;
+                        playback.last_volume = clamped_vol;
+                    }
                     if let Some(session) = audio_session {
                         let _ = session.cmd_tx.try_send(PlayerCommand::Volume(clamped_vol));
                     }
@@ -1058,8 +1069,41 @@ impl App {
                 {
                     let new_vol = (playback.volume + delta).clamp(0.0, 1.0);
                     playback.volume = new_vol;
+                    if new_vol > 0.0 {
+                        playback.is_muted = false;
+                        playback.last_volume = new_vol;
+                    }
                     if let Some(session) = audio_session {
                         let _ = session.cmd_tx.try_send(PlayerCommand::Volume(new_vol));
+                    }
+                }
+                Task::none()
+            }
+            Message::ToggleMute => {
+                if let AppState::Main {
+                    playback,
+                    audio_session,
+                    ..
+                } = &mut self.state
+                {
+                    if playback.is_muted || playback.volume == 0.0 {
+                        playback.is_muted = false;
+                        let target_vol = if playback.last_volume <= 0.01 {
+                            0.8
+                        } else {
+                            playback.last_volume
+                        };
+                        playback.volume = target_vol;
+                        if let Some(session) = audio_session {
+                            let _ = session.cmd_tx.try_send(PlayerCommand::Volume(target_vol));
+                        }
+                    } else {
+                        playback.is_muted = true;
+                        playback.last_volume = playback.volume;
+                        playback.volume = 0.0;
+                        if let Some(session) = audio_session {
+                            let _ = session.cmd_tx.try_send(PlayerCommand::Volume(0.0));
+                        }
                     }
                 }
                 Task::none()
