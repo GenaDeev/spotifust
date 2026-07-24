@@ -82,7 +82,7 @@
 - [ ] Implement a mini-player / compact mode for when the window is resized to small dimensions
 - [ ] Implement drag-and-drop track reordering within a playlist queue view
 - [x] Add toast / snackbar notifications for user-facing errors and confirmations
-- [ ] Audit and refine all font sizes, weights, and line heights for visual consistency
+- [x] Audit and refine all font sizes, weights, and line heights for visual consistency
 - [ ] Ensure the entire UI is navigable via keyboard (tab order, focus rings)
 
 ### Phase 6: Queue, Playback State & Shuffle
