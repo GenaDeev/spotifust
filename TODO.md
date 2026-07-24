@@ -65,7 +65,7 @@
 - [x] Implement rate-limit handling: respect `Retry-After` headers from the Spotify API
 - [x] Display large cover art in playlist and album detail header views (currently only rendered in sidebar/cards)
 - [x] Audit and remove all remaining mock data across all UI views and components, fetching 100% live Spotify API data
-- [ ] Optimize long playlist loading with incremental chunking/streaming or virtualized pagination to avoid UI lag
+- [x] Optimize long playlist loading with incremental chunking/streaming or virtualized pagination to avoid UI lag
 - [x] Validate existing token/session before rendering initial screen to eliminate temporary login flicker
 
 ### Phase 5: UI Design System & Component Polish

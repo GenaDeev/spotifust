@@ -87,6 +87,7 @@ pub async fn fetch_playlist_tracks(
         let limit = 50;
         let mut offset = 0;
 
+        let max_tracks = 200;
         loop {
             let page = spotify
                 .playlist_items_manual(pid.clone(), None, None, Some(limit), Some(offset))
@@ -129,7 +130,7 @@ pub async fn fetch_playlist_tracks(
                 }
             }
 
-            if !has_next || page_count < limit as usize {
+            if !has_next || page_count < limit as usize || tracks.len() >= max_tracks {
                 break;
             }
 
