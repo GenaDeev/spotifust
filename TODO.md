@@ -42,6 +42,8 @@
 - [x] Wire volume control: slider value in UI → `rodio::Sink::set_volume()` (full 0.0–1.0 range, not binary)
 - [x] Fix seek bar so it travels the full 0–100% range and reflects real playback position
 - [x] Handle `librespot` session expiry and reconnection without crashing
+- [ ] Fix app crash during track playback (`src/audio/sink.rs:35:14: Cannot block the current thread from within a runtime` & `Invalid Spotify URI ''`)
+
 
 ### Phase 4: RSpotify Web API & Auth
 
@@ -61,6 +63,10 @@
 - [x] Implement album art fetching: download cover images asynchronously and cache to disk in `src/api/cache.rs`
 - [x] Implement a metadata cache layer in `src/api/cache.rs` to avoid redundant API calls (TTL-based)
 - [x] Implement rate-limit handling: respect `Retry-After` headers from the Spotify API
+- [ ] Display large cover art in playlist and album detail header views (currently only rendered in sidebar/cards)
+- [ ] Audit and remove all remaining mock data across all UI views and components, fetching 100% live Spotify API data
+- [ ] Optimize long playlist loading with incremental chunking/streaming or virtualized pagination to avoid UI lag
+- [ ] Validate existing token/session before rendering initial screen to eliminate temporary login flicker
 
 ### Phase 5: UI Design System & Component Polish
 
@@ -116,7 +122,9 @@
 
 - [ ] The Canvas Layout Engine was listed as completed but was never implemented; all Phase 2 items are open
 - [x] Volume slider and seek bar have only two discrete positions and do not cover their full range
-- [ ] All playlist/album/track data shown in the UI is hardcoded mock data, not from the Spotify API
+- [x] All playlist/album/track data shown in the UI is hardcoded mock data, not from the Spotify API (Resolved: Real Spotify API data integrated across sidebar, playlists, album detail view, search, top tracks, and image cache)
+- [x] Fix Spotify Playlist and Album ID parsing (Use `from_id_or_uri` instead of `from_id` to handle Spotify URIs properly)
+- [x] Fix search input visibility styling and sidebar filter interaction
 - [ ] RAM usage is currently ~45 MB, nearly double the 25 MB target
 - [x] The librespot session may be storing or caching credentials insecurely; needs a full audit (Audit complete: keyring used, no plaintext or librespot cache on disk)
 - [x] No structured error surfacing to the user: errors silently fail or panic instead of showing in the UI
