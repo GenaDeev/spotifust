@@ -164,6 +164,7 @@ pub enum Message {
     SkipPrev,
     SeekTo(f32),        // 0.0 to 1.0
     VolumeChanged(f32), // 0.0 to 1.0
+    AdjustVolume(f32),  // relative delta e.g. +0.05 / -0.05
     // Mock UI Actions
     MockAction,
     // Error Actions
@@ -265,6 +266,26 @@ impl App {
                     )) => Some(Message::EndPanelDrag),
                     iced::Event::Window(iced::window::Event::Resized(size)) => {
                         Some(Message::WindowResized(size.width))
+                    }
+                    iced::Event::Keyboard(iced::keyboard::Event::KeyPressed { key, .. }) => {
+                        match key {
+                            iced::keyboard::Key::Named(iced::keyboard::key::Named::Space) => {
+                                Some(Message::TogglePlayback)
+                            }
+                            iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowRight) => {
+                                Some(Message::SkipNext)
+                            }
+                            iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowLeft) => {
+                                Some(Message::SkipPrev)
+                            }
+                            iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowUp) => {
+                                Some(Message::AdjustVolume(0.05))
+                            }
+                            iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowDown) => {
+                                Some(Message::AdjustVolume(-0.05))
+                            }
+                            _ => None,
+                        }
                     }
                     _ => None,
                 }));
@@ -1024,6 +1045,21 @@ impl App {
                     playback.volume = clamped_vol;
                     if let Some(session) = audio_session {
                         let _ = session.cmd_tx.try_send(PlayerCommand::Volume(clamped_vol));
+                    }
+                }
+                Task::none()
+            }
+            Message::AdjustVolume(delta) => {
+                if let AppState::Main {
+                    playback,
+                    audio_session,
+                    ..
+                } = &mut self.state
+                {
+                    let new_vol = (playback.volume + delta).clamp(0.0, 1.0);
+                    playback.volume = new_vol;
+                    if let Some(session) = audio_session {
+                        let _ = session.cmd_tx.try_send(PlayerCommand::Volume(new_vol));
                     }
                 }
                 Task::none()
