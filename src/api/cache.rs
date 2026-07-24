@@ -51,6 +51,15 @@ impl ImageCache {
 
         Ok(file_path)
     }
+
+    /// Fetches image bytes by URL, returning a tuple of (url, bytes).
+    #[allow(clippy::missing_errors_doc)]
+    pub async fn fetch_image_bytes(url: String) -> Result<(String, Vec<u8>), AppError> {
+        let file_path = Self::get_or_fetch_image(&url).await?;
+        let bytes = fs::read(&file_path)
+            .map_err(|e| AppError::Cache(format!("Failed to read cached image file: {e}")))?;
+        Ok((url, bytes))
+    }
 }
 
 /// TTL-based in-memory metadata cache entry.

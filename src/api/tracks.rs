@@ -64,6 +64,7 @@ pub struct CurrentlyPlayingInfo {
     pub progress_ms: u32,
     pub is_playing: bool,
     pub uri: String,
+    pub image_url: Option<String>,
 }
 
 /// Fetches the user's currently playing track (`/me/player/currently-playing`).
@@ -100,6 +101,8 @@ pub async fn fetch_currently_playing(
             let duration_ms = u32::try_from(full_track.duration.num_milliseconds()).unwrap_or(0);
             let uri = full_track.id.as_ref().map_or_else(String::new, Id::uri);
 
+            let image_url = full_track.album.images.first().map(|img| img.url.clone());
+
             Ok(Some(CurrentlyPlayingInfo {
                 title: full_track.name,
                 artist,
@@ -108,6 +111,7 @@ pub async fn fetch_currently_playing(
                 progress_ms,
                 is_playing: ctx.is_playing,
                 uri,
+                image_url,
             }))
         } else {
             Ok(None)
@@ -144,6 +148,7 @@ mod tests {
             progress_ms: 30_000,
             is_playing: true,
             uri: "spotify:track:cp_1".to_string(),
+            image_url: None,
         };
         assert_eq!(cp.title, "Nightcall");
         assert!(cp.is_playing);
