@@ -62,7 +62,7 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
         .map_err(|e| AppError::Playback(format!("Failed to open audio stream: {e}")))?;
     let rodio_sink = Arc::new(rodio::Sink::connect_new(stream.mixer()));
 
-    let (audio_tx, audio_rx) = mpsc::channel::<Vec<f32>>(8);
+    let (audio_tx, audio_rx) = std::sync::mpsc::sync_channel::<Vec<f32>>(8);
     crate::audio::sink::spawn_rodio_thread(audio_rx, Arc::clone(&rodio_sink), stream);
 
     let player = Player::new(
@@ -103,7 +103,7 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                             PlayerEvent::Stopped { .. } => {
                                 is_playing = false;
                                 position_ms = 0;
-                                let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
+                                let _ = event_tx.send(AudioSessionEvent::PositionMs(0)).await;
                             }
                             PlayerEvent::EndOfTrack { .. } => {
                                 is_playing = false;
@@ -149,15 +149,26 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
 
         while let Some(cmd) = cmd_rx.recv().await {
             match cmd {
-                PlayerCommand::Play(uri) => match SpotifyUri::from_uri(&uri) {
-                    Ok(spotify_uri) => {
-                        player_cmd.load(spotify_uri, true, 0);
-                        current_uri = Some(uri);
+                PlayerCommand::Play(uri) => {
+                    if uri.trim().is_empty() {
+                        eprintln!("Cannot play track with empty Spotify URI");
+                    } else {
+                        let uri_to_parse = if !uri.starts_with("spotify:") {
+                            format!("spotify:track:{uri}")
+                        } else {
+                            uri.clone()
+                        };
+                        match SpotifyUri::from_uri(&uri_to_parse) {
+                            Ok(spotify_uri) => {
+                                player_cmd.load(spotify_uri, true, 0);
+                                current_uri = Some(uri);
+                            }
+                            Err(e) => {
+                                eprintln!("Invalid Spotify URI '{uri}': {e}");
+                            }
+                        }
                     }
-                    Err(e) => {
-                        eprintln!("Invalid Spotify URI '{uri}': {e}");
-                    }
-                },
+                }
                 PlayerCommand::Pause => {
                     player_cmd.pause();
                 }
@@ -166,7 +177,12 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                 }
                 PlayerCommand::SkipNext | PlayerCommand::SkipPrev => {
                     if let Some(ref uri) = current_uri {
-                        match SpotifyUri::from_uri(uri) {
+                        let uri_to_parse = if !uri.starts_with("spotify:") {
+                            format!("spotify:track:{uri}")
+                        } else {
+                            uri.clone()
+                        };
+                        match SpotifyUri::from_uri(&uri_to_parse) {
                             Ok(spotify_uri) => {
                                 player_cmd.load(spotify_uri, true, 0);
                             }

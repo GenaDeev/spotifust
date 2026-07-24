@@ -42,7 +42,7 @@
 - [x] Wire volume control: slider value in UI → `rodio::Sink::set_volume()` (full 0.0–1.0 range, not binary)
 - [x] Fix seek bar so it travels the full 0–100% range and reflects real playback position
 - [x] Handle `librespot` session expiry and reconnection without crashing
-- [ ] Fix app crash during track playback (`src/audio/sink.rs:35:14: Cannot block the current thread from within a runtime` & `Invalid Spotify URI ''`)
+- [x] Fix app crash during track playback (`src/audio/sink.rs:35:14: Cannot block the current thread from within a runtime` & `Invalid Spotify URI ''`)
 
 
 ### Phase 4: RSpotify Web API & Auth

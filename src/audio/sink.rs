@@ -3,14 +3,14 @@ use librespot::playback::convert::Converter;
 use librespot::playback::decoder::AudioPacket;
 use rodio::Sink as RodioSink;
 use rodio::buffer::SamplesBuffer;
-use tokio::sync::mpsc;
+use std::sync::mpsc::{Receiver, SyncSender};
 
 pub struct MpscSink {
-    sender: mpsc::Sender<Vec<f32>>,
+    sender: SyncSender<Vec<f32>>,
 }
 
 impl MpscSink {
-    pub fn new(sender: mpsc::Sender<Vec<f32>>) -> Self {
+    pub fn new(sender: SyncSender<Vec<f32>>) -> Self {
         Self { sender }
     }
 }
@@ -32,21 +32,19 @@ impl Sink for MpscSink {
 
         let vec_samples = f32_samples.to_vec();
         self.sender
-            .blocking_send(vec_samples)
+            .send(vec_samples)
             .map_err(|e| SinkError::OnWrite(format!("Channel closed: {e}")))?;
         Ok(())
     }
 }
 
 pub fn spawn_rodio_thread(
-    mut receiver: mpsc::Receiver<Vec<f32>>,
+    receiver: Receiver<Vec<f32>>,
     rodio_sink: std::sync::Arc<RodioSink>,
     _stream: rodio::OutputStream,
 ) {
     std::thread::spawn(move || {
-        // Continuously read PCM chunks from librespot and append them to rodio
-        while let Some(samples) = receiver.blocking_recv() {
-            // Librespot outputs stereo 44.1kHz by default
+        while let Ok(samples) = receiver.recv() {
             let source = SamplesBuffer::new(2, 44100, samples);
             rodio_sink.append(source);
         }
@@ -58,13 +56,13 @@ mod tests {
     use super::*;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::mpsc::sync_channel;
     use std::time::Duration;
-    use tokio::sync::mpsc;
 
     #[test]
     fn test_mpsc_sink_bounded_backpressure() {
         let capacity = 8;
-        let (tx, mut rx) = mpsc::channel::<Vec<f32>>(capacity);
+        let (tx, rx) = sync_channel::<Vec<f32>>(capacity);
         let sink = MpscSink::new(tx);
 
         let sent_count = Arc::new(AtomicUsize::new(0));
@@ -73,7 +71,7 @@ mod tests {
         let handle = std::thread::spawn(move || {
             let chunk = vec![0.0_f32; 2048];
             for _ in 0..100 {
-                if sink.sender.blocking_send(chunk.clone()).is_ok() {
+                if sink.sender.send(chunk.clone()).is_ok() {
                     sent_count_clone.fetch_add(1, Ordering::SeqCst);
                 } else {
                     break;
@@ -90,7 +88,7 @@ mod tests {
         );
 
         for _ in 0..3 {
-            let _ = rx.blocking_recv();
+            let _ = rx.recv();
         }
 
         std::thread::sleep(Duration::from_millis(50));
