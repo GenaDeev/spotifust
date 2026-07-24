@@ -70,7 +70,7 @@
 
 ### Phase 5: UI Design System & Component Polish
 
-- [ ] Define a unified design token system (color palette, spacing scale, typography scale) in a central `theme.rs`
+- [x] Define a unified design token system (color palette, spacing scale, typography scale) in a central `theme.rs`
 - [ ] Replace all ad-hoc hardcoded color literals and magic numbers with design tokens
 - [ ] Implement smooth hover transitions on sidebar items, buttons, and playback controls
 - [ ] Implement animated loading skeletons for album art and track list placeholders while data is fetching
