@@ -1423,6 +1423,7 @@ fn view_playback_bar<'a>(
                 )
                 .push(Text::new(artist_name).size(11).color(theme::TEXT_SECONDARY)),
         )
+        .push(view_equalizer_bars(playback.is_playing))
         .push(icon_button_circle(Icon::Heart, Message::MockAction));
 
     let play_pause_icon = if playback.is_playing {
@@ -2573,4 +2574,35 @@ fn view_settings_page<'a>() -> Element<'a, Message> {
             }),
     )
     .into()
+}
+
+fn view_equalizer_bars<'a>(is_playing: bool) -> Element<'a, Message> {
+    if !is_playing {
+        return Space::new().into();
+    }
+
+    let heights = [10.0, 18.0, 14.0, 20.0];
+    let mut row = Row::new().spacing(3).align_y(Alignment::End);
+
+    for &h in &heights {
+        row = row.push(
+            Container::new(Space::new())
+                .width(Length::Fixed(3.0))
+                .height(Length::Fixed(h))
+                .style(|_theme: &Theme| container::Style {
+                    background: Some(Background::Color(theme::ACCENT)),
+                    border: Border {
+                        radius: 1.5.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }),
+        );
+    }
+
+    Container::new(row)
+        .padding([4, 6])
+        .height(Length::Fixed(24.0))
+        .align_y(Alignment::Center)
+        .into()
 }
