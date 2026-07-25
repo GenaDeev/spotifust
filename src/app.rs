@@ -831,6 +831,11 @@ impl App {
             Message::ImageLoaded(res) => {
                 if let Ok((url, bytes)) = res {
                     if let AppState::Main { loaded_images, .. } = &mut self.state {
+                        if loaded_images.len() >= 64 {
+                            if let Some(key_to_remove) = loaded_images.keys().next().cloned() {
+                                loaded_images.remove(&key_to_remove);
+                            }
+                        }
                         loaded_images.insert(url, iced::widget::image::Handle::from_bytes(bytes));
                     }
                 }

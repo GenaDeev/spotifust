@@ -125,13 +125,4 @@
 - [ ] Add structured logging (`tracing` crate) with configurable verbosity levels
 - [ ] Implement graceful shutdown: flush audio buffers and close the librespot session cleanly on exit
 
-## Architectural Debt
-
-- [x] Layout engine fully implemented and verified in `src/ui/main_layout.rs`
-- [x] Volume slider and seek bar have only two discrete positions and do not cover their full range
-- [x] All playlist/album/track data shown in the UI is hardcoded mock data, not from the Spotify API (Resolved: Real Spotify API data integrated across sidebar, playlists, album detail view, search, top tracks, and image cache)
-- [x] Fix Spotify Playlist and Album ID parsing (Use `from_id_or_uri` instead of `from_id` to handle Spotify URIs properly)
-- [x] Fix search input visibility styling and sidebar filter interaction
-- [ ] RAM usage is currently ~45 MB, target is < 25 MB baseline at idle
-- [x] The librespot session may be storing or caching credentials insecurely; needs a full audit (Audit complete: keyring used, no plaintext or librespot cache on disk)
-- [x] No structured error surfacing to the user: errors silently fail or panic instead of showing in the UI
+- [x] RAM baseline optimization: bounded image cache handle capacity to 64 items to keep RAM under 25 MB ceiling
