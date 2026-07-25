@@ -2633,11 +2633,7 @@ fn view_mini_player<'a>(
             track.image_url.as_deref(),
         )
     } else {
-        (
-            "Synthetic Horizon",
-            "Spotifust Audio Engine",
-            None,
-        )
+        ("Synthetic Horizon", "Spotifust Audio Engine", None)
     };
 
     let track_cover = view_image_or_icon(

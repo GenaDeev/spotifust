@@ -8,6 +8,12 @@ pub struct UpdateInfo {
     pub download_url: Option<String>,
 }
 
+#[derive(serde::Deserialize)]
+struct GitHubRelease {
+    tag_name: String,
+    html_url: String,
+}
+
 /// Checks GitHub API for the latest release tag of Spotifust.
 #[allow(clippy::missing_errors_doc)]
 pub async fn check_for_updates() -> Result<UpdateInfo, AppError> {
@@ -32,12 +38,6 @@ pub async fn check_for_updates() -> Result<UpdateInfo, AppError> {
             has_update: false,
             download_url: None,
         });
-    }
-
-    #[derive(serde::Deserialize)]
-    struct GitHubRelease {
-        tag_name: String,
-        html_url: String,
     }
 
     if let Ok(release) = res.json::<GitHubRelease>().await {
