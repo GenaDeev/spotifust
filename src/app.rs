@@ -103,6 +103,7 @@ pub struct SelectedPlaylistState {
     pub is_loading: bool,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum ContextMenuTarget {
     Track(TrackInfo),
@@ -110,6 +111,7 @@ pub enum ContextMenuTarget {
     Artist(String),
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ContextMenuState {
     pub target: ContextMenuTarget,

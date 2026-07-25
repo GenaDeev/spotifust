@@ -2744,7 +2744,7 @@ pub fn view_context_menu_overlay<'a>(
                 Row::new()
                     .spacing(8)
                     .align_y(Alignment::Center)
-                    .push(Icon::Disc.view_colored(14.0, theme::TEXT_PRIMARY))
+                    .push(Icon::Album.view_colored(14.0, theme::TEXT_PRIMARY))
                     .push(Text::new("Ir al Álbum").size(13).color(theme::TEXT_PRIMARY)),
             )
             .padding([8, 12])
