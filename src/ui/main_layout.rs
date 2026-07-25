@@ -1485,7 +1485,7 @@ fn view_playback_bar<'a>(
     };
 
     let seek_bar = slider(0.0..=1.0, progress_percent, Message::SeekTo)
-        .step(0.001)
+        .step(0.001_f32)
         .width(Length::Fill)
         .style(|_theme, status| {
             let base = iced::widget::slider::Style {
@@ -1569,7 +1569,7 @@ fn view_playback_bar<'a>(
     );
 
     let volume_slider = slider(0.0..=1.0, playback.volume, Message::VolumeChanged)
-        .step(0.01)
+        .step(0.01_f32)
         .width(Length::Fixed(90.0))
         .style(|_theme, status| {
             let base = iced::widget::slider::Style {

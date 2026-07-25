@@ -66,7 +66,7 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
     let rodio_sink = Arc::new(rodio::Sink::connect_new(stream.mixer()));
 
     let (audio_tx, audio_rx) = std::sync::mpsc::sync_channel::<Vec<f32>>(8);
-    crate::audio::sink::spawn_rodio_thread(audio_rx, Arc::clone(&rodio_sink), stream);
+    crate::audio::sink::spawn_rodio_thread(audio_rx, Arc::clone(&rodio_sink));
 
     let player = Player::new(
         player_config,
