@@ -1357,6 +1357,53 @@ fn view_right_panel<'a>(
                 .push(queue_list)
                 .into()
         }
+        RightPanelTab::Lyrics => {
+            let (title, artist) = if let Some(track) = &playback.current_track {
+                (track.title.as_str(), track.artist.as_str())
+            } else {
+                ("Synthetic Horizon", "Spotifust Audio Engine")
+            };
+
+            let header = Column::new()
+                .spacing(4)
+                .push(
+                    Text::new(title)
+                        .size(18)
+                        .font(iced::Font {
+                            weight: iced::font::Weight::Bold,
+                            ..Default::default()
+                        })
+                        .color(theme::TEXT_PRIMARY),
+                )
+                .push(Text::new(artist).size(13).color(theme::TEXT_SECONDARY));
+
+            let sample_lines = [
+                "♪ Riding through the neon city lights ♪",
+                "Synthesizers echo in the night",
+                "Rust code running fast and free",
+                "Spotifust native audio melody",
+                "Zero lag, pure high fidelity",
+            ];
+
+            let mut lyrics_col = Column::new().spacing(12);
+            for &line in &sample_lines {
+                lyrics_col = lyrics_col.push(
+                    Text::new(line)
+                        .size(15)
+                        .font(iced::Font {
+                            weight: iced::font::Weight::Medium,
+                            ..Default::default()
+                        })
+                        .color(theme::TEXT_PRIMARY),
+                );
+            }
+
+            Column::new()
+                .spacing(20)
+                .push(header)
+                .push(lyrics_col)
+                .into()
+        }
     };
 
     let content = Column::new()

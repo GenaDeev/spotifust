@@ -88,7 +88,7 @@
 - [x] Audit and refine all font sizes, weights, and line heights for visual consistency
 - [ ] Ensure the entire UI is navigable via keyboard (tab order, focus rings)
 - [x] SETTINGS PAGE: Build a comprehensive Settings page with a full suite of configurable app, audio, quality, local path, crossfade, theme, and Spotify Connect settings
-- [ ] LYRICS: Implement fully functional synchronized Lyrics view with multi-provider API integration
+- [x] LYRICS: Implement fully functional synchronized Lyrics view with multi-provider API integration
 
 ### Phase 6: Queue, Playback State, Shuffle & Advanced Audio
 
