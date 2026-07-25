@@ -115,14 +115,14 @@
 
 ### Phase 8: Performance & Speed Optimization
 
-- [ ] Optimize general app execution speed, reducing UI update latency and startup load time
-- [ ] Run a full memory profile and verify the application stays under 25 MB baseline at idle
-- [ ] Profile and eliminate any hot-path allocations in the canvas render loop and audio callback
-- [ ] Replace any `.clone()` / `.to_string()` in hot paths with borrows (`&str`, `&[u8]`) where applicable
-- [ ] Run `cargo clippy --all-targets -- -D warnings` clean and resolve all lints
-- [ ] Run `cargo deny check` and ensure no disallowed licenses or duplicated dependencies
+- [x] Optimize general app execution speed, reducing UI update latency and startup load time
+- [x] Run a full memory profile and verify the application stays under 25 MB baseline at idle
+- [x] Profile and eliminate any hot-path allocations in the canvas render loop and audio callback
+- [x] Replace any `.clone()` / `.to_string()` in hot paths with borrows (`&str`, `&[u8]`) where applicable
+- [x] Run `cargo clippy --all-targets -- -D warnings` clean and resolve all lints
+- [x] Run `cargo deny check` and ensure no disallowed licenses or duplicated dependencies
 - [ ] Set up memory-leak detection in CI (Valgrind or similar) for the audio pipeline
-- [ ] Add structured logging (`tracing` crate) with configurable verbosity levels
+- [x] Add structured logging (`tracing` crate) with configurable verbosity levels
 - [x] Implement graceful shutdown: flush audio buffers and close the librespot session cleanly on exit
 
 - [x] RAM baseline optimization: bounded image cache handle capacity to 64 items to keep RAM under 25 MB ceiling
