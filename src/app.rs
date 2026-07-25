@@ -161,6 +161,7 @@ pub enum Message {
     AudioSessionConnected(AudioSession),
     PlayerEventReceived(PlayerEvent),
     PlaybackPositionReceived(u32),
+    PlaybackTick,
     SessionExpired,
     // Main UI Messages
     NavigationSelected(NavigationItem),
@@ -254,8 +255,18 @@ impl App {
             AppState::Login {
                 is_loading: true, ..
             } => iced::time::every(std::time::Duration::from_secs(2)).map(|_| Message::CheckLogin),
-            AppState::Main { audio_session, .. } => {
+            AppState::Main {
+                audio_session,
+                playback,
+                ..
+            } => {
                 let mut subs = vec![];
+                if playback.is_playing {
+                    subs.push(
+                        iced::time::every(std::time::Duration::from_millis(200))
+                            .map(|_| Message::PlaybackTick),
+                    );
+                }
                 if let Some(session) = audio_session {
                     subs.push(iced::advanced::subscription::from_recipe(
                         PlayerEventsRecipe {
@@ -1003,6 +1014,22 @@ impl App {
                         return self.update(Message::SkipNext);
                     }
                     _ => {}
+                }
+                Task::none()
+            }
+            Message::PlaybackTick => {
+                if let AppState::Main { playback, .. } = &mut self.state {
+                    if playback.is_playing {
+                        let duration = playback
+                            .current_track
+                            .as_ref()
+                            .map_or(225_000, |t| t.duration_ms);
+                        if playback.progress_ms + 200 <= duration {
+                            playback.progress_ms += 200;
+                        } else {
+                            playback.progress_ms = duration;
+                        }
+                    }
                 }
                 Task::none()
             }

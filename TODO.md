@@ -78,7 +78,7 @@
 - [x] Implement animated loading skeletons for album art, playlist headers, and track list placeholders while initial Spotify API data is fetching (zero mock/temp data, instant Spotify data render)
 - [x] Remove "Explore Premium" / "Explorar Premium" button from sidebar and navigation
 - [x] Add waveform or animated equalizer bars to the Now Playing area during active playback
-- [ ] Implement smooth progress bar animation that interpolates position between tick updates
+- [x] Implement smooth progress bar animation that interpolates position between tick updates
 - [x] Add context menus (right-click) on tracks and playlist items (Add to queue, Go to album, etc.)
 - [x] Implement a proper volume slider that covers the full 0–100% range with a mute toggle
 - [x] Add keyboard shortcuts for Play/Pause (Space), Skip (→/←), Volume (↑/↓)
