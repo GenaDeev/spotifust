@@ -879,7 +879,17 @@ impl App {
                         }
                     }
                     PlayerEvent::TrackChanged { audio_item } => {
-                        if let AppState::Main { playback, .. } = &mut self.state {
+                        let mut tasks = Vec::new();
+                        if let AppState::Main {
+                            playback,
+                            user_top_tracks,
+                            selected_playlist,
+                            selected_album,
+                            search_results,
+                            loaded_images,
+                            ..
+                        } = &mut self.state
+                        {
                             use librespot::metadata::audio::UniqueFields;
                             let (artist, album) = match &audio_item.unique_fields {
                                 UniqueFields::Track { artists, album, .. } => {
@@ -895,13 +905,50 @@ impl App {
                                     album.clone().unwrap_or_default(),
                                 ),
                             };
+
+                            let mut image_url = playback
+                                .current_track
+                                .as_ref()
+                                .and_then(|t| t.image_url.clone());
+
+                            if image_url.is_none() {
+                                if let Some(ref uri) = playback.current_track_uri {
+                                    if let Some(t) = user_top_tracks.iter().find(|t| &t.uri == uri)
+                                    {
+                                        image_url.clone_from(&t.image_url);
+                                    } else if let Some(sp) = selected_playlist {
+                                        if let Some(t) = sp.tracks.iter().find(|t| &t.uri == uri) {
+                                            image_url.clone_from(&t.image_url);
+                                        }
+                                    } else if let Some(sa) = selected_album {
+                                        if sa.tracks.iter().any(|t| &t.uri == uri) {
+                                            image_url.clone_from(&sa.image_url);
+                                        }
+                                    } else if let Some(t) =
+                                        search_results.tracks.iter().find(|t| &t.uri == uri)
+                                    {
+                                        image_url.clone_from(&t.image_url);
+                                    }
+                                }
+                            }
+
+                            if let Some(ref img_url) = image_url {
+                                tasks.extend(load_image_tasks(
+                                    std::iter::once(Some(img_url.clone())),
+                                    loaded_images,
+                                ));
+                            }
+
                             playback.current_track = Some(TrackInfo {
                                 title: audio_item.name.clone(),
                                 artist,
                                 album,
                                 duration_ms: audio_item.duration_ms,
-                                image_url: None,
+                                image_url,
                             });
+                        }
+                        if !tasks.is_empty() {
+                            return Task::batch(tasks);
                         }
                     }
                     PlayerEvent::Stopped { .. } => {
