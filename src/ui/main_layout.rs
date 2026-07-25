@@ -708,7 +708,7 @@ fn view_main_content<'a>(
                     )
                     .padding([2, 6])
                     .style(|_theme: &Theme| container::Style {
-                        background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.08))),
+                        background: Some(Background::Color(theme::BORDER_SUBTLE)),
                         border: Border {
                             radius: 4.0.into(),
                             ..Default::default()

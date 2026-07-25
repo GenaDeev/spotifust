@@ -73,7 +73,7 @@
 ### Phase 5: UI Design System, Component Polish & Settings Page
 
 - [x] Define a unified design token system (color palette, spacing scale, typography scale) in a central `theme.rs`
-- [ ] Replace all ad-hoc hardcoded color literals and magic numbers with design tokens
+- [x] Replace all ad-hoc hardcoded color literals and magic numbers with design tokens
 - [ ] Implement smooth hover transitions on sidebar items, buttons, and playback controls
 - [x] Implement animated loading skeletons for album art, playlist headers, and track list placeholders while initial Spotify API data is fetching (zero mock/temp data, instant Spotify data render)
 - [x] Remove "Explore Premium" / "Explorar Premium" button from sidebar and navigation
