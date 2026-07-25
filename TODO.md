@@ -103,7 +103,7 @@
 ### Phase 7: System Integration & Local Files
 
 - [x] Add application window and taskbar/dock icon support for Windows, macOS, and Linux distros
-- [ ] Add 100% functional native System Tray (Systray) icon for Linux, macOS, and Windows with minimize-to-tray and playback menu (Play/Pause, Skip, Show/Hide, Quit)
+- [x] Add 100% functional native System Tray (Systray) icon for Linux, macOS, and Windows with minimize-to-tray and playback menu (Play/Pause, Skip, Show/Hide, Quit)
 - [x] Register global media key bindings (MPRIS on Linux, MediaSession on Windows/macOS)
 - [x] Implement MPRIS2 D-Bus interface on Linux for desktop environment integration
 - [x] Local Files: Implement local audio file scanner and playback for custom local music directory path
