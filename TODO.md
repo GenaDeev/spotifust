@@ -68,7 +68,7 @@
 - [x] Optimize long playlist loading with incremental chunking/streaming or virtualized pagination to avoid UI lag
 - [x] Validate existing token/session before rendering initial screen to eliminate temporary login flicker
 - [x] Achieve near-instant API data loading through aggressive metadata and disk image caching (TTL-based, local disk cache for instant startup render)
-- [ ] Add visual "Local Track" badge for unplayable local tracks in playlists owned by playlist creators
+- [x] Add visual "Local Track" badge for unplayable local tracks in playlists owned by playlist creators
 
 ### Phase 5: UI Design System, Component Polish & Settings Page
 
@@ -87,7 +87,7 @@
 - [x] Add toast / snackbar notifications for user-facing errors and confirmations
 - [x] Audit and refine all font sizes, weights, and line heights for visual consistency
 - [ ] Ensure the entire UI is navigable via keyboard (tab order, focus rings)
-- [ ] SETTINGS PAGE: Build a comprehensive Settings page with a full suite of configurable app, audio, quality, local path, crossfade, theme, and Spotify Connect settings
+- [x] SETTINGS PAGE: Build a comprehensive Settings page with a full suite of configurable app, audio, quality, local path, crossfade, theme, and Spotify Connect settings
 - [ ] LYRICS: Implement fully functional synchronized Lyrics view with multi-provider API integration
 
 ### Phase 6: Queue, Playback State, Shuffle & Advanced Audio
