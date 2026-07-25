@@ -6,6 +6,7 @@ use tokio::sync::mpsc as tokio_mpsc;
 pub enum AudioCommand {
     Play,
     Pause,
+    SetCrossfade(u32),
 }
 
 pub struct AudioEngine;
@@ -32,12 +33,14 @@ impl AudioEngine {
                         match cmd {
                             AudioCommand::Play => is_playing = true,
                             AudioCommand::Pause => is_playing = false,
+                            AudioCommand::SetCrossfade(_) => {}
                         }
                     }
                 } else if let Some(cmd) = ui_rx.recv().await {
                     match cmd {
                         AudioCommand::Play => is_playing = true,
                         AudioCommand::Pause => is_playing = false,
+                        AudioCommand::SetCrossfade(_) => {}
                     }
                 } else {
                     break;

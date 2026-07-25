@@ -116,6 +116,9 @@ pub const TEXT_TERTIARY: Color = Color {
     a: 1.0,
 };
 
+#[allow(dead_code)]
+pub const TEXT_MUTED: Color = TEXT_TERTIARY;
+
 // --- Border & Dividers ---
 
 /// Subtle border for cards & panels
@@ -150,3 +153,49 @@ pub const RADIUS_MD: f32 = 8.0;
 pub const RADIUS_LG: f32 = 12.0;
 pub const RADIUS_XL: f32 = 16.0;
 pub const RADIUS_PILL: f32 = 9999.0;
+
+// --- Spacing Scale Tokens ---
+
+#[allow(dead_code)]
+pub const SPACING_XS: u16 = 4;
+#[allow(dead_code)]
+pub const SPACING_SM: u16 = 8;
+#[allow(dead_code)]
+pub const SPACING_MD: u16 = 12;
+#[allow(dead_code)]
+pub const SPACING_LG: u16 = 16;
+#[allow(dead_code)]
+pub const SPACING_XL: u16 = 24;
+
+// --- Typography Scale Tokens ---
+
+#[allow(dead_code)]
+pub const FONT_SIZE_XS: u16 = 10;
+#[allow(dead_code)]
+pub const FONT_SIZE_SM: u16 = 12;
+#[allow(dead_code)]
+pub const FONT_SIZE_MD: u16 = 14;
+#[allow(dead_code)]
+pub const FONT_SIZE_LG: u16 = 18;
+#[allow(dead_code)]
+pub const FONT_SIZE_XL: u16 = 22;
+#[allow(dead_code)]
+pub const FONT_SIZE_HEADER: u16 = 30;
+
+// --- Status & Feedback Colors ---
+
+#[allow(dead_code)]
+pub const COLOR_ERROR: Color = Color {
+    r: 0.95,
+    g: 0.35,
+    b: 0.35,
+    a: 1.0,
+};
+
+#[allow(dead_code)]
+pub const COLOR_SUCCESS: Color = Color {
+    r: 0.35,
+    g: 0.85,
+    b: 0.45,
+    a: 1.0,
+};

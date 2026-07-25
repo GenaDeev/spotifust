@@ -3,7 +3,7 @@ use librespot::core::authentication::Credentials;
 use librespot::core::config::SessionConfig;
 use librespot::core::session::Session;
 use librespot::core::spotify_uri::SpotifyUri;
-use librespot::playback::config::PlayerConfig;
+use librespot::playback::config::{Bitrate, PlayerConfig};
 use librespot::playback::mixer::{NoOpVolume, VolumeGetter};
 use librespot::playback::player::{Player, PlayerEvent};
 use std::sync::Arc;
@@ -53,7 +53,10 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
         .await
         .map_err(|e| AppError::Playback(format!("Librespot login failed: {e}")))?;
 
-    let player_config = PlayerConfig::default();
+    let player_config = PlayerConfig {
+        bitrate: Bitrate::Bitrate320,
+        ..PlayerConfig::default()
+    };
 
     let builder = rodio::OutputStreamBuilder::from_default_device()
         .map_err(|e| AppError::Playback(format!("Failed to get default audio device: {e}")))?;
@@ -62,8 +65,8 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
         .map_err(|e| AppError::Playback(format!("Failed to open audio stream: {e}")))?;
     let rodio_sink = Arc::new(rodio::Sink::connect_new(stream.mixer()));
 
-    let (audio_tx, audio_rx) = mpsc::channel::<Vec<f32>>(8);
-    crate::audio::sink::spawn_rodio_thread(audio_rx, Arc::clone(&rodio_sink), stream);
+    let (audio_tx, audio_rx) = std::sync::mpsc::sync_channel::<Vec<f32>>(8);
+    crate::audio::sink::spawn_rodio_thread(audio_rx, Arc::clone(&rodio_sink));
 
     let player = Player::new(
         player_config,
@@ -100,12 +103,7 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                                 position_ms = *pos;
                                 let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
                             }
-                            PlayerEvent::Stopped { .. } => {
-                                is_playing = false;
-                                position_ms = 0;
-                                let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
-                            }
-                            PlayerEvent::EndOfTrack { .. } => {
+                            PlayerEvent::Stopped { .. } | PlayerEvent::EndOfTrack { .. } => {
                                 is_playing = false;
                                 position_ms = 0;
                                 let _ = event_tx.send(AudioSessionEvent::PositionMs(0)).await;
@@ -149,24 +147,43 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
 
         while let Some(cmd) = cmd_rx.recv().await {
             match cmd {
-                PlayerCommand::Play(uri) => match SpotifyUri::from_uri(&uri) {
-                    Ok(spotify_uri) => {
-                        player_cmd.load(spotify_uri, true, 0);
-                        current_uri = Some(uri);
+                PlayerCommand::Play(uri) => {
+                    rodio_sink_cmd.play();
+                    if uri.trim().is_empty() {
+                        eprintln!("Cannot play track with empty Spotify URI");
+                    } else {
+                        let uri_to_parse = if uri.starts_with("spotify:") {
+                            uri.clone()
+                        } else {
+                            format!("spotify:track:{uri}")
+                        };
+                        match SpotifyUri::from_uri(&uri_to_parse) {
+                            Ok(spotify_uri) => {
+                                player_cmd.load(spotify_uri, true, 0);
+                                current_uri = Some(uri);
+                            }
+                            Err(e) => {
+                                eprintln!("Invalid Spotify URI '{uri}': {e}");
+                            }
+                        }
                     }
-                    Err(e) => {
-                        eprintln!("Invalid Spotify URI '{uri}': {e}");
-                    }
-                },
+                }
                 PlayerCommand::Pause => {
                     player_cmd.pause();
+                    rodio_sink_cmd.pause();
                 }
                 PlayerCommand::Resume => {
                     player_cmd.play();
+                    rodio_sink_cmd.play();
                 }
                 PlayerCommand::SkipNext | PlayerCommand::SkipPrev => {
                     if let Some(ref uri) = current_uri {
-                        match SpotifyUri::from_uri(uri) {
+                        let uri_to_parse = if uri.starts_with("spotify:") {
+                            uri.clone()
+                        } else {
+                            format!("spotify:track:{uri}")
+                        };
+                        match SpotifyUri::from_uri(&uri_to_parse) {
                             Ok(spotify_uri) => {
                                 player_cmd.load(spotify_uri, true, 0);
                             }

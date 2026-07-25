@@ -3,7 +3,7 @@ use crate::error::AppError;
 use rspotify::prelude::Id;
 use rspotify::{AuthCodePkceSpotify, clients::BaseClient, clients::OAuthClient};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct PlaylistSummary {
     pub id: String,
     pub name: String,
@@ -71,6 +71,7 @@ pub struct PlaylistTrack {
     pub duration_ms: u32,
     pub uri: String,
     pub image_url: Option<String>,
+    pub is_local: bool,
 }
 
 /// Fetches track listings on demand for a specific playlist ID.
@@ -79,14 +80,15 @@ pub async fn fetch_playlist_tracks(
     spotify: &AuthCodePkceSpotify,
     playlist_id: &str,
 ) -> Result<Vec<PlaylistTrack>, AppError> {
-    let pid = rspotify::model::PlaylistId::from_id(playlist_id)
-        .map_err(|e| AppError::Network(format!("Invalid playlist ID: {e}")))?;
+    let pid = rspotify::model::PlaylistId::from_id_or_uri(playlist_id)
+        .map_err(|e| AppError::Network(format!("Invalid playlist ID '{playlist_id}': {e}")))?;
 
     with_auto_reauth(spotify, || async {
         let mut tracks = Vec::new();
         let limit = 50;
         let mut offset = 0;
 
+        let max_tracks = 200;
         loop {
             let page = spotify
                 .playlist_items_manual(pid.clone(), None, None, Some(limit), Some(offset))
@@ -115,6 +117,7 @@ pub async fn fetch_playlist_tracks(
                         .as_ref()
                         .map_or_else(String::new, ToString::to_string);
                     let uri = full_track.id.as_ref().map_or_else(String::new, Id::uri);
+                    let is_local = full_track.is_local || uri.starts_with("spotify:local:");
 
                     tracks.push(PlaylistTrack {
                         id: track_id,
@@ -125,11 +128,12 @@ pub async fn fetch_playlist_tracks(
                             .unwrap_or(0),
                         uri,
                         image_url,
+                        is_local,
                     });
                 }
             }
 
-            if !has_next || page_count < limit as usize {
+            if !has_next || page_count < limit as usize || tracks.len() >= max_tracks {
                 break;
             }
 
@@ -168,8 +172,10 @@ mod tests {
             duration_ms: 212_000,
             uri: "spotify:track:tr_1".to_string(),
             image_url: None,
+            is_local: false,
         };
         assert_eq!(t.title, "Resonance");
         assert_eq!(t.duration_ms, 212_000);
+        assert!(!t.is_local);
     }
 }

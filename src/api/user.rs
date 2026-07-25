@@ -2,7 +2,7 @@ use crate::api::auth::with_auto_reauth;
 use crate::error::AppError;
 use rspotify::{AuthCodePkceSpotify, clients::OAuthClient};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct UserProfile {
     pub id: String,
     pub display_name: String,
