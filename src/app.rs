@@ -1363,6 +1363,7 @@ impl App {
                 selected_playlist,
                 selected_album,
                 loaded_images,
+                window_width,
                 ..
             } => crate::ui::main_layout::view(
                 nav_item,
@@ -1381,6 +1382,7 @@ impl App {
                 selected_playlist.as_ref(),
                 selected_album.as_ref(),
                 loaded_images,
+                *window_width,
             ),
         };
 

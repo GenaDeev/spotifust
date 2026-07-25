@@ -72,7 +72,12 @@ pub fn view<'a>(
     selected_playlist: Option<&'a crate::app::SelectedPlaylistState>,
     selected_album: Option<&'a crate::app::SelectedAlbumState>,
     loaded_images: &'a std::collections::HashMap<String, iced::widget::image::Handle>,
+    window_width: f32,
 ) -> Element<'a, Message> {
+    if window_width < 600.0 {
+        return view_mini_player(playback, loaded_images);
+    }
+
     let top_bar = view_top_bar(*nav_item, user_profile, search_query, loaded_images);
     let sidebar = view_sidebar_panel(
         sidebar_width,
@@ -2614,5 +2619,74 @@ fn view_equalizer_bars<'a>(is_playing: bool) -> Element<'a, Message> {
         .padding([4, 6])
         .height(Length::Fixed(24.0))
         .align_y(Alignment::Center)
+        .into()
+}
+
+fn view_mini_player<'a>(
+    playback: &'a PlaybackState,
+    loaded_images: &'a std::collections::HashMap<String, iced::widget::image::Handle>,
+) -> Element<'a, Message> {
+    let (track_name, artist_name, image_url) = if let Some(track) = &playback.current_track {
+        (
+            track.title.as_str(),
+            track.artist.as_str(),
+            track.image_url.as_deref(),
+        )
+    } else {
+        (
+            "Synthetic Horizon",
+            "Spotifust Audio Engine",
+            None,
+        )
+    };
+
+    let track_cover = view_image_or_icon(
+        image_url,
+        loaded_images,
+        Icon::MusicNote,
+        48.0,
+        theme::RADIUS_MD,
+    );
+
+    let play_pause_icon = if playback.is_playing {
+        Icon::Pause
+    } else {
+        Icon::Play
+    };
+
+    let content = Row::new()
+        .spacing(12)
+        .align_y(Alignment::Center)
+        .push(track_cover)
+        .push(
+            Column::new()
+                .spacing(2)
+                .width(Length::Fill)
+                .push(
+                    Text::new(track_name)
+                        .size(13)
+                        .font(iced::Font {
+                            weight: iced::font::Weight::Bold,
+                            ..Default::default()
+                        })
+                        .color(theme::TEXT_PRIMARY),
+                )
+                .push(Text::new(artist_name).size(11).color(theme::TEXT_SECONDARY)),
+        )
+        .push(icon_button_plain(Icon::SkipPrev, Message::SkipPrev))
+        .push(icon_button_circle_accent(
+            play_pause_icon,
+            Message::TogglePlayback,
+        ))
+        .push(icon_button_plain(Icon::SkipNext, Message::SkipNext));
+
+    Container::new(content)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .padding(12)
+        .style(|_theme: &Theme| container::Style {
+            background: Some(Background::Color(theme::SURFACE_MAIN)),
+            ..Default::default()
+        })
         .into()
 }
