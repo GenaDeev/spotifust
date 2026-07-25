@@ -79,7 +79,7 @@
 - [x] Remove "Explore Premium" / "Explorar Premium" button from sidebar and navigation
 - [x] Add waveform or animated equalizer bars to the Now Playing area during active playback
 - [x] Implement smooth progress bar animation that interpolates position between tick updates
-- [ ] Add context menus (right-click) on tracks, albums, and artists with distinct tailored options (Add to queue, Go to artist, Go to album, Share link, Copy URI)
+- [x] Add context menus (right-click) on tracks, albums, and artists with distinct tailored options (Add to queue, Go to artist, Go to album, Share link, Copy URI)
 - [x] Implement a proper volume slider that covers the full 0–100% range with a mute toggle
 - [x] Add keyboard shortcuts for Play/Pause (Space), Skip (→/←), Volume (↑/↓)
 - [x] Implement a mini-player / compact mode for when the window is resized to small dimensions
