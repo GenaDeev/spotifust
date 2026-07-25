@@ -2,12 +2,7 @@
 
 ## Current Focus
 
-- [x] Fix audio playback output stream lifecycle and progress sync
-- [x] Rebuild custom right-click Context Menu positioned at cursor coordinates
-- [x] Implement recursive local music scanner and embedded cover art extraction
-- [x] Fix navigation state (Home resets selection, Settings view exit on item click)
-- [x] Remove (+) header button and implement thin modern scrollbars
-- [ ] Discuss and integrate Synchronized Lyrics API & Artist Trivia Metadata Provider
+- [ ] Integrate LRCLIB REST API for millisecond-synced `.lrc` lyrics auto-scrolling with Genius fallback
 
 ## Development Backlog
 
@@ -74,6 +69,11 @@
 - [x] Validate existing token/session before rendering initial screen to eliminate temporary login flicker
 - [x] Achieve near-instant API data loading through aggressive metadata and disk image caching (TTL-based, local disk cache for instant startup render)
 - [x] Add visual "Local Track" badge for unplayable local tracks in playlists owned by playlist creators
+- [ ] Implement Spotify Connect device manager API (`GET /v1/me/player/devices`, `PUT /v1/me/player`) to list active devices and transfer playback session
+- [ ] Implement Liked Songs ("Canciones que te gustan") view & Heart toggle state (`PUT/DELETE /v1/me/tracks`)
+- [ ] Implement Playlist CRUD operations: create playlist (`POST /v1/users/{id}/playlists`), edit details, add/remove tracks via right-click context menu
+- [ ] Implement Follow/Unfollow system for artists and playlists (`PUT/DELETE /v1/me/following`)
+- [ ] Implement Track & Artist Radio / Recommendations endpoint (`GET /v1/recommendations`)
 
 ### Phase 5: UI Design System, Component Polish & Settings Page
 
@@ -92,8 +92,13 @@
 - [x] Add toast / snackbar notifications for user-facing errors and confirmations
 - [x] Audit and refine all font sizes, weights, and line heights for visual consistency
 - [x] Ensure the entire UI is navigable via keyboard (tab order, focus rings)
-- [x] SETTINGS PAGE: Build a comprehensive Settings page with a full suite of configurable app, audio, quality, local path, crossfade, theme, and Spotify Connect settings
-- [x] LYRICS: Implement fully functional synchronized Lyrics view with multi-provider API integration
+- [x] SETTINGS PAGE: Build base Settings page layout frame
+- [x] LYRICS: Implement base Lyrics view layout frame
+- [ ] Integrate LRCLIB REST API for millisecond-synced `.lrc` lyrics auto-scrolling with Genius plain lyrics fallback
+- [ ] Integrate Last.fm API (`artist.getInfo`) + Wikipedia REST API for artist bio, curiosities, genres, and similar artists in Now Playing right panel
+- [ ] Implement Spotify Connect icon & interactive device selector modal/popover in bottom playback bar
+- [ ] Enhance Search screen with Category Pill filters (Tracks, Albums, Artists, Playlists) and Top Result spotlight card
+- [ ] Implement Friend Activity / Social Feed side panel in right panel slot
 
 ### Phase 6: Queue, Playback State, Shuffle & Advanced Audio
 
@@ -104,6 +109,9 @@
 - [x] Implement "Add to queue" action from track context menus
 - [ ] Spotify Connect: Full bi-directional Spotify Connect integration for remote control and device sync
 - [x] Crossfade: Smooth audio crossfade between tracks (configurable duration in Settings)
+- [ ] Implement multi-band DSP Audio Equalizer with presets (Flat, Bass Boost, Vocal, Rock, Pop) integrated into `rodio` audio pipeline
+- [ ] Implement Audio Loudness Normalization (ReplayGain / Spotify Normalization)
+- [ ] Implement Gapless Playback transition between tracks
 
 ### Phase 7: System Integration & Local Files
 
@@ -112,6 +120,7 @@
 - [x] Register global media key bindings (MPRIS on Linux, MediaSession on Windows/macOS)
 - [x] Implement MPRIS2 D-Bus interface on Linux for desktop environment integration
 - [x] Local Files: Implement local audio file scanner and playback for custom local music directory path
+- [ ] Implement Drag-and-Drop: drop tracks onto left sidebar playlists to append items
 - [ ] Package the binary as a `.deb` and `.rpm` for Linux
 - [x] Package the binary as a `.dmg` / `.app` bundle for macOS
 - [x] Package the binary as an `.msi` installer for Windows
@@ -129,5 +138,17 @@
 - [ ] Set up memory-leak detection in CI (Valgrind or similar) for the audio pipeline
 - [x] Add structured logging (`tracing` crate) with configurable verbosity levels
 - [x] Implement graceful shutdown: flush audio buffers and close the librespot session cleanly on exit
-
 - [x] RAM baseline optimization: bounded image cache handle capacity to 64 items to keep RAM under 25 MB ceiling
+
+### Phase 9: Comprehensive Functional Settings System (100% Backend Wired, Zero Mockups)
+
+- [ ] SECTION 1 - Account & Language: External browser link to login methods (`spotify.com/account`) & persistent i18n UI language selector dropdown
+- [ ] SECTION 2 - Explicit Content & Autoplay: Explicit content filter toggle (hide `explicit == true` tracks) & Autoplay toggle switch (auto-fetch `/v1/recommendations` on end of queue)
+- [ ] SECTION 3 - Audio Quality & Library: Bitrate selector dropdown (Normal 96k, High 160k, Very High 320k bound to librespot decoder), automatic bitrate step-down on network lag, compact library view toggle, show/hide local files toggle, multi-folder source picker list with live rescanner, and external playlist import button
+- [ ] SECTION 4 - Display & Canvas: Display toggles (auto-open Now Playing on play, desktop overlay on playback controls) & Canvas/Video toggles (looping background Canvas & audio-only video fallback)
+- [ ] SECTION 5 - UI Scaling & Hotkeys: UI Scale selector (70%-130%) with `Ctrl +` / `Ctrl -` hotkeys and Reset button
+- [ ] SECTION 6 - Privacy & Profile: Private Session toggle (6h auto-off), recent activity visibility dropdown, connected apps link, and profile element toggles (recent artists, followers, default public playlists)
+- [ ] SECTION 7 - Playback & DSP Equalizer: Crossfade slider (0-12s), Automix toggle, Smart Shuffle switch, Mono Audio downmix toggle, Volume Normalization & Loudness level (Normal/Loud/Quiet), interactive 6-band DSP Equalizer (60Hz, 150Hz, 400Hz, 1kHz, 2.4kHz, 15kHz with -12dB to +12dB sliders & presets), and audio output device selector dropdown bound to rodio output enumeration
+- [ ] SECTION 8 - System, Storage & Hardware: Auto-start on system boot dropdown, Close button minimizes to system tray toggle, Storage usage indicator (Downloads vs Cache MB), Clear Cache button (`src/api/cache.rs`), Offline storage path relocation picker, Proxy configuration selector (Auto-detect, HTTP, SOCKS5), and Hardware Acceleration switch
+
+
