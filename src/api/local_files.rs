@@ -26,7 +26,9 @@ pub fn scan_local_directory(dir_path: &Path) -> Result<Vec<LocalAudioTrack>, App
 }
 
 fn scan_directory_recursive(dir_path: &Path, tracks: &mut Vec<LocalAudioTrack>) {
-    let Ok(entries) = fs::read_dir(dir_path) else { return; };
+    let Ok(entries) = fs::read_dir(dir_path) else {
+        return;
+    };
     let supported_exts = ["mp3", "flac", "wav", "ogg", "m4a"];
 
     for entry in entries.flatten() {
@@ -98,7 +100,9 @@ pub fn extract_cover_image(path: &Path) -> Option<Vec<u8>> {
     }
 
     // Try reading embedded cover bytes from audio file header / tags
-    let Ok(data) = fs::read(path) else { return None; };
+    let Ok(data) = fs::read(path) else {
+        return None;
+    };
     if data.len() < 100 {
         return None;
     }
@@ -110,7 +114,10 @@ pub fn extract_cover_image(path: &Path) -> Option<Vec<u8>> {
     let png_magic = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
     if let Some(png_idx) = header_slice.windows(8).position(|w| w == png_magic) {
         let png_end_magic = [0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82];
-        if let Some(end_idx) = header_slice[png_idx..].windows(8).position(|w| w == png_end_magic) {
+        if let Some(end_idx) = header_slice[png_idx..]
+            .windows(8)
+            .position(|w| w == png_end_magic)
+        {
             let img_bytes = header_slice[png_idx..png_idx + end_idx + 8].to_vec();
             if img_bytes.len() > 100 {
                 return Some(img_bytes);
@@ -122,7 +129,10 @@ pub fn extract_cover_image(path: &Path) -> Option<Vec<u8>> {
     let jpeg_start = [0xFF, 0xD8, 0xFF];
     let jpeg_end = [0xFF, 0xD9];
     if let Some(jpg_idx) = header_slice.windows(3).position(|w| w == jpeg_start) {
-        if let Some(end_idx) = header_slice[jpg_idx..].windows(2).position(|w| w == jpeg_end) {
+        if let Some(end_idx) = header_slice[jpg_idx..]
+            .windows(2)
+            .position(|w| w == jpeg_end)
+        {
             let img_bytes = header_slice[jpg_idx..jpg_idx + end_idx + 2].to_vec();
             if img_bytes.len() > 100 {
                 return Some(img_bytes);

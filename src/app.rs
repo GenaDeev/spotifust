@@ -738,18 +738,26 @@ impl App {
                                 |_| PathBuf::from("/home/elgena/Music"),
                                 |h| PathBuf::from(h).join("Music"),
                             );
-                            if let Ok(local_files) = crate::api::local_files::scan_local_directory(&music_dir) {
+                            if let Ok(local_files) =
+                                crate::api::local_files::scan_local_directory(&music_dir)
+                            {
                                 for t in &mut tracks {
                                     if t.is_local {
                                         let title_lower = t.title.to_lowercase();
                                         if let Some(matched) = local_files.iter().find(|lf| {
                                             lf.title.to_lowercase() == title_lower
-                                                || lf.file_name.to_lowercase().contains(&title_lower)
+                                                || lf
+                                                    .file_name
+                                                    .to_lowercase()
+                                                    .contains(&title_lower)
                                         }) {
                                             t.is_local_available = true;
                                             t.local_path = Some(matched.path.clone());
                                             if let Some(ref bytes) = matched.cover_image_bytes {
-                                                let handle = iced::widget::image::Handle::from_bytes(bytes.clone());
+                                                let handle =
+                                                    iced::widget::image::Handle::from_bytes(
+                                                        bytes.clone(),
+                                                    );
                                                 loaded_images.insert(t.uri.clone(), handle);
                                             }
                                         }
@@ -1107,12 +1115,17 @@ impl App {
             Message::PlaybackPositionReceived(pos) => {
                 if let AppState::Main { playback, .. } = &mut self.state {
                     if playback.is_playing {
-                        let max_dur = playback
-                            .current_track
-                            .as_ref()
-                            .map_or(u32::MAX, |t| if t.duration_ms > 0 { t.duration_ms } else { u32::MAX });
+                        let max_dur = playback.current_track.as_ref().map_or(u32::MAX, |t| {
+                            if t.duration_ms > 0 {
+                                t.duration_ms
+                            } else {
+                                u32::MAX
+                            }
+                        });
                         let new_pos = pos.min(max_dur);
-                        if new_pos >= playback.progress_ms || playback.progress_ms.saturating_sub(new_pos) > 1000 {
+                        if new_pos >= playback.progress_ms
+                            || playback.progress_ms.saturating_sub(new_pos) > 1000
+                        {
                             playback.progress_ms = new_pos;
                         }
                     }
