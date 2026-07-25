@@ -849,7 +849,18 @@ impl App {
                 Task::none()
             }
             Message::AudioSessionConnected(session) => {
-                if let AppState::Main { audio_session, .. } = &mut self.state {
+                if let AppState::Main {
+                    audio_session,
+                    playback,
+                    ..
+                } = &mut self.state
+                {
+                    let vol = if playback.is_muted {
+                        0.0
+                    } else {
+                        playback.volume
+                    };
+                    let _ = session.cmd_tx.try_send(PlayerCommand::Volume(vol));
                     *audio_session = Some(session);
                 }
                 Task::none()
