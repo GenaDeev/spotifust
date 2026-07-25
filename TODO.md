@@ -2,7 +2,12 @@
 
 ## Current Focus
 
-- [ ] Architectural Debt Resolution & App Speed Optimization
+- [x] Fix audio playback output stream lifecycle and progress sync
+- [x] Rebuild custom right-click Context Menu positioned at cursor coordinates
+- [x] Implement recursive local music scanner and embedded cover art extraction
+- [x] Fix navigation state (Home resets selection, Settings view exit on item click)
+- [x] Remove (+) header button and implement thin modern scrollbars
+- [ ] Discuss and integrate Synchronized Lyrics API & Artist Trivia Metadata Provider
 
 ## Development Backlog
 
