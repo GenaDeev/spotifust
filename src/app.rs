@@ -349,14 +349,34 @@ impl App {
 
                 let spotify_arc = Arc::new(*spotify);
 
+                let cached_playlists =
+                    crate::api::cache::DiskMetadataCache::load::<Vec<crate::api::playlist::PlaylistSummary>>(
+                        "user_playlists",
+                    )
+                    .unwrap_or_default();
+                let cached_albums =
+                    crate::api::cache::DiskMetadataCache::load::<Vec<crate::api::album::AlbumSummary>>(
+                        "user_albums",
+                    )
+                    .unwrap_or_default();
+                let cached_top_tracks =
+                    crate::api::cache::DiskMetadataCache::load::<Vec<crate::api::tracks::TopTrack>>(
+                        "user_top_tracks",
+                    )
+                    .unwrap_or_default();
+                let cached_profile =
+                    crate::api::cache::DiskMetadataCache::load::<crate::api::user::UserProfile>(
+                        "user_profile",
+                    );
+
                 self.state = AppState::Main {
                     nav_item: NavigationItem::Home,
                     playback: initial_playback,
                     audio_session: None,
-                    user_profile: None,
-                    user_playlists: Vec::new(),
-                    user_albums: Vec::new(),
-                    user_top_tracks: Vec::new(),
+                    user_profile: cached_profile,
+                    user_playlists: cached_playlists,
+                    user_albums: cached_albums,
+                    user_top_tracks: cached_top_tracks,
                     search_query: String::new(),
                     search_results: crate::api::search::SearchResults::default(),
                     is_searching: false,
@@ -423,6 +443,7 @@ impl App {
             Message::UserProfileFetched(res) => {
                 let mut tasks = Vec::new();
                 if let Ok(profile) = res {
+                    let _ = crate::api::cache::DiskMetadataCache::save("user_profile", &profile);
                     if let AppState::Main {
                         user_profile,
                         loaded_images,
@@ -445,6 +466,7 @@ impl App {
             Message::UserPlaylistsFetched(res) => {
                 let mut tasks = Vec::new();
                 if let Ok(playlists) = res {
+                    let _ = crate::api::cache::DiskMetadataCache::save("user_playlists", &playlists);
                     if let AppState::Main {
                         user_playlists,
                         loaded_images,
@@ -467,6 +489,7 @@ impl App {
             Message::UserAlbumsFetched(res) => {
                 let mut tasks = Vec::new();
                 if let Ok(albums) = res {
+                    let _ = crate::api::cache::DiskMetadataCache::save("user_albums", &albums);
                     if let AppState::Main {
                         user_albums,
                         loaded_images,
@@ -489,6 +512,7 @@ impl App {
             Message::UserTopTracksFetched(res) => {
                 let mut tasks = Vec::new();
                 if let Ok(tracks) = res {
+                    let _ = crate::api::cache::DiskMetadataCache::save("user_top_tracks", &tracks);
                     if let AppState::Main {
                         user_top_tracks,
                         loaded_images,

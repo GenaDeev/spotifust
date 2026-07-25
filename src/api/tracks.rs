@@ -3,7 +3,7 @@ use crate::error::AppError;
 use rspotify::prelude::Id;
 use rspotify::{AuthCodePkceSpotify, clients::OAuthClient};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct TopTrack {
     pub id: String,
     pub title: String,
