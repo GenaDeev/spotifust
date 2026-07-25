@@ -1,5 +1,4 @@
-/// System tray manager for Spotifust across Linux, macOS, and Windows.
-
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TrayAction {
     TogglePlayPause,
@@ -9,6 +8,7 @@ pub enum TrayAction {
     Quit,
 }
 
+#[allow(dead_code)]
 pub struct SystemTrayManager {
     pub is_window_visible: bool,
 }
@@ -19,6 +19,7 @@ impl Default for SystemTrayManager {
     }
 }
 
+#[allow(dead_code)]
 impl SystemTrayManager {
     #[must_use]
     pub fn new() -> Self {

@@ -2712,7 +2712,11 @@ pub fn view_context_menu_overlay<'a>(
                     .spacing(8)
                     .align_y(Alignment::Center)
                     .push(Icon::Play.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(Text::new("Reproducir Canción").size(13).color(theme::TEXT_PRIMARY)),
+                    .push(
+                        Text::new("Reproducir Canción")
+                            .size(13)
+                            .color(theme::TEXT_PRIMARY),
+                    ),
             )
             .padding([8, 12])
             .width(Length::Fill)
@@ -2723,7 +2727,11 @@ pub fn view_context_menu_overlay<'a>(
                     .spacing(8)
                     .align_y(Alignment::Center)
                     .push(Icon::Queue.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(Text::new("Añadir a la Cola").size(13).color(theme::TEXT_PRIMARY)),
+                    .push(
+                        Text::new("Añadir a la Cola")
+                            .size(13)
+                            .color(theme::TEXT_PRIMARY),
+                    ),
             )
             .padding([8, 12])
             .width(Length::Fill)
@@ -2734,7 +2742,11 @@ pub fn view_context_menu_overlay<'a>(
                     .spacing(8)
                     .align_y(Alignment::Center)
                     .push(Icon::User.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(Text::new("Ir al Artista").size(13).color(theme::TEXT_PRIMARY)),
+                    .push(
+                        Text::new("Ir al Artista")
+                            .size(13)
+                            .color(theme::TEXT_PRIMARY),
+                    ),
             )
             .padding([8, 12])
             .width(Length::Fill)
@@ -2758,7 +2770,11 @@ pub fn view_context_menu_overlay<'a>(
                     .spacing(8)
                     .align_y(Alignment::Center)
                     .push(Icon::Play.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(Text::new("Reproducir Álbum").size(13).color(theme::TEXT_PRIMARY)),
+                    .push(
+                        Text::new("Reproducir Álbum")
+                            .size(13)
+                            .color(theme::TEXT_PRIMARY),
+                    ),
             )
             .padding([8, 12])
             .width(Length::Fill)
@@ -2769,7 +2785,11 @@ pub fn view_context_menu_overlay<'a>(
                     .spacing(8)
                     .align_y(Alignment::Center)
                     .push(Icon::Heart.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(Text::new("Guardar en Tu Biblioteca").size(13).color(theme::TEXT_PRIMARY)),
+                    .push(
+                        Text::new("Guardar en Tu Biblioteca")
+                            .size(13)
+                            .color(theme::TEXT_PRIMARY),
+                    ),
             )
             .padding([8, 12])
             .width(Length::Fill)
@@ -2780,7 +2800,11 @@ pub fn view_context_menu_overlay<'a>(
                     .spacing(8)
                     .align_y(Alignment::Center)
                     .push(Icon::User.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(Text::new("Ir al Artista").size(13).color(theme::TEXT_PRIMARY)),
+                    .push(
+                        Text::new("Ir al Artista")
+                            .size(13)
+                            .color(theme::TEXT_PRIMARY),
+                    ),
             )
             .padding([8, 12])
             .width(Length::Fill)
@@ -2793,7 +2817,11 @@ pub fn view_context_menu_overlay<'a>(
                     .spacing(8)
                     .align_y(Alignment::Center)
                     .push(Icon::User.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(Text::new("Ver Perfil de Artista").size(13).color(theme::TEXT_PRIMARY)),
+                    .push(
+                        Text::new("Ver Perfil de Artista")
+                            .size(13)
+                            .color(theme::TEXT_PRIMARY),
+                    ),
             )
             .padding([8, 12])
             .width(Length::Fill)
@@ -2804,7 +2832,11 @@ pub fn view_context_menu_overlay<'a>(
                     .spacing(8)
                     .align_y(Alignment::Center)
                     .push(Icon::Heart.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(Text::new("Seguir Artista").size(13).color(theme::TEXT_PRIMARY)),
+                    .push(
+                        Text::new("Seguir Artista")
+                            .size(13)
+                            .color(theme::TEXT_PRIMARY),
+                    ),
             )
             .padding([8, 12])
             .width(Length::Fill)
