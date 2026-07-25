@@ -5,7 +5,7 @@ use iced::{
     Alignment, Background, Border, Color, Element, Length, Theme,
     widget::{
         Button, Column, Container, Image, Row, Scrollable, Space, Text, TextInput, container,
-        slider, text_input,
+        scrollable, slider, text_input,
     },
 };
 
@@ -382,7 +382,7 @@ fn view_sidebar_panel<'a>(
             );
         }
 
-        let scrollable_list = Scrollable::new(list).height(Length::Fill);
+        let scrollable_list = thin_scrollable(list).height(Length::Fill);
 
         return Container::new(
             Column::new()
@@ -439,8 +439,7 @@ fn view_sidebar_panel<'a>(
                 }
             }),
         )
-        .push(Space::new().width(Length::Fill))
-        .push(icon_button_circle(Icon::Plus, Message::MockAction));
+        .push(Space::new().width(Length::Fill));
 
     let filter_chips = Row::new()
         .spacing(8)
@@ -533,7 +532,7 @@ fn view_sidebar_panel<'a>(
         }
     }
 
-    let scrollable_list = Scrollable::new(list).height(Length::Fill);
+    let scrollable_list = thin_scrollable(list).height(Length::Fill);
 
     let content = Column::new()
         .spacing(14)
@@ -695,7 +694,7 @@ fn view_main_content<'a>(
                         weight: iced::font::Weight::Bold,
                         ..Default::default()
                     })
-                    .color(if track.is_local {
+                    .color(if track.is_local && !track.is_local_available {
                         theme::TEXT_MUTED
                     } else {
                         theme::TEXT_PRIMARY
@@ -707,6 +706,17 @@ fn view_main_content<'a>(
                     .push(title_text);
 
                 if track.is_local {
+                    let badge_color = if track.is_local_available {
+                        theme::ACCENT
+                    } else {
+                        theme::TEXT_MUTED
+                    };
+                    let badge_bg = if track.is_local_available {
+                        Color::from_rgba(0.11, 0.84, 0.38, 0.15)
+                    } else {
+                        theme::BORDER_SUBTLE
+                    };
+
                     let local_badge = Container::new(
                         Text::new("LOCAL")
                             .size(9)
@@ -714,14 +724,19 @@ fn view_main_content<'a>(
                                 weight: iced::font::Weight::Bold,
                                 ..Default::default()
                             })
-                            .color(theme::TEXT_MUTED),
+                            .color(badge_color),
                     )
                     .padding([2, 6])
-                    .style(|_theme: &Theme| container::Style {
-                        background: Some(Background::Color(theme::BORDER_SUBTLE)),
+                    .style(move |_theme: &Theme| container::Style {
+                        background: Some(Background::Color(badge_bg)),
                         border: Border {
                             radius: 4.0.into(),
-                            ..Default::default()
+                            color: if track.is_local_available {
+                                Color::from_rgba(0.11, 0.84, 0.38, 0.3)
+                            } else {
+                                Color::TRANSPARENT
+                            },
+                            width: if track.is_local_available { 1.0 } else { 0.0 },
                         },
                         ..Default::default()
                     });
@@ -767,8 +782,9 @@ fn view_main_content<'a>(
                                 duration_ms: track.duration_ms,
                                 image_url: track.image_url.clone(),
                             }),
-                            x: 400.0,
-                            y: 300.0,
+                            x: 450.0,
+                            #[allow(clippy::cast_precision_loss)]
+                            y: (220.0 + (idx as f32 * 46.0)).min(550.0),
                         },
                     ));
 
@@ -808,7 +824,7 @@ fn view_main_content<'a>(
             .push(playlist_header)
             .push(content_body);
 
-        let scrollable = Scrollable::new(Container::new(page_column).padding(iced::Padding {
+        let scrollable = thin_scrollable(Container::new(page_column).padding(iced::Padding {
             top: 0.0,
             right: 16.0,
             bottom: 0.0,
@@ -964,7 +980,7 @@ fn view_main_content<'a>(
             .push(album_header)
             .push(content_body);
 
-        let scrollable = Scrollable::new(Container::new(page_column).padding(iced::Padding {
+        let scrollable = thin_scrollable(Container::new(page_column).padding(iced::Padding {
             top: 0.0,
             right: 16.0,
             bottom: 0.0,
@@ -1133,28 +1149,7 @@ fn view_main_content<'a>(
         .push(section_2_header)
         .push(scroll_row(section_2_cards));
 
-    let scrollable = Scrollable::new(scroll_content)
-        .direction(iced::widget::scrollable::Direction::Vertical(
-            iced::widget::scrollable::Scrollbar::new()
-                .width(6.0)
-                .margin(2.0)
-                .scroller_width(6.0),
-        ))
-        .style(|theme: &Theme, status| {
-            let mut s = iced::widget::scrollable::default(theme, status);
-            s.vertical_rail.background = None;
-            s.vertical_rail.scroller.background = Background::Color(Color {
-                r: 1.0,
-                g: 1.0,
-                b: 1.0,
-                a: 0.18,
-            });
-            s.vertical_rail.scroller.border = Border {
-                radius: theme::RADIUS_PILL.into(),
-                ..Border::default()
-            };
-            s
-        })
+    let scrollable = thin_scrollable(scroll_content)
         .width(Length::Fill)
         .height(Length::Fill);
 
@@ -1179,7 +1174,7 @@ fn view_main_content<'a>(
 }
 
 fn scroll_row(content: Row<'_, Message>) -> Element<'_, Message> {
-    Scrollable::new(content)
+    thin_scrollable(content)
         .direction(iced::widget::scrollable::Direction::Horizontal(
             iced::widget::scrollable::Scrollbar::new()
                 .width(4.0)
@@ -1390,7 +1385,7 @@ fn view_right_panel<'a>(
     let content = Column::new()
         .spacing(16)
         .push(header)
-        .push(Scrollable::new(body).height(Length::Fill));
+        .push(thin_scrollable(body).height(Length::Fill));
 
     Container::new(content)
         .width(Length::Fixed(width))
@@ -2364,7 +2359,7 @@ fn view_search_results<'a>(
             .push(scroll_row(albums_row));
     }
 
-    Scrollable::new(Container::new(content).width(Length::Fill).padding(24)).into()
+    thin_scrollable(Container::new(content).width(Length::Fill).padding(24)).into()
 }
 
 #[allow(clippy::cast_precision_loss)]
@@ -2720,7 +2715,7 @@ pub fn view_context_menu_overlay<'a>(
             )
             .padding([8, 12])
             .width(Length::Fill)
-            .on_press(Message::CloseContextMenu)
+            .on_press(Message::PlayTrack(track.title.clone()))
             .into(),
             Button::new(
                 Row::new()
@@ -2764,21 +2759,21 @@ pub fn view_context_menu_overlay<'a>(
             .on_press(Message::CloseContextMenu)
             .into(),
         ],
-        crate::app::ContextMenuTarget::Album(_album) => vec![
+        crate::app::ContextMenuTarget::Album(album) => vec![
             Button::new(
                 Row::new()
                     .spacing(8)
                     .align_y(Alignment::Center)
                     .push(Icon::Play.view_colored(14.0, theme::TEXT_PRIMARY))
                     .push(
-                        Text::new("Reproducir Álbum")
+                        Text::new("Abrir Álbum")
                             .size(13)
                             .color(theme::TEXT_PRIMARY),
                     ),
             )
             .padding([8, 12])
             .width(Length::Fill)
-            .on_press(Message::CloseContextMenu)
+            .on_press(Message::SelectAlbum(album.id.clone()))
             .into(),
             Button::new(
                 Row::new()
@@ -2787,21 +2782,6 @@ pub fn view_context_menu_overlay<'a>(
                     .push(Icon::Heart.view_colored(14.0, theme::TEXT_PRIMARY))
                     .push(
                         Text::new("Guardar en Tu Biblioteca")
-                            .size(13)
-                            .color(theme::TEXT_PRIMARY),
-                    ),
-            )
-            .padding([8, 12])
-            .width(Length::Fill)
-            .on_press(Message::CloseContextMenu)
-            .into(),
-            Button::new(
-                Row::new()
-                    .spacing(8)
-                    .align_y(Alignment::Center)
-                    .push(Icon::User.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(
-                        Text::new("Ir al Artista")
                             .size(13)
                             .color(theme::TEXT_PRIMARY),
                     ),
@@ -2827,20 +2807,22 @@ pub fn view_context_menu_overlay<'a>(
             .width(Length::Fill)
             .on_press(Message::CloseContextMenu)
             .into(),
+        ],
+        crate::app::ContextMenuTarget::Playlist(playlist) => vec![
             Button::new(
                 Row::new()
                     .spacing(8)
                     .align_y(Alignment::Center)
-                    .push(Icon::Heart.view_colored(14.0, theme::TEXT_PRIMARY))
+                    .push(Icon::Play.view_colored(14.0, theme::TEXT_PRIMARY))
                     .push(
-                        Text::new("Seguir Artista")
+                        Text::new("Abrir Playlist")
                             .size(13)
                             .color(theme::TEXT_PRIMARY),
                     ),
             )
             .padding([8, 12])
             .width(Length::Fill)
-            .on_press(Message::CloseContextMenu)
+            .on_press(Message::SelectPlaylist(playlist.id.clone()))
             .into(),
         ],
     };
@@ -2850,7 +2832,7 @@ pub fn view_context_menu_overlay<'a>(
         menu_column = menu_column.push(item);
     }
 
-    Container::new(menu_column)
+    let menu_card = Container::new(menu_column)
         .padding(6)
         .width(Length::Fixed(220.0))
         .style(|_theme: &Theme| container::Style {
@@ -2861,11 +2843,59 @@ pub fn view_context_menu_overlay<'a>(
                 width: 1.0,
             },
             shadow: iced::Shadow {
-                color: Color::from_rgba(0.0, 0.0, 0.0, 0.4),
+                color: Color::from_rgba(0.0, 0.0, 0.0, 0.5),
                 offset: iced::Vector::new(0.0, 4.0),
-                blur_radius: 12.0,
+                blur_radius: 16.0,
             },
             ..Default::default()
+        });
+
+    let top_pad = state.position_y.max(10.0);
+    let left_pad = state.position_x.max(10.0);
+
+    let positioned_menu = Container::new(menu_card).padding(iced::Padding {
+        top: top_pad,
+        right: 0.0,
+        bottom: 0.0,
+        left: left_pad,
+    });
+
+    let backdrop = Button::new(Space::new().width(Length::Fill).height(Length::Fill))
+        .style(|_theme, _status| iced::widget::button::Style {
+            background: Some(Background::Color(Color::TRANSPARENT)),
+            ..Default::default()
         })
+        .on_press(Message::CloseContextMenu);
+
+    iced::widget::Stack::new()
+        .push(backdrop)
+        .push(positioned_menu)
         .into()
+}
+
+pub fn thin_scrollable<'a, Message: 'a>(
+    content: impl Into<Element<'a, Message>>,
+) -> Scrollable<'a, Message> {
+    Scrollable::new(content)
+        .direction(scrollable::Direction::Vertical(
+            scrollable::Scrollbar::new()
+                .width(6.0)
+                .margin(2.0)
+                .scroller_width(6.0),
+        ))
+        .style(|theme, status| {
+            let mut s = scrollable::default(theme, status);
+            s.vertical_rail.background = None;
+            s.vertical_rail.scroller.background = Background::Color(Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 0.25,
+            });
+            s.vertical_rail.scroller.border = Border {
+                radius: 3.0.into(),
+                ..Border::default()
+            };
+            s
+        })
 }
