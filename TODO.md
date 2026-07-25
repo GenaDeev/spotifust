@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-- [ ] Design tokens implementation (colors, typography, spacing) in `src/ui/theme.rs`
+- [ ] Architectural Debt Resolution & App Speed Optimization
 
 ## Development Backlog
 
@@ -43,9 +43,9 @@
 - [x] Fix seek bar so it travels the full 0–100% range and reflects real playback position
 - [x] Handle `librespot` session expiry and reconnection without crashing
 - [x] Fix app crash during track playback (`src/audio/sink.rs:35:14: Cannot block the current thread from within a runtime` & `Invalid Spotify URI ''`)
+- [x] Refine audio pipeline for 320kbps high-quality bitrate, synchronized rodio pause/resume and instant volume binding
 
-
-### Phase 4: RSpotify Web API & Auth
+### Phase 4: RSpotify Web API, Auth & Aggressive Caching
 
 - [x] Implement PKCE Authorization Code Flow with `rspotify`
 - [x] Register `spotifust://callback` custom protocol handler for the OAuth redirect
@@ -63,17 +63,20 @@
 - [x] Implement album art fetching: download cover images asynchronously and cache to disk in `src/api/cache.rs`
 - [x] Implement a metadata cache layer in `src/api/cache.rs` to avoid redundant API calls (TTL-based)
 - [x] Implement rate-limit handling: respect `Retry-After` headers from the Spotify API
-- [x] Display large cover art in playlist and album detail header views (currently only rendered in sidebar/cards)
+- [x] Display large cover art in playlist and album detail header views
 - [x] Audit and remove all remaining mock data across all UI views and components, fetching 100% live Spotify API data
 - [x] Optimize long playlist loading with incremental chunking/streaming or virtualized pagination to avoid UI lag
 - [x] Validate existing token/session before rendering initial screen to eliminate temporary login flicker
+- [ ] Achieve near-instant API data loading through aggressive metadata and disk image caching (TTL-based, local disk cache for instant startup render)
+- [ ] Add visual "Local Track" badge for unplayable local tracks in playlists owned by playlist creators
 
-### Phase 5: UI Design System & Component Polish
+### Phase 5: UI Design System, Component Polish & Settings Page
 
 - [x] Define a unified design token system (color palette, spacing scale, typography scale) in a central `theme.rs`
 - [ ] Replace all ad-hoc hardcoded color literals and magic numbers with design tokens
 - [ ] Implement smooth hover transitions on sidebar items, buttons, and playback controls
-- [ ] Implement animated loading skeletons for album art and track list placeholders while data is fetching
+- [ ] Implement animated loading skeletons for album art, playlist headers, and track list placeholders while initial Spotify API data is fetching (zero mock/temp data, instant Spotify data render)
+- [ ] Remove "Explore Premium" / "Explorar Premium" button from sidebar and navigation
 - [ ] Add waveform or animated equalizer bars to the Now Playing area during active playback
 - [ ] Implement smooth progress bar animation that interpolates position between tick updates
 - [ ] Add context menus (right-click) on tracks and playlist items (Add to queue, Go to album, etc.)
@@ -84,31 +87,35 @@
 - [x] Add toast / snackbar notifications for user-facing errors and confirmations
 - [x] Audit and refine all font sizes, weights, and line heights for visual consistency
 - [ ] Ensure the entire UI is navigable via keyboard (tab order, focus rings)
+- [ ] SETTINGS PAGE: Build a comprehensive Settings page with a full suite of configurable app, audio, quality, local path, crossfade, theme, and Spotify Connect settings
+- [ ] LYRICS: Implement fully functional synchronized Lyrics view with multi-provider API integration
 
-### Phase 6: Queue, Playback State & Shuffle
+### Phase 6: Queue, Playback State, Shuffle & Advanced Audio
 
 - [ ] Implement an internal play queue data structure in the `Model`
 - [ ] Display the current queue in a slide-out panel
 - [ ] Implement Shuffle mode: randomise queue order and persist the shuffle seed
 - [ ] Implement Repeat modes: No Repeat, Repeat Queue, Repeat One
 - [ ] Implement "Add to queue" action from track context menus
-- [ ] Sync queue state back to Spotify Connect so other devices see the same queue
-- [ ] Implement Crossfade between tracks (configurable duration)
+- [ ] Spotify Connect: Full bi-directional Spotify Connect integration for remote control and device sync
+- [ ] Crossfade: Smooth audio crossfade between tracks (configurable duration in Settings)
 
-### Phase 7: System Integration & Distribution
+### Phase 7: System Integration & Local Files
 
 - [x] Add application window and taskbar/dock icon support for Windows, macOS, and Linux distros
 - [ ] Add a system tray icon with Play/Pause, Skip, and Quit actions
 - [ ] Register global media key bindings (MPRIS on Linux, MediaSession on Windows/macOS)
 - [ ] Implement MPRIS2 D-Bus interface on Linux for desktop environment integration
+- [ ] Local Files: Implement local audio file scanner and playback for custom local music directory path
 - [ ] Package the binary as a `.deb` and `.rpm` for Linux
 - [x] Package the binary as a `.dmg` / `.app` bundle for macOS
 - [x] Package the binary as an `.msi` installer for Windows
 - [ ] Integrate auto-update check: compare current version against GitHub Releases on startup
 - [ ] Write end-to-end integration tests for the auth flow and audio pipeline
 
-### Phase 8: Performance & Hardening
+### Phase 8: Performance & Speed Optimization
 
+- [ ] Optimize general app execution speed, reducing UI update latency and startup load time
 - [ ] Run a full memory profile and verify the application stays under 25 MB baseline at idle
 - [ ] Profile and eliminate any hot-path allocations in the canvas render loop and audio callback
 - [ ] Replace any `.clone()` / `.to_string()` in hot paths with borrows (`&str`, `&[u8]`) where applicable
@@ -120,16 +127,11 @@
 
 ## Architectural Debt
 
-- [ ] The Canvas Layout Engine was listed as completed but was never implemented; all Phase 2 items are open
+- [x] Layout engine fully implemented and verified in `src/ui/main_layout.rs`
 - [x] Volume slider and seek bar have only two discrete positions and do not cover their full range
 - [x] All playlist/album/track data shown in the UI is hardcoded mock data, not from the Spotify API (Resolved: Real Spotify API data integrated across sidebar, playlists, album detail view, search, top tracks, and image cache)
 - [x] Fix Spotify Playlist and Album ID parsing (Use `from_id_or_uri` instead of `from_id` to handle Spotify URIs properly)
 - [x] Fix search input visibility styling and sidebar filter interaction
-- [ ] RAM usage is currently ~45 MB, nearly double the 25 MB target
+- [ ] RAM usage is currently ~45 MB, target is < 25 MB baseline at idle
 - [x] The librespot session may be storing or caching credentials insecurely; needs a full audit (Audit complete: keyring used, no plaintext or librespot cache on disk)
 - [x] No structured error surfacing to the user: errors silently fail or panic instead of showing in the UI
-
-## Blocked / Needs Human Decision
-
-- [ ] Decide whether to support Spotify Connect (remote control from phone/web) in scope for v1.0
-- [ ] Decide on the crossfade implementation approach before Phase 6 begins
