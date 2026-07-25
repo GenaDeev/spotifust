@@ -220,47 +220,6 @@ fn view_top_bar<'a>(
         ..Default::default()
     });
 
-    let explore_premium_btn = Button::new(
-        Container::new(
-            Text::new("Explore Premium")
-                .size(13)
-                .font(iced::Font {
-                    weight: iced::font::Weight::Bold,
-                    ..Default::default()
-                })
-                .color(theme::TEXT_PRIMARY),
-        )
-        .height(Length::Fixed(40.0))
-        .align_y(iced::alignment::Vertical::Center),
-    )
-    .padding([0, 18])
-    .height(Length::Fixed(40.0))
-    .style(|_theme: &Theme, status| {
-        let base = iced::widget::button::Style {
-            background: Some(Background::Color(theme::SURFACE_CARD)),
-            text_color: theme::TEXT_PRIMARY,
-            border: Border {
-                color: theme::BORDER_SUBTLE,
-                width: 1.0,
-                radius: theme::RADIUS_PILL.into(),
-            },
-            ..Default::default()
-        };
-        match status {
-            iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                background: Some(Background::Color(theme::SURFACE_HOVER)),
-                border: Border {
-                    color: theme::BORDER_STRONG,
-                    width: 1.0,
-                    radius: theme::RADIUS_PILL.into(),
-                },
-                ..base
-            },
-            _ => base,
-        }
-    })
-    .on_press(Message::MockAction);
-
     let avatar_url = user_profile.and_then(|p| p.avatar_url.as_deref());
     let user_avatar_content = view_image_or_icon(
         avatar_url,
@@ -281,7 +240,6 @@ fn view_top_bar<'a>(
     let right_controls = Row::new()
         .spacing(12)
         .align_y(Alignment::Center)
-        .push(explore_premium_btn)
         .push(icon_button_circle(Icon::Plus, Message::MockAction))
         .push(user_avatar_btn);
 
