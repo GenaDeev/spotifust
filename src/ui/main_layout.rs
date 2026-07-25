@@ -741,7 +741,8 @@ fn view_main_content<'a>(
                             .size(13)
                             .color(theme::TEXT_SECONDARY)
                             .width(Length::Fixed(60.0)),
-                    );
+                    )
+                    .push(icon_button_plain(Icon::Queue, Message::MockAction));
 
                 let track_item = Button::new(
                     Container::new(track_row)
@@ -2427,11 +2428,7 @@ fn view_settings_page<'a>() -> Element<'a, Message> {
                             })
                             .color(theme::TEXT_PRIMARY),
                     )
-                    .push(
-                        Text::new(desc)
-                            .size(13)
-                            .color(theme::TEXT_SECONDARY),
-                    ),
+                    .push(Text::new(desc).size(13).color(theme::TEXT_SECONDARY)),
             )
             .push(Container::new(control).width(Length::FillPortion(2)))
             .into()
@@ -2481,30 +2478,33 @@ fn view_settings_page<'a>() -> Element<'a, Message> {
         ..Default::default()
     });
 
-    let badge_enabled = Container::new(
-        Text::new("Enabled")
-            .size(12)
-            .font(iced::Font {
-                weight: iced::font::Weight::Bold,
-                ..Default::default()
-            })
-            .color(theme::COLOR_SUCCESS),
-    )
-    .padding([6, 12])
-    .style(|_theme: &Theme| container::Style {
-        background: Some(Background::Color(Color {
-            r: theme::COLOR_SUCCESS.r,
-            g: theme::COLOR_SUCCESS.g,
-            b: theme::COLOR_SUCCESS.b,
-            a: 0.15,
-        })),
-        border: Border {
-            color: theme::COLOR_SUCCESS,
-            width: 1.0,
-            radius: theme::RADIUS_PILL.into(),
-        },
-        ..Default::default()
-    });
+    fn make_badge_enabled<'a>() -> Element<'a, Message> {
+        Container::new(
+            Text::new("Enabled")
+                .size(12)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::COLOR_SUCCESS),
+        )
+        .padding([6, 12])
+        .style(|_theme: &Theme| container::Style {
+            background: Some(Background::Color(Color {
+                r: theme::COLOR_SUCCESS.r,
+                g: theme::COLOR_SUCCESS.g,
+                b: theme::COLOR_SUCCESS.b,
+                a: 0.15,
+            })),
+            border: Border {
+                color: theme::COLOR_SUCCESS,
+                width: 1.0,
+                radius: theme::RADIUS_PILL.into(),
+            },
+            ..Default::default()
+        })
+        .into()
+    }
 
     let path_box = Container::new(
         Text::new("/home/elgena/Music")
@@ -2534,19 +2534,19 @@ fn view_settings_page<'a>() -> Element<'a, Message> {
         .push(setting_row(
             "Audio Normalization",
             "Set the same volume level for all tracks during playback.",
-            badge_enabled.into(),
+            make_badge_enabled(),
         ))
         .push(section_title("Audio Effects & Crossfade"))
         .push(setting_row(
             "Crossfade",
             "Allows tracks to crossfade into each other seamlessly.",
-            badge_enabled.into(),
+            make_badge_enabled(),
         ))
         .push(section_title("Local Files"))
         .push(setting_row(
             "Show Local Files",
             "Scan and display audio files from your local computer storage.",
-            badge_enabled.into(),
+            make_badge_enabled(),
         ))
         .push(setting_row(
             "Local Music Directory",
@@ -2557,7 +2557,7 @@ fn view_settings_page<'a>() -> Element<'a, Message> {
         .push(setting_row(
             "Spotify Connect",
             "Control playback across your phone, tablet, and web player.",
-            badge_enabled.into(),
+            make_badge_enabled(),
         ));
 
     Scrollable::new(
