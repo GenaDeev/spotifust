@@ -94,8 +94,8 @@
 
 - [x] Implement an internal play queue data structure in the `Model`
 - [x] Display the current queue in a slide-out panel
-- [ ] Implement Shuffle mode: randomise queue order and persist the shuffle seed
-- [ ] Implement Repeat modes: No Repeat, Repeat Queue, Repeat One
+- [x] Implement Shuffle mode: randomise queue order and persist the shuffle seed
+- [x] Implement Repeat modes: No Repeat, Repeat Queue, Repeat One
 - [ ] Implement "Add to queue" action from track context menus
 - [ ] Spotify Connect: Full bi-directional Spotify Connect integration for remote control and device sync
 - [ ] Crossfade: Smooth audio crossfade between tracks (configurable duration in Settings)

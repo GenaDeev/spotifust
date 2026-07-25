@@ -1437,14 +1437,14 @@ fn view_playback_bar<'a>(
     let controls = Row::new()
         .spacing(16)
         .align_y(Alignment::Center)
-        .push(icon_button_plain(Icon::Shuffle, Message::MockAction))
+        .push(icon_button_plain(Icon::Shuffle, Message::ToggleShuffle))
         .push(icon_button_plain(Icon::SkipPrev, Message::SkipPrev))
         .push(icon_button_circle_accent(
             play_pause_icon,
             Message::TogglePlayback,
         ))
         .push(icon_button_plain(Icon::SkipNext, Message::SkipNext))
-        .push(icon_button_plain(Icon::Repeat, Message::MockAction));
+        .push(icon_button_plain(Icon::Repeat, Message::ToggleRepeat));
 
     let duration_ms = playback
         .current_track

@@ -57,6 +57,14 @@ pub struct TrackInfo {
     pub image_url: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum RepeatMode {
+    #[default]
+    Off,
+    Context,
+    One,
+}
+
 #[derive(Debug, Clone)]
 pub struct PlaybackState {
     pub is_playing: bool,
@@ -66,6 +74,8 @@ pub struct PlaybackState {
     pub current_track_uri: Option<String>,
     pub is_muted: bool,
     pub last_volume: f32,
+    pub is_shuffled: bool,
+    pub repeat_mode: RepeatMode,
 }
 
 impl Default for PlaybackState {
@@ -78,6 +88,8 @@ impl Default for PlaybackState {
             current_track_uri: None,
             is_muted: false,
             last_volume: 1.0,
+            is_shuffled: false,
+            repeat_mode: RepeatMode::Off,
         }
     }
 }
@@ -172,6 +184,8 @@ pub enum Message {
     VolumeChanged(f32), // 0.0 to 1.0
     AdjustVolume(f32),  // relative delta e.g. +0.05 / -0.05
     ToggleMute,
+    ToggleShuffle,
+    ToggleRepeat,
     // Mock UI Actions
     MockAction,
     // Error Actions
