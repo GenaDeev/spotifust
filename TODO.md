@@ -106,7 +106,7 @@
 - [ ] Add a system tray icon with Play/Pause, Skip, and Quit actions
 - [ ] Register global media key bindings (MPRIS on Linux, MediaSession on Windows/macOS)
 - [ ] Implement MPRIS2 D-Bus interface on Linux for desktop environment integration
-- [ ] Local Files: Implement local audio file scanner and playback for custom local music directory path
+- [x] Local Files: Implement local audio file scanner and playback for custom local music directory path
 - [ ] Package the binary as a `.deb` and `.rpm` for Linux
 - [x] Package the binary as a `.dmg` / `.app` bundle for macOS
 - [x] Package the binary as an `.msi` installer for Windows
