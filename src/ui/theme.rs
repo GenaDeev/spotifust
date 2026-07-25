@@ -116,6 +116,9 @@ pub const TEXT_TERTIARY: Color = Color {
     a: 1.0,
 };
 
+#[allow(dead_code)]
+pub const TEXT_MUTED: Color = TEXT_TERTIARY;
+
 // --- Border & Dividers ---
 
 /// Subtle border for cards & panels

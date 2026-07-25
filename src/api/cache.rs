@@ -112,6 +112,7 @@ pub struct DiskMetadataCache;
 
 impl DiskMetadataCache {
     /// Saves a serializable data structure to disk cache under the given key name.
+    #[allow(clippy::missing_errors_doc)]
     pub fn save<T: serde::Serialize>(key: &str, data: &T) -> Result<(), AppError> {
         let dir = get_cache_dir().join("metadata");
         fs::create_dir_all(&dir)
@@ -121,13 +122,15 @@ impl DiskMetadataCache {
         let json_str = serde_json::to_string(data)
             .map_err(|e| AppError::Cache(format!("Failed to serialize cache key {key}: {e}")))?;
 
-        fs::write(file_path, json_str)
-            .map_err(|e| AppError::Cache(format!("Failed to write metadata cache key {key}: {e}")))?;
+        fs::write(file_path, json_str).map_err(|e| {
+            AppError::Cache(format!("Failed to write metadata cache key {key}: {e}"))
+        })?;
 
         Ok(())
     }
 
     /// Loads a deserializable data structure from disk cache under the given key name.
+    #[must_use]
     pub fn load<T: serde::de::DeserializeOwned>(key: &str) -> Option<T> {
         let file_path = get_cache_dir().join("metadata").join(format!("{key}.json"));
         if !file_path.exists() {

@@ -596,13 +596,7 @@ fn view_main_content<'a>(
             );
 
         let content_body: Element<'a, Message> = if sp.is_loading {
-            Container::new(
-                Text::new("Loading playlist tracks...")
-                    .size(15)
-                    .color(theme::TEXT_SECONDARY),
-            )
-            .padding(32)
-            .into()
+            render_skeleton_rows(8)
         } else if sp.tracks.is_empty() {
             Container::new(
                 Text::new("No tracks found in this playlist.")
@@ -670,15 +664,6 @@ fn view_main_content<'a>(
                 let dur_str = format_duration(track.duration_ms);
                 let uri = track.uri.clone();
 
-                let track_row = Row::new()
-                    .spacing(12)
-                    .align_y(Alignment::Center)
-                    .push(
-                        Text::new(track_num)
-                            .size(13)
-                            .color(theme::TEXT_SECONDARY)
-                            .width(Length::Fixed(24.0)),
-                    )
                 let title_text = Text::new(&track.title)
                     .size(14)
                     .font(iced::Font {
@@ -691,7 +676,10 @@ fn view_main_content<'a>(
                         theme::TEXT_PRIMARY
                     });
 
-                let mut title_row = Row::new().spacing(8).align_y(Alignment::Center).push(title_text);
+                let mut title_row = Row::new()
+                    .spacing(8)
+                    .align_y(Alignment::Center)
+                    .push(title_text);
 
                 if track.is_local {
                     let local_badge = Container::new(
@@ -852,13 +840,7 @@ fn view_main_content<'a>(
             );
 
         let content_body: Element<'a, Message> = if sa.is_loading {
-            Container::new(
-                Text::new("Loading album details...")
-                    .size(15)
-                    .color(theme::TEXT_SECONDARY),
-            )
-            .padding(32)
-            .into()
+            render_skeleton_rows(8)
         } else if sa.tracks.is_empty() {
             Container::new(
                 Text::new("No tracks found in this album.")
@@ -2342,4 +2324,71 @@ fn view_search_results<'a>(
     }
 
     Scrollable::new(Container::new(content).width(Length::Fill).padding(24)).into()
+}
+
+#[allow(clippy::cast_precision_loss)]
+fn render_skeleton_rows<'a>(count: usize) -> Element<'a, Message> {
+    let mut col = Column::new().spacing(12);
+    for i in 0..count {
+        let title_width = 120.0 + (((i * 37) % 140) as f32);
+        let artist_width = 80.0 + (((i * 23) % 90) as f32);
+
+        let row = Row::new()
+            .spacing(16)
+            .align_y(Alignment::Center)
+            .push(
+                Container::new(Space::new())
+                    .width(Length::Fixed(24.0))
+                    .height(Length::Fixed(14.0))
+                    .style(|_theme| container::Style {
+                        background: Some(Background::Color(theme::SURFACE_HOVER)),
+                        border: Border {
+                            radius: 4.0.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }),
+            )
+            .push(
+                Container::new(Space::new())
+                    .width(Length::Fixed(title_width))
+                    .height(Length::Fixed(14.0))
+                    .style(|_theme| container::Style {
+                        background: Some(Background::Color(theme::SURFACE_CARD)),
+                        border: Border {
+                            radius: 4.0.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }),
+            )
+            .push(
+                Container::new(Space::new())
+                    .width(Length::Fixed(artist_width))
+                    .height(Length::Fixed(14.0))
+                    .style(|_theme| container::Style {
+                        background: Some(Background::Color(theme::SURFACE_HOVER)),
+                        border: Border {
+                            radius: 4.0.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }),
+            );
+
+        col = col.push(
+            Container::new(row)
+                .padding([10, 12])
+                .width(Length::Fill)
+                .style(|_theme| container::Style {
+                    background: Some(Background::Color(theme::SURFACE_MAIN)),
+                    border: Border {
+                        radius: theme::RADIUS_MD.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }),
+        );
+    }
+    col.into()
 }
