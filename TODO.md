@@ -110,7 +110,7 @@
 - [ ] Package the binary as a `.deb` and `.rpm` for Linux
 - [x] Package the binary as a `.dmg` / `.app` bundle for macOS
 - [x] Package the binary as an `.msi` installer for Windows
-- [ ] Integrate auto-update check: compare current version against GitHub Releases on startup
+- [x] Integrate auto-update check: compare current version against GitHub Releases on startup
 - [ ] Write end-to-end integration tests for the auth flow and audio pipeline
 
 ### Phase 8: Performance & Speed Optimization
