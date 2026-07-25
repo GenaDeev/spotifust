@@ -98,7 +98,7 @@
 - [x] Implement Repeat modes: No Repeat, Repeat Queue, Repeat One
 - [x] Implement "Add to queue" action from track context menus
 - [ ] Spotify Connect: Full bi-directional Spotify Connect integration for remote control and device sync
-- [ ] Crossfade: Smooth audio crossfade between tracks (configurable duration in Settings)
+- [x] Crossfade: Smooth audio crossfade between tracks (configurable duration in Settings)
 
 ### Phase 7: System Integration & Local Files
 
