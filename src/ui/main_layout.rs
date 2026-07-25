@@ -721,16 +721,53 @@ fn view_main_content<'a>(
                             .color(theme::TEXT_SECONDARY)
                             .width(Length::Fixed(24.0)),
                     )
-                    .push(
-                        Text::new(&track.title)
-                            .size(14)
+                let title_text = Text::new(&track.title)
+                    .size(14)
+                    .font(iced::Font {
+                        weight: iced::font::Weight::Bold,
+                        ..Default::default()
+                    })
+                    .color(if track.is_local {
+                        theme::TEXT_MUTED
+                    } else {
+                        theme::TEXT_PRIMARY
+                    });
+
+                let mut title_row = Row::new().spacing(8).align_y(Alignment::Center).push(title_text);
+
+                if track.is_local {
+                    let local_badge = Container::new(
+                        Text::new("LOCAL")
+                            .size(9)
                             .font(iced::Font {
                                 weight: iced::font::Weight::Bold,
                                 ..Default::default()
                             })
-                            .color(theme::TEXT_PRIMARY)
-                            .width(Length::FillPortion(3)),
+                            .color(theme::TEXT_MUTED),
                     )
+                    .padding([2, 6])
+                    .style(|_theme: &Theme| container::Style {
+                        background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.08))),
+                        border: Border {
+                            radius: 4.0.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    });
+
+                    title_row = title_row.push(local_badge);
+                }
+
+                let track_row = Row::new()
+                    .spacing(12)
+                    .align_y(Alignment::Center)
+                    .push(
+                        Text::new(track_num)
+                            .size(13)
+                            .color(theme::TEXT_SECONDARY)
+                            .width(Length::Fixed(24.0)),
+                    )
+                    .push(Container::new(title_row).width(Length::FillPortion(3)))
                     .push(
                         Text::new(&track.artist)
                             .size(13)

@@ -71,6 +71,7 @@ pub struct PlaylistTrack {
     pub duration_ms: u32,
     pub uri: String,
     pub image_url: Option<String>,
+    pub is_local: bool,
 }
 
 /// Fetches track listings on demand for a specific playlist ID.
@@ -116,16 +117,17 @@ pub async fn fetch_playlist_tracks(
                         .as_ref()
                         .map_or_else(String::new, ToString::to_string);
                     let uri = full_track.id.as_ref().map_or_else(String::new, Id::uri);
+                    let is_local = full_track.is_local || uri.starts_with("spotify:local:");
 
                     tracks.push(PlaylistTrack {
                         id: track_id,
                         title: full_track.name,
                         artist,
                         album: full_track.album.name,
-                        duration_ms: u32::try_from(full_track.duration.num_milliseconds())
-                            .unwrap_or(0),
+                        duration_ms: full_track.duration.as_millis() as u32,
                         uri,
                         image_url,
+                        is_local,
                     });
                 }
             }
