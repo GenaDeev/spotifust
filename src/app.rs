@@ -17,6 +17,7 @@ pub enum NavigationItem {
     Search,
     #[allow(dead_code)]
     Library,
+    Settings,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

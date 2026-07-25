@@ -237,9 +237,15 @@ fn view_top_bar<'a>(
             ..Default::default()
         });
 
+    let settings_btn = icon_button_circle(
+        Icon::Settings,
+        Message::NavigationSelected(NavigationItem::Settings),
+    );
+
     let right_controls = Row::new()
         .spacing(12)
         .align_y(Alignment::Center)
+        .push(settings_btn)
         .push(icon_button_circle(Icon::Plus, Message::MockAction))
         .push(user_avatar_btn);
 
@@ -547,6 +553,10 @@ fn view_main_content<'a>(
     is_searching: bool,
     loaded_images: &'a std::collections::HashMap<String, iced::widget::image::Handle>,
 ) -> Element<'a, Message> {
+    if current_nav == NavigationItem::Settings {
+        return view_settings_page();
+    }
+
     if current_nav == NavigationItem::Search {
         return view_search_results(search_results, is_searching, loaded_images);
     }
@@ -2391,4 +2401,176 @@ fn render_skeleton_rows<'a>(count: usize) -> Element<'a, Message> {
         );
     }
     col.into()
+}
+
+#[allow(clippy::too_many_lines)]
+fn view_settings_page<'a>() -> Element<'a, Message> {
+    fn setting_row<'a>(
+        title: &'static str,
+        desc: &'static str,
+        control: Element<'a, Message>,
+    ) -> Element<'a, Message> {
+        Row::new()
+            .spacing(16)
+            .align_y(Alignment::Center)
+            .push(
+                Column::new()
+                    .spacing(4)
+                    .width(Length::FillPortion(3))
+                    .push(
+                        Text::new(title)
+                            .size(15)
+                            .font(iced::Font {
+                                weight: iced::font::Weight::Bold,
+                                ..Default::default()
+                            })
+                            .color(theme::TEXT_PRIMARY),
+                    )
+                    .push(
+                        Text::new(desc)
+                            .size(13)
+                            .color(theme::TEXT_SECONDARY),
+                    ),
+            )
+            .push(Container::new(control).width(Length::FillPortion(2)))
+            .into()
+    }
+
+    fn section_title<'a>(title: &'static str) -> Element<'a, Message> {
+        Text::new(title)
+            .size(18)
+            .font(iced::Font {
+                weight: iced::font::Weight::Bold,
+                ..Default::default()
+            })
+            .color(theme::ACCENT)
+            .into()
+    }
+
+    let header = Text::new("Settings")
+        .size(32)
+        .font(iced::Font {
+            weight: iced::font::Weight::Bold,
+            ..Default::default()
+        })
+        .color(theme::TEXT_PRIMARY);
+
+    let badge_active = Container::new(
+        Text::new("320 kbps (Very High)")
+            .size(12)
+            .font(iced::Font {
+                weight: iced::font::Weight::Bold,
+                ..Default::default()
+            })
+            .color(theme::ACCENT),
+    )
+    .padding([6, 12])
+    .style(|_theme: &Theme| container::Style {
+        background: Some(Background::Color(Color {
+            r: theme::ACCENT.r,
+            g: theme::ACCENT.g,
+            b: theme::ACCENT.b,
+            a: 0.15,
+        })),
+        border: Border {
+            color: theme::ACCENT,
+            width: 1.0,
+            radius: theme::RADIUS_PILL.into(),
+        },
+        ..Default::default()
+    });
+
+    let badge_enabled = Container::new(
+        Text::new("Enabled")
+            .size(12)
+            .font(iced::Font {
+                weight: iced::font::Weight::Bold,
+                ..Default::default()
+            })
+            .color(theme::COLOR_SUCCESS),
+    )
+    .padding([6, 12])
+    .style(|_theme: &Theme| container::Style {
+        background: Some(Background::Color(Color {
+            r: theme::COLOR_SUCCESS.r,
+            g: theme::COLOR_SUCCESS.g,
+            b: theme::COLOR_SUCCESS.b,
+            a: 0.15,
+        })),
+        border: Border {
+            color: theme::COLOR_SUCCESS,
+            width: 1.0,
+            radius: theme::RADIUS_PILL.into(),
+        },
+        ..Default::default()
+    });
+
+    let path_box = Container::new(
+        Text::new("/home/elgena/Music")
+            .size(13)
+            .color(theme::TEXT_PRIMARY),
+    )
+    .padding([8, 14])
+    .style(|_theme: &Theme| container::Style {
+        background: Some(Background::Color(theme::SURFACE_HOVER)),
+        border: Border {
+            color: theme::BORDER_SUBTLE,
+            width: 1.0,
+            radius: theme::RADIUS_MD.into(),
+        },
+        ..Default::default()
+    });
+
+    let main_col = Column::new()
+        .spacing(24)
+        .push(header)
+        .push(section_title("Audio & Streaming Quality"))
+        .push(setting_row(
+            "Streaming Quality",
+            "Highest quality audio streaming available (320 kbps Vorbis for Premium).",
+            badge_active.into(),
+        ))
+        .push(setting_row(
+            "Audio Normalization",
+            "Set the same volume level for all tracks during playback.",
+            badge_enabled.into(),
+        ))
+        .push(section_title("Audio Effects & Crossfade"))
+        .push(setting_row(
+            "Crossfade",
+            "Allows tracks to crossfade into each other seamlessly.",
+            badge_enabled.into(),
+        ))
+        .push(section_title("Local Files"))
+        .push(setting_row(
+            "Show Local Files",
+            "Scan and display audio files from your local computer storage.",
+            badge_enabled.into(),
+        ))
+        .push(setting_row(
+            "Local Music Directory",
+            "Folder path where your local music files (.mp3, .flac, .ogg, .wav) are located.",
+            path_box.into(),
+        ))
+        .push(section_title("Spotify Connect & Devices"))
+        .push(setting_row(
+            "Spotify Connect",
+            "Control playback across your phone, tablet, and web player.",
+            badge_enabled.into(),
+        ));
+
+    Scrollable::new(
+        Container::new(main_col)
+            .width(Length::Fill)
+            .padding(32)
+            .style(|_theme: &Theme| container::Style {
+                background: Some(Background::Color(theme::SURFACE_MAIN)),
+                border: Border {
+                    radius: theme::RADIUS_LG.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+    )
+    .into()
 }
