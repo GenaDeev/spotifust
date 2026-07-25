@@ -969,6 +969,7 @@ fn view_main_content<'a>(
         NavigationItem::Home => "Good evening",
         NavigationItem::Search => "Search",
         NavigationItem::Library => "Your Library",
+        NavigationItem::Settings => "Settings",
     };
 
     let header = Text::new(title_text)
@@ -2405,7 +2406,7 @@ fn render_skeleton_rows<'a>(count: usize) -> Element<'a, Message> {
     col.into()
 }
 
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_lines, clippy::items_after_statements)]
 fn view_settings_page<'a>() -> Element<'a, Message> {
     fn setting_row<'a>(
         title: &'static str,

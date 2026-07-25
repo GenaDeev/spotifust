@@ -350,25 +350,21 @@ impl App {
 
                 let spotify_arc = Arc::new(*spotify);
 
-                let cached_playlists =
-                    crate::api::cache::DiskMetadataCache::load::<Vec<crate::api::playlist::PlaylistSummary>>(
-                        "user_playlists",
-                    )
-                    .unwrap_or_default();
-                let cached_albums =
-                    crate::api::cache::DiskMetadataCache::load::<Vec<crate::api::album::AlbumSummary>>(
-                        "user_albums",
-                    )
-                    .unwrap_or_default();
-                let cached_top_tracks =
-                    crate::api::cache::DiskMetadataCache::load::<Vec<crate::api::tracks::TopTrack>>(
-                        "user_top_tracks",
-                    )
-                    .unwrap_or_default();
-                let cached_profile =
-                    crate::api::cache::DiskMetadataCache::load::<crate::api::user::UserProfile>(
-                        "user_profile",
-                    );
+                let cached_playlists = crate::api::cache::DiskMetadataCache::load::<
+                    Vec<crate::api::playlist::PlaylistSummary>,
+                >("user_playlists")
+                .unwrap_or_default();
+                let cached_albums = crate::api::cache::DiskMetadataCache::load::<
+                    Vec<crate::api::album::AlbumSummary>,
+                >("user_albums")
+                .unwrap_or_default();
+                let cached_top_tracks = crate::api::cache::DiskMetadataCache::load::<
+                    Vec<crate::api::tracks::TopTrack>,
+                >("user_top_tracks")
+                .unwrap_or_default();
+                let cached_profile = crate::api::cache::DiskMetadataCache::load::<
+                    crate::api::user::UserProfile,
+                >("user_profile");
 
                 self.state = AppState::Main {
                     nav_item: NavigationItem::Home,
@@ -467,7 +463,8 @@ impl App {
             Message::UserPlaylistsFetched(res) => {
                 let mut tasks = Vec::new();
                 if let Ok(playlists) = res {
-                    let _ = crate::api::cache::DiskMetadataCache::save("user_playlists", &playlists);
+                    let _ =
+                        crate::api::cache::DiskMetadataCache::save("user_playlists", &playlists);
                     if let AppState::Main {
                         user_playlists,
                         loaded_images,
