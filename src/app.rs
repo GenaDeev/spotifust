@@ -103,6 +103,20 @@ pub struct SelectedPlaylistState {
     pub is_loading: bool,
 }
 
+#[derive(Debug, Clone)]
+pub enum ContextMenuTarget {
+    Track(TrackInfo),
+    Album(crate::api::album::AlbumSummary),
+    Artist(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct ContextMenuState {
+    pub target: ContextMenuTarget,
+    pub position_x: f32,
+    pub position_y: f32,
+}
+
 #[allow(clippy::large_enum_variant)]
 pub enum AppState {
     Login {
@@ -124,6 +138,7 @@ pub enum AppState {
         selected_playlist: Option<SelectedPlaylistState>,
         selected_album: Option<SelectedAlbumState>,
         play_queue: Vec<TrackInfo>,
+        active_context_menu: Option<ContextMenuState>,
         loaded_images: std::collections::HashMap<String, iced::widget::image::Handle>,
         spotify_client: Option<Arc<rspotify::AuthCodePkceSpotify>>,
         sidebar_width: f32,
@@ -188,6 +203,12 @@ pub enum Message {
     ToggleShuffle,
     ToggleRepeat,
     AddToQueue(TrackInfo),
+    OpenContextMenu {
+        target: ContextMenuTarget,
+        x: f32,
+        y: f32,
+    },
+    CloseContextMenu,
     // Mock UI Actions
     MockAction,
     // Error Actions
@@ -410,6 +431,7 @@ impl App {
                     selected_playlist: None,
                     selected_album: None,
                     play_queue: Vec::new(),
+                    active_context_menu: None,
                     loaded_images: std::collections::HashMap::new(),
                     spotify_client: Some(Arc::clone(&spotify_arc)),
                     sidebar_width: sw,
@@ -1261,6 +1283,30 @@ impl App {
                 }
                 Task::none()
             }
+            Message::OpenContextMenu { target, x, y } => {
+                if let AppState::Main {
+                    active_context_menu,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = Some(ContextMenuState {
+                        target,
+                        position_x: x,
+                        position_y: y,
+                    });
+                }
+                Task::none()
+            }
+            Message::CloseContextMenu => {
+                if let AppState::Main {
+                    active_context_menu,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = None;
+                }
+                Task::none()
+            }
             Message::StartSidebarDrag => {
                 if let AppState::Main {
                     dragging_sidebar, ..
@@ -1364,6 +1410,7 @@ impl App {
                 selected_album,
                 loaded_images,
                 window_width,
+                active_context_menu,
                 ..
             } => crate::ui::main_layout::view(
                 nav_item,
@@ -1383,6 +1430,7 @@ impl App {
                 selected_album.as_ref(),
                 loaded_images,
                 *window_width,
+                active_context_menu.as_ref(),
             ),
         };
 
