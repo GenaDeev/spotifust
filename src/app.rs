@@ -123,6 +123,7 @@ pub enum AppState {
         sidebar_filter: SidebarFilter,
         selected_playlist: Option<SelectedPlaylistState>,
         selected_album: Option<SelectedAlbumState>,
+        play_queue: Vec<TrackInfo>,
         loaded_images: std::collections::HashMap<String, iced::widget::image::Handle>,
         spotify_client: Option<Arc<rspotify::AuthCodePkceSpotify>>,
         sidebar_width: f32,
@@ -186,6 +187,7 @@ pub enum Message {
     ToggleMute,
     ToggleShuffle,
     ToggleRepeat,
+    AddToQueue(TrackInfo),
     // Mock UI Actions
     MockAction,
     // Error Actions
@@ -407,6 +409,7 @@ impl App {
                     sidebar_filter: SidebarFilter::All,
                     selected_playlist: None,
                     selected_album: None,
+                    play_queue: Vec::new(),
                     loaded_images: std::collections::HashMap::new(),
                     spotify_client: Some(Arc::clone(&spotify_arc)),
                     sidebar_width: sw,
@@ -1249,6 +1252,12 @@ impl App {
                         RepeatMode::Context => RepeatMode::One,
                         RepeatMode::One => RepeatMode::Off,
                     };
+                }
+                Task::none()
+            }
+            Message::AddToQueue(track) => {
+                if let AppState::Main { play_queue, .. } = &mut self.state {
+                    play_queue.push(track);
                 }
                 Task::none()
             }

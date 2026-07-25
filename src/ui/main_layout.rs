@@ -742,7 +742,16 @@ fn view_main_content<'a>(
                             .color(theme::TEXT_SECONDARY)
                             .width(Length::Fixed(60.0)),
                     )
-                    .push(icon_button_plain(Icon::Queue, Message::MockAction));
+                    .push(icon_button_plain(
+                        Icon::Queue,
+                        Message::AddToQueue(crate::app::TrackInfo {
+                            title: track.title.clone(),
+                            artist: track.artist.clone(),
+                            album: track.album.clone(),
+                            duration_ms: track.duration_ms,
+                            image_url: track.image_url.clone(),
+                        }),
+                    ));
 
                 let track_item = Button::new(
                     Container::new(track_row)

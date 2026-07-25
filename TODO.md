@@ -96,7 +96,7 @@
 - [x] Display the current queue in a slide-out panel
 - [x] Implement Shuffle mode: randomise queue order and persist the shuffle seed
 - [x] Implement Repeat modes: No Repeat, Repeat Queue, Repeat One
-- [ ] Implement "Add to queue" action from track context menus
+- [x] Implement "Add to queue" action from track context menus
 - [ ] Spotify Connect: Full bi-directional Spotify Connect integration for remote control and device sync
 - [ ] Crossfade: Smooth audio crossfade between tracks (configurable duration in Settings)
 
