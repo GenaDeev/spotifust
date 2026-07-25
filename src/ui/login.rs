@@ -76,16 +76,8 @@ pub fn view<'a>(
                 Row::new()
                     .align_y(Alignment::Center)
                     .spacing(8)
-                    .push(
-                        Text::new("⚠")
-                            .size(14)
-                            .color(theme::COLOR_ERROR),
-                    )
-                    .push(
-                        Text::new(err)
-                            .color(theme::COLOR_ERROR)
-                            .size(13),
-                    ),
+                    .push(Text::new("⚠").size(14).color(theme::COLOR_ERROR))
+                    .push(Text::new(err).color(theme::COLOR_ERROR).size(13)),
             )
             .padding([12, 20])
             .style(|_theme: &Theme| iced::widget::container::Style {

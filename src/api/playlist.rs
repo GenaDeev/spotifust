@@ -124,7 +124,8 @@ pub async fn fetch_playlist_tracks(
                         title: full_track.name,
                         artist,
                         album: full_track.album.name,
-                        duration_ms: full_track.duration.as_millis() as u32,
+                        duration_ms: u32::try_from(full_track.duration.num_milliseconds())
+                            .unwrap_or(0),
                         uri,
                         image_url,
                         is_local,
@@ -171,8 +172,10 @@ mod tests {
             duration_ms: 212_000,
             uri: "spotify:track:tr_1".to_string(),
             image_url: None,
+            is_local: false,
         };
         assert_eq!(t.title, "Resonance");
         assert_eq!(t.duration_ms, 212_000);
+        assert!(!t.is_local);
     }
 }
