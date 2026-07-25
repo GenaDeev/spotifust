@@ -13,6 +13,12 @@ pub struct LyricsData {
     pub lines: Vec<SyncedLyricLine>,
 }
 
+#[derive(serde::Deserialize)]
+struct LrcLibResponse {
+    synced_lyrics: Option<String>,
+    plain_lyrics: Option<String>,
+}
+
 /// Fetches synchronized lyrics for a track from LRCLIB API.
 #[allow(clippy::missing_errors_doc)]
 pub async fn fetch_lyrics(track_name: &str, artist_name: &str) -> Result<LyricsData, AppError> {
@@ -31,12 +37,6 @@ pub async fn fetch_lyrics(track_name: &str, artist_name: &str) -> Result<LyricsD
 
     if !res.status().is_success() {
         return Err(AppError::Network("Lyrics not found".to_string()));
-    }
-
-    #[derive(serde::Deserialize)]
-    struct LrcLibResponse {
-        synced_lyrics: Option<String>,
-        plain_lyrics: Option<String>,
     }
 
     let body: LrcLibResponse = res
@@ -63,8 +63,9 @@ pub async fn fetch_lyrics(track_name: &str, artist_name: &str) -> Result<LyricsD
         }
     } else if let Some(plain) = body.plain_lyrics {
         for (idx, line) in plain.lines().enumerate() {
+            let timestamp_ms = u32::try_from(idx * 3000).unwrap_or(u32::MAX);
             lines.push(SyncedLyricLine {
-                timestamp_ms: (idx * 3000) as u32,
+                timestamp_ms,
                 text: line.to_string(),
             });
         }

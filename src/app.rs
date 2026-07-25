@@ -369,6 +369,8 @@ impl App {
                     current_track_uri: None,
                     is_muted: false,
                     last_volume: 0.8,
+                    is_shuffled: false,
+                    repeat_mode: RepeatMode::Off,
                 };
 
                 let (sw, rw) = load_layout();
@@ -1231,6 +1233,22 @@ impl App {
                             let _ = session.cmd_tx.try_send(PlayerCommand::Volume(0.0));
                         }
                     }
+                }
+                Task::none()
+            }
+            Message::ToggleShuffle => {
+                if let AppState::Main { playback, .. } = &mut self.state {
+                    playback.is_shuffled = !playback.is_shuffled;
+                }
+                Task::none()
+            }
+            Message::ToggleRepeat => {
+                if let AppState::Main { playback, .. } = &mut self.state {
+                    playback.repeat_mode = match playback.repeat_mode {
+                        RepeatMode::Off => RepeatMode::Context,
+                        RepeatMode::Context => RepeatMode::One,
+                        RepeatMode::One => RepeatMode::Off,
+                    };
                 }
                 Task::none()
             }
