@@ -79,7 +79,7 @@
 - [x] Remove "Explore Premium" / "Explorar Premium" button from sidebar and navigation
 - [x] Add waveform or animated equalizer bars to the Now Playing area during active playback
 - [x] Implement smooth progress bar animation that interpolates position between tick updates
-- [x] Add context menus (right-click) on tracks and playlist items (Add to queue, Go to album, etc.)
+- [ ] Add context menus (right-click) on tracks, albums, and artists with distinct tailored options (Add to queue, Go to artist, Go to album, Share link, Copy URI)
 - [x] Implement a proper volume slider that covers the full 0–100% range with a mute toggle
 - [x] Add keyboard shortcuts for Play/Pause (Space), Skip (→/←), Volume (↑/↓)
 - [x] Implement a mini-player / compact mode for when the window is resized to small dimensions
@@ -103,7 +103,7 @@
 ### Phase 7: System Integration & Local Files
 
 - [x] Add application window and taskbar/dock icon support for Windows, macOS, and Linux distros
-- [x] Add a system tray icon with Play/Pause, Skip, and Quit actions
+- [ ] Add 100% functional native System Tray (Systray) icon for Linux, macOS, and Windows with minimize-to-tray and playback menu (Play/Pause, Skip, Show/Hide, Quit)
 - [x] Register global media key bindings (MPRIS on Linux, MediaSession on Windows/macOS)
 - [x] Implement MPRIS2 D-Bus interface on Linux for desktop environment integration
 - [x] Local Files: Implement local audio file scanner and playback for custom local music directory path
