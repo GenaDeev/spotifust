@@ -72,6 +72,8 @@ pub struct PlaylistTrack {
     pub uri: String,
     pub image_url: Option<String>,
     pub is_local: bool,
+    pub is_local_available: bool,
+    pub local_path: Option<std::path::PathBuf>,
 }
 
 /// Fetches track listings on demand for a specific playlist ID.
@@ -129,6 +131,8 @@ pub async fn fetch_playlist_tracks(
                         uri,
                         image_url,
                         is_local,
+                        is_local_available: !is_local,
+                        local_path: None,
                     });
                 }
             }
@@ -173,6 +177,8 @@ mod tests {
             uri: "spotify:track:tr_1".to_string(),
             image_url: None,
             is_local: false,
+            is_local_available: true,
+            local_path: None,
         };
         assert_eq!(t.title, "Resonance");
         assert_eq!(t.duration_ms, 212_000);
