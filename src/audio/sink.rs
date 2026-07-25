@@ -38,13 +38,18 @@ impl Sink for MpscSink {
     }
 }
 
-pub fn spawn_rodio_thread(receiver: Receiver<Vec<f32>>, rodio_sink: std::sync::Arc<RodioSink>) {
+pub fn spawn_rodio_thread(
+    receiver: Receiver<Vec<f32>>,
+    rodio_sink: std::sync::Arc<RodioSink>,
+    stream: rodio::OutputStream,
+) {
     std::thread::spawn(move || {
-        let _stream = rodio::OutputStreamBuilder::from_default_device()
-            .and_then(rodio::OutputStreamBuilder::open_stream);
+        let _stream_guard = stream;
         while let Ok(samples) = receiver.recv() {
-            let source = SamplesBuffer::new(2, 44100, samples);
-            rodio_sink.append(source);
+            if !samples.is_empty() {
+                let source = SamplesBuffer::new(2, 44100, samples);
+                rodio_sink.append(source);
+            }
         }
     });
 }
