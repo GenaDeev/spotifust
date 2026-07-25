@@ -107,6 +107,37 @@ impl<K: Eq + std::hash::Hash + Clone, V: Clone> MetadataCache<K, V> {
     }
 }
 
+/// Disk-persistent JSON metadata cache manager.
+pub struct DiskMetadataCache;
+
+impl DiskMetadataCache {
+    /// Saves a serializable data structure to disk cache under the given key name.
+    pub fn save<T: serde::Serialize>(key: &str, data: &T) -> Result<(), AppError> {
+        let dir = get_cache_dir().join("metadata");
+        fs::create_dir_all(&dir)
+            .map_err(|e| AppError::Cache(format!("Failed to create metadata cache dir: {e}")))?;
+
+        let file_path = dir.join(format!("{key}.json"));
+        let json_str = serde_json::to_string(data)
+            .map_err(|e| AppError::Cache(format!("Failed to serialize cache key {key}: {e}")))?;
+
+        fs::write(file_path, json_str)
+            .map_err(|e| AppError::Cache(format!("Failed to write metadata cache key {key}: {e}")))?;
+
+        Ok(())
+    }
+
+    /// Loads a deserializable data structure from disk cache under the given key name.
+    pub fn load<T: serde::de::DeserializeOwned>(key: &str) -> Option<T> {
+        let file_path = get_cache_dir().join("metadata").join(format!("{key}.json"));
+        if !file_path.exists() {
+            return None;
+        }
+        let json_str = fs::read_to_string(file_path).ok()?;
+        serde_json::from_str(&json_str).ok()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -132,5 +163,15 @@ mod tests {
             Some("The Midnight".to_string())
         );
         assert_eq!(cache.get(&"unknown".to_string()), None);
+    }
+
+    #[test]
+    fn test_disk_metadata_cache() {
+        let key = "test_key_spotifust";
+        let data = vec!["item1".to_string(), "item2".to_string()];
+        assert!(DiskMetadataCache::save(key, &data).is_ok());
+
+        let loaded: Option<Vec<String>> = DiskMetadataCache::load(key);
+        assert_eq!(loaded, Some(data));
     }
 }
