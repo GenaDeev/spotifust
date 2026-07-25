@@ -79,19 +79,29 @@ pub fn view<'a>(
                     .push(
                         Text::new("⚠")
                             .size(14)
-                            .color(Color::from_rgb8(255, 100, 100)),
+                            .color(theme::COLOR_ERROR),
                     )
                     .push(
                         Text::new(err)
-                            .color(Color::from_rgb8(255, 120, 120))
+                            .color(theme::COLOR_ERROR)
                             .size(13),
                     ),
             )
             .padding([12, 20])
             .style(|_theme: &Theme| iced::widget::container::Style {
-                background: Some(Background::Color(Color::from_rgba8(255, 80, 80, 0.12))),
+                background: Some(Background::Color(Color {
+                    r: theme::COLOR_ERROR.r,
+                    g: theme::COLOR_ERROR.g,
+                    b: theme::COLOR_ERROR.b,
+                    a: 0.12,
+                })),
                 border: Border {
-                    color: Color::from_rgba8(255, 80, 80, 0.4),
+                    color: Color {
+                        r: theme::COLOR_ERROR.r,
+                        g: theme::COLOR_ERROR.g,
+                        b: theme::COLOR_ERROR.b,
+                        a: 0.4,
+                    },
                     width: 1.0,
                     radius: theme::RADIUS_MD.into(),
                 },
