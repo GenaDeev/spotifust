@@ -58,14 +58,8 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
         ..PlayerConfig::default()
     };
 
-    let stream = rodio::OutputStreamBuilder::from_default_device()
-        .map_err(|e| AppError::Playback(format!("Failed to get default audio device: {e}")))?
-        .open_stream()
-        .map_err(|e| AppError::Playback(format!("Failed to open audio stream: {e}")))?;
-    let rodio_sink = Arc::new(rodio::Sink::connect_new(stream.mixer()));
-
     let (audio_tx, audio_rx) = std::sync::mpsc::sync_channel::<Vec<f32>>(8);
-    crate::audio::sink::spawn_rodio_thread(audio_rx, Arc::clone(&rodio_sink), stream);
+    let rodio_sink = crate::audio::sink::spawn_rodio_thread(audio_rx)?;
 
     let player = Player::new(
         player_config,

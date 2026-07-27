@@ -1,3 +1,4 @@
+use crate::error::AppError;
 use librespot::playback::audio_backend::{Sink, SinkError, SinkResult};
 use librespot::playback::convert::Converter;
 use librespot::playback::decoder::AudioPacket;
@@ -40,10 +41,28 @@ impl Sink for MpscSink {
 
 pub fn spawn_rodio_thread(
     receiver: Receiver<Vec<f32>>,
-    rodio_sink: std::sync::Arc<RodioSink>,
-    stream: rodio::OutputStream,
-) {
+) -> Result<std::sync::Arc<RodioSink>, AppError> {
+    let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
+        let stream = match rodio::OutputStreamBuilder::from_default_device()
+            .map_err(|e| AppError::Playback(format!("Failed to get default audio device: {e}")))
+            .and_then(|builder| {
+                builder
+                    .open_stream()
+                    .map_err(|e| AppError::Playback(format!("Failed to open audio stream: {e}")))
+            }) {
+            Ok(s) => s,
+            Err(err) => {
+                let _ = tx.send(Err(err));
+                return;
+            }
+        };
+
+        let rodio_sink = std::sync::Arc::new(RodioSink::connect_new(stream.mixer()));
+        if tx.send(Ok(std::sync::Arc::clone(&rodio_sink))).is_err() {
+            return;
+        }
+
         let _stream_guard = stream;
         while let Ok(samples) = receiver.recv() {
             if !samples.is_empty() {
@@ -52,6 +71,10 @@ pub fn spawn_rodio_thread(
             }
         }
     });
+
+    rx.recv().map_err(|_| {
+        AppError::Playback("Audio thread exited before initialization".into())
+    })?
 }
 
 #[cfg(test)]
