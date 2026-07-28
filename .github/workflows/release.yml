@@ -136,11 +136,9 @@ jobs:
           cp assets/spotifust.png AppDir/usr/share/pixmaps/
           cp assets/spotifust.png AppDir/usr/share/icons/hicolor/256x256/apps/spotifust.png
 
-          cat << 'EOF' > AppDir/AppRun
-#!/bin/sh
-HERE="$(dirname "$(readlink -f "${0}")")"
-exec "${HERE}/usr/bin/spotifust" "$@"
-EOF
+          echo '#!/bin/sh' > AppDir/AppRun
+          echo 'HERE="$(dirname "$(readlink -f "${0}")")"' >> AppDir/AppRun
+          echo 'exec "${HERE}/usr/bin/spotifust" "$@"' >> AppDir/AppRun
           chmod +x AppDir/AppRun
 
           if [ "${{ matrix.arch }}" = "x86_64" ]; then
@@ -175,26 +173,7 @@ EOF
           cp target/${{ matrix.target }}/release/spotifust "$APP_DIR/MacOS/"
           cp assets/spotifust.icns "$APP_DIR/Resources/spotifust.icns" 2>/dev/null || true
           
-          cat <<EOF > "$APP_DIR/Info.plist"
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>spotifust</string>
-    <key>CFBundleIconFile</key>
-    <string>spotifust.icns</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.spotifust.app</string>
-    <key>CFBundleName</key>
-    <string>Spotifust</string>
-    <key>CFBundleVersion</key>
-    <string>${APP_VERSION}</string>
-    <key>CFBundleShortVersionString</key>
-    <string>${APP_VERSION}</string>
-</dict>
-</plist>
-EOF
+          printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n    <key>CFBundleExecutable</key>\n    <string>spotifust</string>\n    <key>CFBundleIconFile</key>\n    <string>spotifust.icns</string>\n    <key>CFBundleIdentifier</key>\n    <string>com.spotifust.app</string>\n    <key>CFBundleName</key>\n    <string>Spotifust</string>\n    <key>CFBundleVersion</key>\n    <string>%s</string>\n    <key>CFBundleShortVersionString</key>\n    <string>%s</string>\n</dict>\n</plist>\n' "$APP_VERSION" "$APP_VERSION" > "$APP_DIR/Info.plist"
           
           if [ -n "$MACOS_CERT_BASE64" ]; then
               echo "Signing macOS App Bundle..."
@@ -320,7 +299,6 @@ EOF
           mkdir -p "$APP_DIR/MacOS"
           mkdir -p "$APP_DIR/Resources"
 
-          # Extract binaries from DMGs or staging
           hdiutil attach macos-x86_64/spotifust-macos-x86_64-*.dmg -mountpoint /Volumes/SpotifustX86
           hdiutil attach macos-aarch64/spotifust-macos-aarch64-*.dmg -mountpoint /Volumes/SpotifustARM
 
@@ -331,26 +309,7 @@ EOF
 
           cp assets/spotifust.icns "$APP_DIR/Resources/spotifust.icns" 2>/dev/null || true
 
-          cat <<EOF > "$APP_DIR/Info.plist"
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>spotifust</string>
-    <key>CFBundleIconFile</key>
-    <string>spotifust.icns</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.spotifust.app</string>
-    <key>CFBundleName</key>
-    <string>Spotifust</string>
-    <key>CFBundleVersion</key>
-    <string>${APP_VERSION}</string>
-    <key>CFBundleShortVersionString</key>
-    <string>${APP_VERSION}</string>
-</dict>
-</plist>
-EOF
+          printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n    <key>CFBundleExecutable</key>\n    <string>spotifust</string>\n    <key>CFBundleIconFile</key>\n    <string>spotifust.icns</string>\n    <key>CFBundleIdentifier</key>\n    <string>com.spotifust.app</string>\n    <key>CFBundleName</key>\n    <string>Spotifust</string>\n    <key>CFBundleVersion</key>\n    <string>%s</string>\n    <key>CFBundleShortVersionString</key>\n    <string>%s</string>\n</dict>\n</plist>\n' "$APP_VERSION" "$APP_VERSION" > "$APP_DIR/Info.plist"
 
           if [ -n "$MACOS_CERT_BASE64" ]; then
               echo "Signing Universal App..."
