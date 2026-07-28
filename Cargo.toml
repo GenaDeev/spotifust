@@ -38,6 +38,14 @@ assets = [
     ["assets/spotifust.png", "usr/share/pixmaps/", "644"]
 ]
 
+[package.metadata.rpm]
+package = "spotifust"
+assets = [
+    { source = "target/release/spotifust", dest = "/usr/bin/spotifust", mode = "755" },
+    { source = "assets/spotifust.desktop", dest = "/usr/share/applications/spotifust.desktop", mode = "644" },
+    { source = "assets/spotifust.png", dest = "/usr/share/pixmaps/spotifust.png", mode = "644" }
+]
+
 [profile.release]
 opt-level = "s"
 lto = true

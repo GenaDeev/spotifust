@@ -4,13 +4,14 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   build-release:
-    name: Build Release on ${{ matrix.os }}
+    name: Build Release on ${{ matrix.os }} (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -19,15 +20,27 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             platform: linux-x86_64
+            arch: x86_64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            platform: linux-aarch64
+            arch: aarch64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             platform: windows-x86_64
+            arch: x86_64
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            platform: windows-aarch64
+            arch: aarch64
           - os: macos-13
             target: x86_64-apple-darwin
             platform: macos-x86_64
+            arch: x86_64
           - os: macos-latest
             target: aarch64-apple-darwin
             platform: macos-aarch64
+            arch: aarch64
 
     steps:
       - name: Checkout repository
@@ -38,12 +51,24 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
+      - name: Install Linux dependencies (x86_64)
+        if: runner.os == 'Linux' && matrix.target == 'x86_64-unknown-linux-gnu'
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+
+      - name: Install Linux dependencies (aarch64)
+        if: runner.os == 'Linux' && matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libasound2-dev:arm64 pkg-config
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig" >> $GITHUB_ENV
+          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
 
       - name: Cache cargo registry and build
         uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
 
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
@@ -75,22 +100,62 @@ jobs:
       - name: Package binary (Linux)
         if: runner.os == 'Linux'
         run: |
-          cargo install cargo-deb
-          cargo deb --target ${{ matrix.target }}
-          
+          cargo install cargo-deb --quiet || true
+          cargo install cargo-generate-rpm --quiet || true
+
           ARTIFACT="spotifust-${{ matrix.platform }}-${{ steps.artifact.outputs.version }}"
+          
+          mkdir -p target/release
+          cp target/${{ matrix.target }}/release/spotifust target/release/spotifust
+
+          # 1. Tarball (.tar.gz)
           mkdir -p "staging/${ARTIFACT}"
-          cp "target/${{ matrix.target }}/release/spotifust" "staging/${ARTIFACT}/"
+          cp "target/release/spotifust" "staging/${ARTIFACT}/"
           cp "install.sh" "staging/${ARTIFACT}/"
           cp -r "assets" "staging/${ARTIFACT}/"
-          
           cd staging
           tar -czvf "../${ARTIFACT}.tar.gz" "${ARTIFACT}"
           cd ..
-          
+
+          # 2. Debian (.deb)
+          cargo deb --no-build --target ${{ matrix.target }}
           cp target/${{ matrix.target }}/debian/*.deb "${ARTIFACT}.deb"
+
+          # 3. RedHat/Fedora (.rpm)
+          cargo generate-rpm --target ${{ matrix.target }}
+          cp target/${{ matrix.target }}/generate-rpm/*.rpm "${ARTIFACT}.rpm" 2>/dev/null || cp target/generate-rpm/*.rpm "${ARTIFACT}.rpm"
+
+          # 4. AppImage
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/pixmaps
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          cp target/release/spotifust AppDir/usr/bin/spotifust
+          cp assets/spotifust.desktop AppDir/
+          cp assets/spotifust.png AppDir/
+          cp assets/spotifust.png AppDir/usr/share/pixmaps/
+          cp assets/spotifust.png AppDir/usr/share/icons/hicolor/256x256/apps/spotifust.png
+
+          cat << 'EOF' > AppDir/AppRun
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+exec "${HERE}/usr/bin/spotifust" "$@"
+EOF
+          chmod +x AppDir/AppRun
+
+          if [ "${{ matrix.arch }}" = "x86_64" ]; then
+            wget -q https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage -O appimagetool
+          else
+            wget -q https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-aarch64.AppImage -O appimagetool
+          fi
+          chmod +x appimagetool
+          ARCH=${{ matrix.arch }} ./appimagetool AppDir "${ARTIFACT}.AppImage"
+
+          # Checksums
           sha256sum "${ARTIFACT}.tar.gz" > "${ARTIFACT}.tar.gz.sha256"
           sha256sum "${ARTIFACT}.deb" > "${ARTIFACT}.deb.sha256"
+          sha256sum "${ARTIFACT}.rpm" > "${ARTIFACT}.rpm.sha256"
+          sha256sum "${ARTIFACT}.AppImage" > "${ARTIFACT}.AppImage.sha256"
 
       - name: Package binary (macOS)
         if: runner.os == 'macOS'
@@ -108,26 +173,28 @@ jobs:
           mkdir -p "$APP_DIR/MacOS"
           mkdir -p "$APP_DIR/Resources"
           cp target/${{ matrix.target }}/release/spotifust "$APP_DIR/MacOS/"
+          cp assets/spotifust.icns "$APP_DIR/Resources/spotifust.icns" 2>/dev/null || true
           
-          # Minimal Info.plist
           cat <<EOF > "$APP_DIR/Info.plist"
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleExecutable</key>
-              <string>spotifust</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.spotifust.app</string>
-              <key>CFBundleName</key>
-              <string>Spotifust</string>
-              <key>CFBundleVersion</key>
-              <string>${APP_VERSION}</string>
-              <key>CFBundleShortVersionString</key>
-              <string>${APP_VERSION}</string>
-          </dict>
-          </plist>
-          EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>spotifust</string>
+    <key>CFBundleIconFile</key>
+    <string>spotifust.icns</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.spotifust.app</string>
+    <key>CFBundleName</key>
+    <string>Spotifust</string>
+    <key>CFBundleVersion</key>
+    <string>${APP_VERSION}</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${APP_VERSION}</string>
+</dict>
+</plist>
+EOF
           
           if [ -n "$MACOS_CERT_BASE64" ]; then
               echo "Signing macOS App Bundle..."
@@ -146,7 +213,6 @@ jobs:
               /usr/bin/codesign --force -s "$CERT_ID" --options runtime "$APP_NAME.app"
           fi
           
-          # Create DMG
           hdiutil create -volname "${APP_NAME}" -srcfolder "${APP_NAME}.app" -ov -format UDZO "${ARTIFACT}.dmg"
           
           if [ -n "$MACOS_CERT_BASE64" ]; then
@@ -156,6 +222,8 @@ jobs:
               xcrun stapler staple "${ARTIFACT}.dmg"
           fi
 
+          shasum -a 256 "${ARTIFACT}.dmg" > "${ARTIFACT}.dmg.sha256"
+
       - name: Package binary (Windows)
         if: runner.os == 'Windows'
         env:
@@ -164,24 +232,44 @@ jobs:
         run: |
           $Artifact = "spotifust-${{ matrix.platform }}-${{ steps.artifact.outputs.version }}"
           $AppVersion = "${{ steps.artifact.outputs.version }}"
-          dotnet tool install --global wix
+          dotnet tool install --global wix 2>$null
           
+          New-Item -ItemType Directory -Force -Path "target\release"
+          Copy-Item "target\${{ matrix.target }}\release\spotifust.exe" "target\release\spotifust.exe" -Force
+
+          if ([string]::IsNullOrEmpty($env:WIN_CERT_BASE64) -eq $false) {
+              Write-Host "Signing Windows EXE..."
+              $certPath = "cert.pfx"
+              [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WIN_CERT_BASE64))
+              $signtool = (Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" -Recurse | Select-Object -First 1).FullName
+              & $signtool sign /f $certPath /p $env:WIN_CERT_PASSWORD /d "Spotifust" /tr http://timestamp.digicert.com /td sha256 /fd sha256 target\release\spotifust.exe
+              Remove-Item $certPath
+          }
+
+          # 1. MSI Installer
           cd installer
           wix extension add WixToolset.UI.wixext
           wix build -d AppVersion=$AppVersion -acceptEula wix7 -ext WixToolset.UI.wixext -o "..\${Artifact}.msi" spotifust.wxs
           cd ..
-          
+
           if ([string]::IsNullOrEmpty($env:WIN_CERT_BASE64) -eq $false) {
-              Write-Host "Signing Windows MSI and EXE..."
+              Write-Host "Signing Windows MSI..."
               $certPath = "cert.pfx"
               [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WIN_CERT_BASE64))
-              
               $signtool = (Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" -Recurse | Select-Object -First 1).FullName
-              
-              & $signtool sign /f $certPath /p $env:WIN_CERT_PASSWORD /d "Spotifust" /tr http://timestamp.digicert.com /td sha256 /fd sha256 target\${{ matrix.target }}\release\spotifust.exe
               & $signtool sign /f $certPath /p $env:WIN_CERT_PASSWORD /d "Spotifust Setup" /tr http://timestamp.digicert.com /td sha256 /fd sha256 "${Artifact}.msi"
               Remove-Item $certPath
           }
+
+          # 2. ZIP Portable
+          New-Item -ItemType Directory -Force -Path "staging\${Artifact}"
+          Copy-Item "target\release\spotifust.exe" "staging\${Artifact}\" -Force
+          Copy-Item -Recurse "assets" "staging\${Artifact}\assets" -Force
+          Copy-Item "installer\LICENSE.rtf" "staging\${Artifact}\" -Force
+          Compress-Archive -Path "staging\${Artifact}\*" -DestinationPath "${Artifact}.zip" -Force
+
+          Get-FileHash -Algorithm SHA256 "${Artifact}.msi" | Select-Object -ExpandProperty Hash | Out-File -FilePath "${Artifact}.msi.sha256" -Encoding ascii
+          Get-FileHash -Algorithm SHA256 "${Artifact}.zip" | Select-Object -ExpandProperty Hash | Out-File -FilePath "${Artifact}.zip.sha256" -Encoding ascii
 
       - name: Upload packaging artifacts
         uses: actions/upload-artifact@v7
@@ -189,14 +277,117 @@ jobs:
           name: spotifust-${{ matrix.platform }}
           path: |
             *.tar.gz
+            *.deb
+            *.rpm
+            *.AppImage
             *.dmg
             *.msi
-            *.deb
+            *.zip
             *.sha256
+
+  build-macos-universal:
+    name: Build macOS Universal DMG
+    needs: build-release
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Download macOS x86_64 artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: spotifust-macos-x86_64
+          path: macos-x86_64
+
+      - name: Download macOS aarch64 artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: spotifust-macos-aarch64
+          path: macos-aarch64
+
+      - name: Build macOS Universal Binary & DMG
+        env:
+          MACOS_CERT_BASE64: ${{ secrets.MACOS_CERT_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_APPLE_ID: ${{ secrets.MACOS_APPLE_ID }}
+          MACOS_APP_PASSWORD: ${{ secrets.MACOS_APP_PASSWORD }}
+          MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+        run: |
+          APP_VERSION=$(grep '^version' Cargo.toml | head -n 1 | awk -F '"' '{print $2}')
+          ARTIFACT="spotifust-macos-universal-${APP_VERSION}"
+          APP_NAME="Spotifust"
+          APP_DIR="${APP_NAME}.app/Contents"
+          mkdir -p "$APP_DIR/MacOS"
+          mkdir -p "$APP_DIR/Resources"
+
+          # Extract binaries from DMGs or staging
+          hdiutil attach macos-x86_64/spotifust-macos-x86_64-*.dmg -mountpoint /Volumes/SpotifustX86
+          hdiutil attach macos-aarch64/spotifust-macos-aarch64-*.dmg -mountpoint /Volumes/SpotifustARM
+
+          lipo -create /Volumes/SpotifustX86/Spotifust.app/Contents/MacOS/spotifust /Volumes/SpotifustARM/Spotifust.app/Contents/MacOS/spotifust -output "$APP_DIR/MacOS/spotifust"
+          
+          hdiutil detach /Volumes/SpotifustX86
+          hdiutil detach /Volumes/SpotifustARM
+
+          cp assets/spotifust.icns "$APP_DIR/Resources/spotifust.icns" 2>/dev/null || true
+
+          cat <<EOF > "$APP_DIR/Info.plist"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>spotifust</string>
+    <key>CFBundleIconFile</key>
+    <string>spotifust.icns</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.spotifust.app</string>
+    <key>CFBundleName</key>
+    <string>Spotifust</string>
+    <key>CFBundleVersion</key>
+    <string>${APP_VERSION}</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${APP_VERSION}</string>
+</dict>
+</plist>
+EOF
+
+          if [ -n "$MACOS_CERT_BASE64" ]; then
+              echo "Signing Universal App..."
+              echo "$MACOS_CERT_BASE64" | base64 --decode > cert.p12
+              KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+              KEYCHAIN_PASSWORD=$(uuidgen)
+              security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+              security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+              security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+              security import cert.p12 -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+              security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+              CERT_ID=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep "Developer ID Application" | awk '{print $2}')
+              /usr/bin/codesign --force -s "$CERT_ID" --options runtime "$APP_NAME.app"
+          fi
+
+          hdiutil create -volname "${APP_NAME}" -srcfolder "${APP_NAME}.app" -ov -format UDZO "${ARTIFACT}.dmg"
+
+          if [ -n "$MACOS_CERT_BASE64" ]; then
+              echo "Signing and Notarizing Universal DMG..."
+              /usr/bin/codesign --force -s "$CERT_ID" --options runtime "${ARTIFACT}.dmg"
+              xcrun notarytool submit "${ARTIFACT}.dmg" --apple-id "$MACOS_APPLE_ID" --password "$MACOS_APP_PASSWORD" --team-id "$MACOS_TEAM_ID" --wait
+              xcrun stapler staple "${ARTIFACT}.dmg"
+          fi
+
+          shasum -a 256 "${ARTIFACT}.dmg" > "${ARTIFACT}.dmg.sha256"
+
+      - name: Upload Universal artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: spotifust-macos-universal
+          path: |
+            spotifust-macos-universal-*.dmg
+            spotifust-macos-universal-*.dmg.sha256
 
   publish-release:
     name: Publish Release
-    needs: build-release
+    needs: [build-release, build-macos-universal]
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
