@@ -72,9 +72,8 @@ pub fn spawn_rodio_thread(
         }
     });
 
-    rx.recv().map_err(|_| {
-        AppError::Playback("Audio thread exited before initialization".into())
-    })?
+    rx.recv()
+        .map_err(|_| AppError::Playback("Audio thread exited before initialization".into()))?
 }
 
 #[cfg(test)]
