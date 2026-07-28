@@ -1,0 +1,13 @@
+{
+  "config": {
+    "MD013": false,
+    "MD033": false,
+    "MD041": false,
+    "MD042": false
+  },
+  "ignores": [
+    ".agents/**",
+    "target/**",
+    "node_modules/**"
+  ]
+}
