@@ -33,7 +33,7 @@ jobs:
             target: aarch64-pc-windows-msvc
             platform: windows-aarch64
             arch: aarch64
-          - os: macos-13
+          - os: macos-latest
             target: x86_64-apple-darwin
             platform: macos-x86_64
             arch: x86_64
@@ -59,6 +59,15 @@ jobs:
         if: runner.os == 'Linux' && matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo dpkg --add-architecture arm64
+          sudo sed -i 's/Components:/Architectures: amd64\nComponents:/g' /etc/apt/sources.list.d/ubuntu.sources
+          cat << 'EOF' | sudo tee /etc/apt/sources.list.d/arm64-ports.sources
+          Types: deb
+          URIs: http://ports.ubuntu.com/ubuntu-ports/
+          Suites: noble noble-updates noble-backports noble-security
+          Components: main restricted universe multiverse
+          Architectures: arm64
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libasound2-dev:arm64 pkg-config
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
@@ -227,7 +236,7 @@ jobs:
 
           # 1. MSI Installer
           cd installer
-          wix extension add WixToolset.UI.wixext
+          wix extension add WixToolset.UI.wixext -acceptEula wix7
           wix build -d AppVersion=$AppVersion -acceptEula wix7 -ext WixToolset.UI.wixext -o "..\${Artifact}.msi" spotifust.wxs
           cd ..
 

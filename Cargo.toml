@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 description = "A native, fast, and light Spotify desktop client"
+authors = ["GenaDeev <gena@comidolar.com.ar>"]
+repository = "https://github.com/GenaDeev/spotifust"
+keywords = ["spotify", "client", "audio", "iced"]
+categories = ["multimedia::audio"]
 license = "GPL-3.0-only"
 
 [lints.rust]
@@ -38,7 +42,7 @@ assets = [
     ["assets/spotifust.png", "usr/share/pixmaps/", "644"]
 ]
 
-[package.metadata.rpm]
+[package.metadata.generate-rpm]
 package = "spotifust"
 assets = [
     { source = "target/release/spotifust", dest = "/usr/bin/spotifust", mode = "755" },
