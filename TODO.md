@@ -68,12 +68,8 @@
 - [x] Optimize long playlist loading with incremental chunking/streaming or virtualized pagination to avoid UI lag
 - [x] Validate existing token/session before rendering initial screen to eliminate temporary login flicker
 - [x] Achieve near-instant API data loading through aggressive metadata and disk image caching (TTL-based, local disk cache for instant startup render)
-- [x] Add visual "Local Track" badge for unplayable local tracks in playlists owned by playlist creators
-- [ ] Implement Spotify Connect device manager API (`GET /v1/me/player/devices`, `PUT /v1/me/player`) to list active devices and transfer playback session
-- [ ] Implement Liked Songs ("Canciones que te gustan") view & Heart toggle state (`PUT/DELETE /v1/me/tracks`)
-- [ ] Implement Playlist CRUD operations: create playlist (`POST /v1/users/{id}/playlists`), edit details, add/remove tracks via right-click context menu
-- [ ] Implement Follow/Unfollow system for artists and playlists (`PUT/DELETE /v1/me/following`)
-- [ ] Implement Track & Artist Radio / Recommendations endpoint (`GET /v1/recommendations`)
+- [x] Implement local audio file scanner and persistence matching local tracks in playlists
+- [x] Implement Track & Artist Radio / Recommendations endpoint (`GET /v1/recommendations`, "Made for You", "New Releases")
 
 ### Phase 5: UI Design System, Component Polish & Settings Page
 
