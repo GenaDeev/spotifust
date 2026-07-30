@@ -1051,16 +1051,19 @@ fn view_main_content<'a>(
             Vec::new()
         };
 
-    for (idx, (title, img_url, icon, msg)) in items_source.into_iter().enumerate() {
-        let card = quick_card_with_image(title, img_url, loaded_images, icon, msg);
-        if idx < 3 {
-            row_1 = row_1.push(card);
-        } else {
-            row_2 = row_2.push(card);
+    let quick_grid: Element<'a, Message> = if items_source.is_empty() {
+        render_skeleton_quick_grid()
+    } else {
+        for (idx, (title, img_url, icon, msg)) in items_source.into_iter().enumerate() {
+            let card = quick_card_with_image(title, img_url, loaded_images, icon, msg);
+            if idx < 3 {
+                row_1 = row_1.push(card);
+            } else {
+                row_2 = row_2.push(card);
+            }
         }
-    }
-
-    let quick_grid = Column::new().spacing(12).push(row_1).push(row_2);
+        Column::new().spacing(12).push(row_1).push(row_2).into()
+    };
 
     let section_1_header = Row::new()
         .align_y(Alignment::Center)
@@ -1075,12 +1078,8 @@ fn view_main_content<'a>(
         )
         .push(Space::new().width(Length::Fill));
 
-    let section_1_cards = if user_top_tracks.is_empty() {
-        Row::new().push(
-            Text::new("No top tracks available")
-                .size(13)
-                .color(theme::TEXT_SECONDARY),
-        )
+    let section_1_cards: Element<'a, Message> = if user_top_tracks.is_empty() {
+        render_skeleton_cards(5)
     } else {
         let mut row = Row::new().spacing(16);
         for track in user_top_tracks.iter().take(5) {
@@ -1095,7 +1094,7 @@ fn view_main_content<'a>(
                 Message::PlayTrack(uri),
             ));
         }
-        row
+        scroll_row(row)
     };
 
     let section_2_header = Row::new()
@@ -1111,12 +1110,8 @@ fn view_main_content<'a>(
         )
         .push(Space::new().width(Length::Fill));
 
-    let section_2_cards = if user_albums.is_empty() {
-        Row::new().push(
-            Text::new("No saved albums available")
-                .size(13)
-                .color(theme::TEXT_SECONDARY),
-        )
+    let section_2_cards: Element<'a, Message> = if user_albums.is_empty() {
+        render_skeleton_cards(5)
     } else {
         let mut row = Row::new().spacing(16);
         for a in user_albums.iter().take(5) {
@@ -1131,7 +1126,7 @@ fn view_main_content<'a>(
                 Message::SelectAlbum(a_id),
             ));
         }
-        row
+        scroll_row(row)
     };
 
     let scroll_content = Column::new()
@@ -1145,9 +1140,9 @@ fn view_main_content<'a>(
         .push(header)
         .push(quick_grid)
         .push(section_1_header)
-        .push(scroll_row(section_1_cards))
+        .push(section_1_cards)
         .push(section_2_header)
-        .push(scroll_row(section_2_cards));
+        .push(section_2_cards);
 
     let scrollable = thin_scrollable(scroll_content)
         .width(Length::Fill)
@@ -2454,6 +2449,132 @@ fn render_skeleton_rows<'a>(count: usize) -> Element<'a, Message> {
         );
     }
     col.into()
+}
+
+#[allow(clippy::cast_precision_loss)]
+fn render_skeleton_cards<'a>(count: usize) -> Element<'a, Message> {
+    let mut row = Row::new().spacing(16);
+    for i in 0..count {
+        let title_width = 90.0 + (((i * 17) % 40) as f32);
+        let sub_width = 60.0 + (((i * 13) % 30) as f32);
+
+        let card_inner = Column::new()
+            .spacing(10)
+            .push(
+                Container::new(Space::new())
+                    .width(Length::Fixed(140.0))
+                    .height(Length::Fixed(140.0))
+                    .style(|_theme| container::Style {
+                        background: Some(Background::Color(theme::SURFACE_HOVER)),
+                        border: Border {
+                            radius: theme::RADIUS_MD.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }),
+            )
+            .push(
+                Container::new(Space::new())
+                    .width(Length::Fixed(title_width))
+                    .height(Length::Fixed(14.0))
+                    .style(|_theme| container::Style {
+                        background: Some(Background::Color(theme::SURFACE_CARD)),
+                        border: Border {
+                            radius: 4.0.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }),
+            )
+            .push(
+                Container::new(Space::new())
+                    .width(Length::Fixed(sub_width))
+                    .height(Length::Fixed(12.0))
+                    .style(|_theme| container::Style {
+                        background: Some(Background::Color(theme::SURFACE_HOVER)),
+                        border: Border {
+                            radius: 4.0.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }),
+            );
+
+        let card = Container::new(card_inner)
+            .padding(12)
+            .width(Length::Fixed(164.0))
+            .style(|_theme| container::Style {
+                background: Some(Background::Color(theme::SURFACE_MAIN)),
+                border: Border {
+                    radius: theme::RADIUS_MD.into(),
+                    color: theme::BORDER_SUBTLE,
+                    width: 1.0,
+                },
+                ..Default::default()
+            });
+
+        row = row.push(card);
+    }
+    scroll_row(row)
+}
+
+fn render_skeleton_quick_grid<'a>() -> Element<'a, Message> {
+    let mut row_1 = Row::new().spacing(12);
+    let mut row_2 = Row::new().spacing(12);
+
+    fn make_skeleton_card<'a>() -> Element<'a, Message> {
+        Container::new(
+            Row::new()
+                .spacing(12)
+                .align_y(Alignment::Center)
+                .push(
+                    Container::new(Space::new())
+                        .width(Length::Fixed(48.0))
+                        .height(Length::Fixed(48.0))
+                        .style(|_theme| container::Style {
+                            background: Some(Background::Color(theme::SURFACE_HOVER)),
+                            border: Border {
+                                radius: theme::RADIUS_SM.into(),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        }),
+                )
+                .push(
+                    Container::new(Space::new())
+                        .width(Length::Fixed(110.0))
+                        .height(Length::Fixed(14.0))
+                        .style(|_theme| container::Style {
+                            background: Some(Background::Color(theme::SURFACE_CARD)),
+                            border: Border {
+                                radius: 4.0.into(),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        }),
+                ),
+        )
+        .padding(0)
+        .width(Length::FillPortion(1))
+        .height(Length::Fixed(48.0))
+        .style(|_theme| container::Style {
+            background: Some(Background::Color(theme::SURFACE_MAIN)),
+            border: Border {
+                radius: theme::RADIUS_MD.into(),
+                color: theme::BORDER_SUBTLE,
+                width: 1.0,
+            },
+            ..Default::default()
+        })
+        .into()
+    }
+
+    for _ in 0..3 {
+        row_1 = row_1.push(make_skeleton_card());
+        row_2 = row_2.push(make_skeleton_card());
+    }
+
+    Column::new().spacing(12).push(row_1).push(row_2).into()
 }
 
 #[allow(clippy::too_many_lines, clippy::items_after_statements)]
