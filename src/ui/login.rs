@@ -2,7 +2,7 @@ use crate::app::Message;
 use crate::ui::theme;
 use iced::{
     Alignment, Background, Border, Color, Element, Length, Padding, Theme,
-    widget::{Button, Column, Container, Image, Row, Text},
+    widget::{Button, Column, Container, Image, Row, Space, Text},
 };
 
 const LOGO_BYTES: &[u8] = include_bytes!("../../assets/spotifust.png");
@@ -102,20 +102,25 @@ pub fn view<'a>(
         );
     }
 
-    if is_loading {
-        let loading_text = if error.is_none() {
-            "Connecting to Spotify..."
-        } else {
-            "Awaiting OAuth authentication in your browser..."
-        };
+    if is_loading && error.is_none() {
+        return Container::new(Space::new())
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(|_theme: &Theme| iced::widget::container::Style {
+                background: Some(Background::Color(theme::BG_BASE)),
+                ..Default::default()
+            })
+            .into();
+    }
 
+    if is_loading {
         let loading_badge = Container::new(
             Row::new()
                 .align_y(Alignment::Center)
                 .spacing(10)
                 .push(Text::new("⏳").size(16))
                 .push(
-                    Text::new(loading_text)
+                    Text::new("Awaiting OAuth authentication in your browser...")
                         .size(14)
                         .color(theme::TEXT_SECONDARY),
                 ),
