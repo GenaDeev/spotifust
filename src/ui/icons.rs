@@ -33,6 +33,11 @@ pub enum Icon {
     ChevronRight,
     Plus,
     X,
+    Share,
+    Trash,
+    Edit,
+    Lock,
+    Unlock,
 }
 
 impl Icon {
@@ -63,6 +68,11 @@ impl Icon {
             Self::ChevronRight => include_bytes!("../../assets/icons/chevron_right.svg"),
             Self::Plus => include_bytes!("../../assets/icons/plus.svg"),
             Self::X => include_bytes!("../../assets/icons/x.svg"),
+            Self::Share => include_bytes!("../../assets/icons/share.svg"),
+            Self::Trash => include_bytes!("../../assets/icons/trash.svg"),
+            Self::Edit => include_bytes!("../../assets/icons/edit.svg"),
+            Self::Lock => include_bytes!("../../assets/icons/lock.svg"),
+            Self::Unlock => include_bytes!("../../assets/icons/unlock.svg"),
         }
     }
 

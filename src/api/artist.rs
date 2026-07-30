@@ -101,6 +101,47 @@ pub async fn fetch_artist_details(
     .await
 }
 
+/// Follows an artist for the authenticated user.
+#[allow(clippy::missing_errors_doc)]
+#[allow(deprecated)]
+pub async fn follow_artist(spotify: &AuthCodePkceSpotify, artist_id: &str) -> Result<(), AppError> {
+    use rspotify::clients::OAuthClient;
+
+    let aid = ArtistId::from_id(artist_id)
+        .map_err(|e| AppError::Network(format!("Invalid artist ID '{artist_id}': {e}")))?;
+
+    with_auto_reauth(spotify, || async {
+        spotify
+            .user_follow_artists([aid.clone()])
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to follow artist: {e}")))?;
+        Ok(())
+    })
+    .await
+}
+
+/// Unfollows an artist for the authenticated user.
+#[allow(clippy::missing_errors_doc)]
+#[allow(deprecated)]
+pub async fn unfollow_artist(
+    spotify: &AuthCodePkceSpotify,
+    artist_id: &str,
+) -> Result<(), AppError> {
+    use rspotify::clients::OAuthClient;
+
+    let aid = ArtistId::from_id(artist_id)
+        .map_err(|e| AppError::Network(format!("Invalid artist ID '{artist_id}': {e}")))?;
+
+    with_auto_reauth(spotify, || async {
+        spotify
+            .user_unfollow_artists([aid.clone()])
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to unfollow artist: {e}")))?;
+        Ok(())
+    })
+    .await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

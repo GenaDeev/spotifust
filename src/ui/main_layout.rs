@@ -76,6 +76,8 @@ pub fn view<'a>(
     loaded_images: &'a std::collections::HashMap<String, iced::widget::image::Handle>,
     window_width: f32,
     active_context_menu: Option<&'a crate::app::ContextMenuState>,
+    active_modal: Option<&'a crate::app::ActiveModal>,
+    toast_notification: Option<&'a String>,
 ) -> Element<'a, Message> {
     if window_width < 600.0 {
         return view_mini_player(playback, loaded_images);
@@ -143,15 +145,21 @@ pub fn view<'a>(
             ..Default::default()
         });
 
+    let mut stack = iced::widget::Stack::new().push(base_container);
+
     if let Some(ctx_state) = active_context_menu {
-        let menu_widget = view_context_menu_overlay(ctx_state);
-        iced::widget::Stack::new()
-            .push(base_container)
-            .push(menu_widget)
-            .into()
-    } else {
-        base_container.into()
+        stack = stack.push(crate::ui::context_menu::view_context_menu(ctx_state));
     }
+
+    if let Some(modal) = active_modal {
+        stack = stack.push(crate::ui::context_menu::view_modal(modal, user_playlists));
+    }
+
+    if toast_notification.is_some() {
+        stack = stack.push(crate::ui::context_menu::view_toasts(toast_notification));
+    }
+
+    stack.into()
 }
 
 #[allow(clippy::too_many_lines)]
@@ -473,7 +481,9 @@ fn view_sidebar_panel<'a>(
             let is_active = selected_playlist.is_some_and(|sp| sp.id == p.id);
             let sub = format!("Playlist • {} tracks", p.total_tracks);
             let p_id = p.id.clone();
-            list = list.push(sidebar_item_with_image(
+            let p_clone = p.clone();
+
+            let item_element = sidebar_item_with_image(
                 &p.name,
                 &sub,
                 p.image_url.as_deref(),
@@ -481,7 +491,16 @@ fn view_sidebar_panel<'a>(
                 Icon::MusicNote,
                 is_active,
                 Message::SelectPlaylist(p_id),
-            ));
+            );
+
+            let item_with_context = iced::widget::mouse_area(item_element).on_right_press(
+                Message::OpenPlaylistContextMenu {
+                    playlist: p_clone,
+                    position: iced::Point::new(200.0, 300.0),
+                },
+            );
+
+            list = list.push(item_with_context);
         }
     }
 
@@ -490,7 +509,9 @@ fn view_sidebar_panel<'a>(
             let is_active = selected_album.is_some_and(|sa| sa.id == a.id);
             let sub = format!("Album • {}", a.artist_name);
             let a_id = a.id.clone();
-            list = list.push(sidebar_item_with_image(
+            let a_clone = a.clone();
+
+            let item_element = sidebar_item_with_image(
                 &a.name,
                 &sub,
                 a.image_url.as_deref(),
@@ -498,7 +519,16 @@ fn view_sidebar_panel<'a>(
                 Icon::Album,
                 is_active,
                 Message::SelectAlbum(a_id),
-            ));
+            );
+
+            let item_with_context = iced::widget::mouse_area(item_element).on_right_press(
+                Message::OpenAlbumContextMenu {
+                    album: a_clone,
+                    position: iced::Point::new(200.0, 300.0),
+                },
+            );
+
+            list = list.push(item_with_context);
         }
     }
 
@@ -777,22 +807,16 @@ fn view_main_content<'a>(
                             .size(13)
                             .color(theme::TEXT_SECONDARY)
                             .width(Length::Fixed(60.0)),
-                    )
-                    .push(icon_button_plain(
-                        Icon::Queue,
-                        Message::OpenContextMenu {
-                            target: crate::app::ContextMenuTarget::Track(crate::app::TrackInfo {
-                                title: track.title.clone(),
-                                artist: track.artist.clone(),
-                                album: track.album.clone(),
-                                duration_ms: track.duration_ms,
-                                image_url: track.image_url.clone(),
-                            }),
-                            x: 450.0,
-                            #[allow(clippy::cast_precision_loss)]
-                            y: (220.0 + (idx as f32 * 46.0)).min(550.0),
-                        },
-                    ));
+                    );
+
+                let track_info = crate::app::TrackInfo {
+                    title: track.title.clone(),
+                    artist: track.artist.clone(),
+                    album: track.album.clone(),
+                    duration_ms: track.duration_ms,
+                    image_url: track.image_url.clone(),
+                    uri: uri.clone(),
+                };
 
                 let track_item = Button::new(
                     Container::new(track_row)
@@ -819,7 +843,20 @@ fn view_main_content<'a>(
                     }
                 });
 
-                tracks_column = tracks_column.push(track_item);
+                let pl_id = sp.id.clone();
+                #[allow(clippy::cast_precision_loss)]
+                let item_with_context = iced::widget::mouse_area(track_item).on_right_press(
+                    Message::OpenTrackContextMenu {
+                        track: track_info,
+                        from_playlist_id: Some(pl_id),
+                        position: iced::Point::new(
+                            450.0,
+                            (220.0_f32 + (idx as f32 * 46.0_f32)).min(550.0_f32),
+                        ),
+                    },
+                );
+
+                tracks_column = tracks_column.push(item_with_context);
             }
 
             tracks_column.into()
@@ -913,7 +950,7 @@ fn view_main_content<'a>(
         } else {
             let mut tracks_column = Column::new().spacing(6);
 
-            for track in &sa.tracks {
+            for (idx, track) in sa.tracks.iter().enumerate() {
                 let track_num = track.track_number.to_string();
                 let dur_str = format_duration(track.duration_ms);
                 let uri = track.uri.clone();
@@ -950,6 +987,15 @@ fn view_main_content<'a>(
                             .width(Length::Fixed(60.0)),
                     );
 
+                let track_info = crate::app::TrackInfo {
+                    title: track.title.clone(),
+                    artist: track.artist.clone(),
+                    album: sa.name.clone(),
+                    duration_ms: track.duration_ms,
+                    image_url: sa.image_url.clone(),
+                    uri: uri.clone(),
+                };
+
                 let track_item = Button::new(
                     Container::new(track_row)
                         .padding([8, 12])
@@ -975,7 +1021,19 @@ fn view_main_content<'a>(
                     }
                 });
 
-                tracks_column = tracks_column.push(track_item);
+                #[allow(clippy::cast_precision_loss)]
+                let item_with_context = iced::widget::mouse_area(track_item).on_right_press(
+                    Message::OpenTrackContextMenu {
+                        track: track_info,
+                        from_playlist_id: None,
+                        position: iced::Point::new(
+                            450.0,
+                            (220.0_f32 + (idx as f32 * 46.0_f32)).min(550.0_f32),
+                        ),
+                    },
+                );
+
+                tracks_column = tracks_column.push(item_with_context);
             }
 
             tracks_column.into()
@@ -2915,179 +2973,6 @@ fn view_mini_player<'a>(
             background: Some(Background::Color(theme::SURFACE_MAIN)),
             ..Default::default()
         })
-        .into()
-}
-
-#[allow(clippy::too_many_lines)]
-pub fn view_context_menu_overlay<'a>(
-    state: &'a crate::app::ContextMenuState,
-) -> Element<'a, Message> {
-    let menu_items: Vec<Element<'a, Message>> = match &state.target {
-        crate::app::ContextMenuTarget::Track(track) => vec![
-            Button::new(
-                Row::new()
-                    .spacing(8)
-                    .align_y(Alignment::Center)
-                    .push(Icon::Play.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(
-                        Text::new("Reproducir Canción")
-                            .size(13)
-                            .color(theme::TEXT_PRIMARY),
-                    ),
-            )
-            .padding([8, 12])
-            .width(Length::Fill)
-            .on_press(Message::PlayTrack(track.title.clone()))
-            .into(),
-            Button::new(
-                Row::new()
-                    .spacing(8)
-                    .align_y(Alignment::Center)
-                    .push(Icon::Queue.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(
-                        Text::new("Añadir a la Cola")
-                            .size(13)
-                            .color(theme::TEXT_PRIMARY),
-                    ),
-            )
-            .padding([8, 12])
-            .width(Length::Fill)
-            .on_press(Message::AddToQueue(track.clone()))
-            .into(),
-            Button::new(
-                Row::new()
-                    .spacing(8)
-                    .align_y(Alignment::Center)
-                    .push(Icon::User.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(
-                        Text::new("Ir al Artista")
-                            .size(13)
-                            .color(theme::TEXT_PRIMARY),
-                    ),
-            )
-            .padding([8, 12])
-            .width(Length::Fill)
-            .on_press(Message::CloseContextMenu)
-            .into(),
-            Button::new(
-                Row::new()
-                    .spacing(8)
-                    .align_y(Alignment::Center)
-                    .push(Icon::Album.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(Text::new("Ir al Álbum").size(13).color(theme::TEXT_PRIMARY)),
-            )
-            .padding([8, 12])
-            .width(Length::Fill)
-            .on_press(Message::CloseContextMenu)
-            .into(),
-        ],
-        crate::app::ContextMenuTarget::Album(album) => vec![
-            Button::new(
-                Row::new()
-                    .spacing(8)
-                    .align_y(Alignment::Center)
-                    .push(Icon::Play.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(Text::new("Abrir Álbum").size(13).color(theme::TEXT_PRIMARY)),
-            )
-            .padding([8, 12])
-            .width(Length::Fill)
-            .on_press(Message::SelectAlbum(album.id.clone()))
-            .into(),
-            Button::new(
-                Row::new()
-                    .spacing(8)
-                    .align_y(Alignment::Center)
-                    .push(Icon::Heart.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(
-                        Text::new("Guardar en Tu Biblioteca")
-                            .size(13)
-                            .color(theme::TEXT_PRIMARY),
-                    ),
-            )
-            .padding([8, 12])
-            .width(Length::Fill)
-            .on_press(Message::CloseContextMenu)
-            .into(),
-        ],
-        crate::app::ContextMenuTarget::Artist(_artist_name) => vec![
-            Button::new(
-                Row::new()
-                    .spacing(8)
-                    .align_y(Alignment::Center)
-                    .push(Icon::User.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(
-                        Text::new("Ver Perfil de Artista")
-                            .size(13)
-                            .color(theme::TEXT_PRIMARY),
-                    ),
-            )
-            .padding([8, 12])
-            .width(Length::Fill)
-            .on_press(Message::CloseContextMenu)
-            .into(),
-        ],
-        crate::app::ContextMenuTarget::Playlist(playlist) => vec![
-            Button::new(
-                Row::new()
-                    .spacing(8)
-                    .align_y(Alignment::Center)
-                    .push(Icon::Play.view_colored(14.0, theme::TEXT_PRIMARY))
-                    .push(
-                        Text::new("Abrir Playlist")
-                            .size(13)
-                            .color(theme::TEXT_PRIMARY),
-                    ),
-            )
-            .padding([8, 12])
-            .width(Length::Fill)
-            .on_press(Message::SelectPlaylist(playlist.id.clone()))
-            .into(),
-        ],
-    };
-
-    let mut menu_column = Column::new().spacing(2);
-    for item in menu_items {
-        menu_column = menu_column.push(item);
-    }
-
-    let menu_card = Container::new(menu_column)
-        .padding(6)
-        .width(Length::Fixed(220.0))
-        .style(|_theme: &Theme| container::Style {
-            background: Some(Background::Color(theme::SURFACE_CARD)),
-            border: Border {
-                radius: theme::RADIUS_MD.into(),
-                color: theme::BORDER_SUBTLE,
-                width: 1.0,
-            },
-            shadow: iced::Shadow {
-                color: Color::from_rgba(0.0, 0.0, 0.0, 0.5),
-                offset: iced::Vector::new(0.0, 4.0),
-                blur_radius: 16.0,
-            },
-            ..Default::default()
-        });
-
-    let top_pad = state.position_y.max(10.0);
-    let left_pad = state.position_x.max(10.0);
-
-    let positioned_menu = Container::new(menu_card).padding(iced::Padding {
-        top: top_pad,
-        right: 0.0,
-        bottom: 0.0,
-        left: left_pad,
-    });
-
-    let backdrop = Button::new(Space::new().width(Length::Fill).height(Length::Fill))
-        .style(|_theme, _status| iced::widget::button::Style {
-            background: Some(Background::Color(Color::TRANSPARENT)),
-            ..Default::default()
-        })
-        .on_press(Message::CloseContextMenu);
-
-    iced::widget::Stack::new()
-        .push(backdrop)
-        .push(positioned_menu)
         .into()
 }
 

@@ -55,6 +55,7 @@ pub struct TrackInfo {
     pub album: String,
     pub duration_ms: u32,
     pub image_url: Option<String>,
+    pub uri: String,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -148,18 +149,44 @@ pub struct SelectedPlaylistState {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum ContextMenuTarget {
-    Track(TrackInfo),
+    Track {
+        track: TrackInfo,
+        from_playlist_id: Option<String>,
+    },
     Album(crate::api::album::AlbumSummary),
-    Artist(String),
+    Artist {
+        artist_id: String,
+        artist_name: String,
+    },
     Playlist(crate::api::playlist::PlaylistSummary),
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ContextMenuState {
     pub target: ContextMenuTarget,
-    pub position_x: f32,
-    pub position_y: f32,
+    pub position: iced::Point,
+}
+
+#[derive(Debug, Clone)]
+pub enum ActiveModal {
+    AddToPlaylist {
+        track_uris: Vec<String>,
+        search_query: String,
+    },
+    EditPlaylist {
+        playlist_id: String,
+        name_input: String,
+        description_input: String,
+    },
+    ConfirmDeletePlaylist {
+        playlist_id: String,
+        playlist_name: String,
+    },
+    CopyPlaylistToAnother {
+        source_playlist_id: String,
+        source_playlist_name: String,
+        search_query: String,
+    },
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -186,6 +213,8 @@ pub enum AppState {
         selected_album: Option<SelectedAlbumState>,
         play_queue: Vec<TrackInfo>,
         active_context_menu: Option<ContextMenuState>,
+        active_modal: Option<ActiveModal>,
+        toast_notification: Option<String>,
         loaded_images: std::collections::HashMap<String, iced::widget::image::Handle>,
         spotify_client: Option<Arc<rspotify::AuthCodePkceSpotify>>,
         sidebar_width: f32,
@@ -205,6 +234,7 @@ pub struct App {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum Message {
     #[allow(dead_code)]
     ErrorEncountered(AppError),
@@ -241,6 +271,47 @@ pub enum Message {
     PlaybackPositionReceived(u32),
     PlaybackTick,
     SessionExpired,
+    // Context Menu & Modal Messages
+    OpenTrackContextMenu {
+        track: TrackInfo,
+        from_playlist_id: Option<String>,
+        position: iced::Point,
+    },
+    OpenAlbumContextMenu {
+        album: crate::api::album::AlbumSummary,
+        position: iced::Point,
+    },
+    OpenPlaylistContextMenu {
+        playlist: crate::api::playlist::PlaylistSummary,
+        position: iced::Point,
+    },
+    OpenArtistContextMenu {
+        artist_id: String,
+        artist_name: String,
+        position: iced::Point,
+    },
+    CloseContextMenu,
+    CopyShareLink(String, String),
+    OpenAddToPlaylistModal(Vec<String>),
+    OpenEditPlaylistModal(String, String, String),
+    OpenConfirmDeletePlaylistModal(String, String),
+    OpenCopyPlaylistModal(String, String),
+    CloseModal,
+    ModalSearchInputChanged(String),
+    ModalNameInputChanged(String),
+    ModalDescInputChanged(String),
+    AddTracksToPlaylistAction(String, Vec<String>),
+    RemoveTrackFromCurrentPlaylist(String, String),
+    SaveAlbumToggle(String, bool),
+    SavePlaylistDetailsAction(String, String, String),
+    DeletePlaylistConfirmed(String),
+    TogglePlaylistPrivacy(String, bool),
+    CopyPlaylistTracksAction(String, String),
+    FollowArtistToggle(String, bool),
+    OpenQueuePanel,
+    ShowToast(String),
+    DismissToast,
+    OperationFinished(Result<String, AppError>),
     // Main UI Messages
     NavigationSelected(NavigationItem),
     TogglePlayback,
@@ -253,12 +324,6 @@ pub enum Message {
     ToggleShuffle,
     ToggleRepeat,
     AddToQueue(TrackInfo),
-    OpenContextMenu {
-        target: ContextMenuTarget,
-        x: f32,
-        y: f32,
-    },
-    CloseContextMenu,
     // Mock UI Actions
     MockAction,
     // Error Actions
@@ -482,6 +547,8 @@ impl App {
                     selected_album: None,
                     play_queue: Vec::new(),
                     active_context_menu: None,
+                    active_modal: None,
+                    toast_notification: None,
                     loaded_images: std::collections::HashMap::new(),
                     spotify_client: Some(Arc::clone(&spotify_arc)),
                     sidebar_width: sw,
@@ -710,6 +777,7 @@ impl App {
                             album: info.album,
                             duration_ms: info.duration_ms,
                             image_url: info.image_url,
+                            uri: info.uri.clone(),
                         });
                         playback.progress_ms = info.progress_ms;
                         playback.is_playing = info.is_playing;
@@ -962,6 +1030,7 @@ impl App {
                             album: t.album.clone(),
                             duration_ms: t.duration_ms,
                             image_url: t.image_url.clone(),
+                            uri: uri.clone(),
                         });
                     } else if let Some(sp) = selected_playlist {
                         if let Some(t) = sp.tracks.iter().find(|t| t.uri == uri) {
@@ -971,6 +1040,7 @@ impl App {
                                 album: t.album.clone(),
                                 duration_ms: t.duration_ms,
                                 image_url: t.image_url.clone(),
+                                uri: uri.clone(),
                             });
                         }
                     } else if let Some(sa) = selected_album {
@@ -981,6 +1051,7 @@ impl App {
                                 album: sa.name.clone(),
                                 duration_ms: t.duration_ms,
                                 image_url: sa.image_url.clone(),
+                                uri: uri.clone(),
                             });
                         }
                     } else if let Some(t) = search_results.tracks.iter().find(|t| t.uri == uri) {
@@ -990,6 +1061,7 @@ impl App {
                             album: t.album.clone(),
                             duration_ms: t.duration_ms,
                             image_url: t.image_url.clone(),
+                            uri: uri.clone(),
                         });
                     }
 
@@ -1154,6 +1226,7 @@ impl App {
                                 album,
                                 duration_ms: audio_item.duration_ms,
                                 image_url,
+                                uri: playback.current_track_uri.clone().unwrap_or_default(),
                             });
                         }
                         if !tasks.is_empty() {
@@ -1398,6 +1471,508 @@ impl App {
                 }
                 Task::none()
             }
+            Message::OpenTrackContextMenu {
+                track,
+                from_playlist_id,
+                position,
+            } => {
+                if let AppState::Main {
+                    active_context_menu,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = Some(ContextMenuState {
+                        target: ContextMenuTarget::Track {
+                            track,
+                            from_playlist_id,
+                        },
+                        position,
+                    });
+                }
+                Task::none()
+            }
+            Message::OpenAlbumContextMenu { album, position } => {
+                if let AppState::Main {
+                    active_context_menu,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = Some(ContextMenuState {
+                        target: ContextMenuTarget::Album(album),
+                        position,
+                    });
+                }
+                Task::none()
+            }
+            Message::OpenPlaylistContextMenu { playlist, position } => {
+                if let AppState::Main {
+                    active_context_menu,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = Some(ContextMenuState {
+                        target: ContextMenuTarget::Playlist(playlist),
+                        position,
+                    });
+                }
+                Task::none()
+            }
+            Message::OpenArtistContextMenu {
+                artist_id,
+                artist_name,
+                position,
+            } => {
+                if let AppState::Main {
+                    active_context_menu,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = Some(ContextMenuState {
+                        target: ContextMenuTarget::Artist {
+                            artist_id,
+                            artist_name,
+                        },
+                        position,
+                    });
+                }
+                Task::none()
+            }
+            Message::CloseContextMenu => {
+                if let AppState::Main {
+                    active_context_menu,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = None;
+                }
+                Task::none()
+            }
+
+            Message::CopyShareLink(title, url) => {
+                if let AppState::Main {
+                    active_context_menu,
+                    toast_notification,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = None;
+                    *toast_notification =
+                        Some(format!("Enlace de '{title}' copiado al portapapeles"));
+                }
+                iced::clipboard::write(url)
+            }
+
+            Message::OpenAddToPlaylistModal(uris) => {
+                if let AppState::Main {
+                    active_context_menu,
+                    active_modal,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = None;
+                    *active_modal = Some(ActiveModal::AddToPlaylist {
+                        track_uris: uris,
+                        search_query: String::new(),
+                    });
+                }
+                Task::none()
+            }
+
+            Message::OpenEditPlaylistModal(pid, name, desc) => {
+                if let AppState::Main {
+                    active_context_menu,
+                    active_modal,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = None;
+                    *active_modal = Some(ActiveModal::EditPlaylist {
+                        playlist_id: pid,
+                        name_input: name,
+                        description_input: desc,
+                    });
+                }
+                Task::none()
+            }
+
+            Message::OpenConfirmDeletePlaylistModal(pid, name) => {
+                if let AppState::Main {
+                    active_context_menu,
+                    active_modal,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = None;
+                    *active_modal = Some(ActiveModal::ConfirmDeletePlaylist {
+                        playlist_id: pid,
+                        playlist_name: name,
+                    });
+                }
+                Task::none()
+            }
+
+            Message::OpenCopyPlaylistModal(pid, name) => {
+                if let AppState::Main {
+                    active_context_menu,
+                    active_modal,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = None;
+                    *active_modal = Some(ActiveModal::CopyPlaylistToAnother {
+                        source_playlist_id: pid,
+                        source_playlist_name: name,
+                        search_query: String::new(),
+                    });
+                }
+                Task::none()
+            }
+
+            Message::CloseModal => {
+                if let AppState::Main { active_modal, .. } = &mut self.state {
+                    *active_modal = None;
+                }
+                Task::none()
+            }
+
+            Message::ModalSearchInputChanged(query) => {
+                if let AppState::Main {
+                    active_modal:
+                        Some(
+                            ActiveModal::AddToPlaylist { search_query, .. }
+                            | ActiveModal::CopyPlaylistToAnother { search_query, .. },
+                        ),
+                    ..
+                } = &mut self.state
+                {
+                    *search_query = query;
+                }
+                Task::none()
+            }
+
+            Message::ModalNameInputChanged(val) => {
+                if let AppState::Main {
+                    active_modal: Some(ActiveModal::EditPlaylist { name_input, .. }),
+                    ..
+                } = &mut self.state
+                {
+                    *name_input = val;
+                }
+                Task::none()
+            }
+
+            Message::ModalDescInputChanged(val) => {
+                if let AppState::Main {
+                    active_modal:
+                        Some(ActiveModal::EditPlaylist {
+                            description_input, ..
+                        }),
+                    ..
+                } = &mut self.state
+                {
+                    *description_input = val;
+                }
+                Task::none()
+            }
+
+            Message::AddTracksToPlaylistAction(playlist_id, uris) => {
+                let client = if let AppState::Main { spotify_client, .. } = &self.state {
+                    spotify_client.clone()
+                } else {
+                    None
+                };
+
+                if let AppState::Main { active_modal, .. } = &mut self.state {
+                    *active_modal = None;
+                }
+
+                if let Some(spotify) = client {
+                    Task::perform(
+                        async move {
+                            crate::api::playlist::add_tracks_to_playlist(
+                                &spotify,
+                                &playlist_id,
+                                &uris,
+                            )
+                            .await?;
+                            Ok("Canciones agregadas a la playlist".to_string())
+                        },
+                        Message::OperationFinished,
+                    )
+                } else {
+                    Task::none()
+                }
+            }
+
+            Message::RemoveTrackFromCurrentPlaylist(playlist_id, track_uri) => {
+                let client = if let AppState::Main { spotify_client, .. } = &self.state {
+                    spotify_client.clone()
+                } else {
+                    None
+                };
+
+                if let AppState::Main {
+                    active_context_menu,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = None;
+                }
+
+                if let Some(spotify) = client {
+                    let pl_id = playlist_id.clone();
+                    Task::perform(
+                        async move {
+                            crate::api::playlist::remove_tracks_from_playlist(
+                                &spotify,
+                                &pl_id,
+                                &[track_uri],
+                            )
+                            .await?;
+                            Ok("Canción eliminada de la playlist".to_string())
+                        },
+                        Message::OperationFinished,
+                    )
+                } else {
+                    Task::none()
+                }
+            }
+
+            Message::SaveAlbumToggle(album_id, currently_saved) => {
+                let client = if let AppState::Main { spotify_client, .. } = &self.state {
+                    spotify_client.clone()
+                } else {
+                    None
+                };
+
+                if let AppState::Main {
+                    active_context_menu,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = None;
+                }
+
+                if let Some(spotify) = client {
+                    Task::perform(
+                        async move {
+                            if currently_saved {
+                                crate::api::album::remove_album(&spotify, &album_id).await?;
+                                Ok("Álbum eliminado de tu biblioteca".to_string())
+                            } else {
+                                crate::api::album::save_album(&spotify, &album_id).await?;
+                                Ok("Álbum guardado en tu biblioteca".to_string())
+                            }
+                        },
+                        Message::OperationFinished,
+                    )
+                } else {
+                    Task::none()
+                }
+            }
+
+            Message::SavePlaylistDetailsAction(playlist_id, name, desc) => {
+                let client = if let AppState::Main { spotify_client, .. } = &self.state {
+                    spotify_client.clone()
+                } else {
+                    None
+                };
+
+                if let AppState::Main { active_modal, .. } = &mut self.state {
+                    *active_modal = None;
+                }
+
+                if let Some(spotify) = client {
+                    Task::perform(
+                        async move {
+                            crate::api::playlist::change_playlist_details(
+                                &spotify,
+                                &playlist_id,
+                                Some(&name),
+                                Some(&desc),
+                                None,
+                            )
+                            .await?;
+                            Ok("Playlist actualizada con éxito".to_string())
+                        },
+                        Message::OperationFinished,
+                    )
+                } else {
+                    Task::none()
+                }
+            }
+
+            Message::DeletePlaylistConfirmed(playlist_id) => {
+                let client = if let AppState::Main { spotify_client, .. } = &self.state {
+                    spotify_client.clone()
+                } else {
+                    None
+                };
+
+                if let AppState::Main { active_modal, .. } = &mut self.state {
+                    *active_modal = None;
+                }
+
+                if let Some(spotify) = client {
+                    Task::perform(
+                        async move {
+                            crate::api::playlist::delete_playlist(&spotify, &playlist_id).await?;
+                            Ok("Playlist eliminada".to_string())
+                        },
+                        Message::OperationFinished,
+                    )
+                } else {
+                    Task::none()
+                }
+            }
+
+            Message::TogglePlaylistPrivacy(playlist_id, currently_public) => {
+                let client = if let AppState::Main { spotify_client, .. } = &self.state {
+                    spotify_client.clone()
+                } else {
+                    None
+                };
+
+                if let AppState::Main {
+                    active_context_menu,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = None;
+                }
+
+                if let Some(spotify) = client {
+                    let target_public = !currently_public;
+                    Task::perform(
+                        async move {
+                            crate::api::playlist::change_playlist_details(
+                                &spotify,
+                                &playlist_id,
+                                None,
+                                None,
+                                Some(target_public),
+                            )
+                            .await?;
+                            Ok("Privacidad de la playlist actualizada".to_string())
+                        },
+                        Message::OperationFinished,
+                    )
+                } else {
+                    Task::none()
+                }
+            }
+
+            Message::CopyPlaylistTracksAction(source_pid, target_pid) => {
+                let client = if let AppState::Main { spotify_client, .. } = &self.state {
+                    spotify_client.clone()
+                } else {
+                    None
+                };
+
+                if let AppState::Main { active_modal, .. } = &mut self.state {
+                    *active_modal = None;
+                }
+
+                if let Some(spotify) = client {
+                    Task::perform(
+                        async move {
+                            let tracks =
+                                crate::api::playlist::fetch_playlist_tracks(&spotify, &source_pid)
+                                    .await?;
+                            let uris: Vec<String> = tracks.into_iter().map(|t| t.uri).collect();
+                            crate::api::playlist::add_tracks_to_playlist(
+                                &spotify,
+                                &target_pid,
+                                &uris,
+                            )
+                            .await?;
+                            Ok("Canciones copiadas a la otra playlist".to_string())
+                        },
+                        Message::OperationFinished,
+                    )
+                } else {
+                    Task::none()
+                }
+            }
+
+            Message::FollowArtistToggle(artist_id, currently_followed) => {
+                let client = if let AppState::Main { spotify_client, .. } = &self.state {
+                    spotify_client.clone()
+                } else {
+                    None
+                };
+
+                if let AppState::Main {
+                    active_context_menu,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = None;
+                }
+
+                if let Some(spotify) = client {
+                    Task::perform(
+                        async move {
+                            if currently_followed {
+                                crate::api::artist::unfollow_artist(&spotify, &artist_id).await?;
+                                Ok("Dejaste de seguir al artista".to_string())
+                            } else {
+                                crate::api::artist::follow_artist(&spotify, &artist_id).await?;
+                                Ok("Siguiendo al artista".to_string())
+                            }
+                        },
+                        Message::OperationFinished,
+                    )
+                } else {
+                    Task::none()
+                }
+            }
+
+            Message::OpenQueuePanel => {
+                if let AppState::Main {
+                    active_context_menu,
+                    active_right_panel,
+                    ..
+                } = &mut self.state
+                {
+                    *active_context_menu = None;
+                    *active_right_panel = Some(RightPanelTab::Queue);
+                }
+                Task::none()
+            }
+
+            Message::ShowToast(msg) => {
+                if let AppState::Main {
+                    toast_notification, ..
+                } = &mut self.state
+                {
+                    *toast_notification = Some(msg);
+                }
+                Task::none()
+            }
+
+            Message::DismissToast => {
+                if let AppState::Main {
+                    toast_notification, ..
+                } = &mut self.state
+                {
+                    *toast_notification = None;
+                }
+                Task::none()
+            }
+
+            Message::OperationFinished(res) => {
+                if let AppState::Main {
+                    toast_notification, ..
+                } = &mut self.state
+                {
+                    match res {
+                        Ok(msg) => *toast_notification = Some(msg),
+                        Err(e) => *toast_notification = Some(format!("Error: {e}")),
+                    }
+                }
+                Task::none()
+            }
             Message::ToggleShuffle => {
                 if let AppState::Main { playback, .. } = &mut self.state {
                     playback.is_shuffled = !playback.is_shuffled;
@@ -1417,30 +1992,6 @@ impl App {
             Message::AddToQueue(track) => {
                 if let AppState::Main { play_queue, .. } = &mut self.state {
                     play_queue.push(track);
-                }
-                Task::none()
-            }
-            Message::OpenContextMenu { target, x, y } => {
-                if let AppState::Main {
-                    active_context_menu,
-                    ..
-                } = &mut self.state
-                {
-                    *active_context_menu = Some(ContextMenuState {
-                        target,
-                        position_x: x,
-                        position_y: y,
-                    });
-                }
-                Task::none()
-            }
-            Message::CloseContextMenu => {
-                if let AppState::Main {
-                    active_context_menu,
-                    ..
-                } = &mut self.state
-                {
-                    *active_context_menu = None;
                 }
                 Task::none()
             }
@@ -1550,6 +2101,8 @@ impl App {
                 loaded_images,
                 window_width,
                 active_context_menu,
+                active_modal,
+                toast_notification,
                 ..
             } => crate::ui::main_layout::view(
                 nav_item,
@@ -1572,6 +2125,8 @@ impl App {
                 loaded_images,
                 *window_width,
                 active_context_menu.as_ref(),
+                active_modal.as_ref(),
+                toast_notification.as_ref(),
             ),
         };
 

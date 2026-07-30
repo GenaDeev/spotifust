@@ -183,6 +183,128 @@ pub async fn fetch_playlist_tracks(
     .await
 }
 
+/// Adds track URIs or IDs to a specified playlist.
+#[allow(clippy::missing_errors_doc)]
+pub async fn add_tracks_to_playlist(
+    spotify: &AuthCodePkceSpotify,
+    playlist_id: &str,
+    track_uris: &[String],
+) -> Result<(), AppError> {
+    use rspotify::clients::OAuthClient;
+    use rspotify::model::{PlayableId, PlaylistId, TrackId};
+
+    let p_id = PlaylistId::from_id(playlist_id)
+        .map_err(|e| AppError::Network(format!("Invalid playlist ID: {e}")))?;
+
+    let mut playables: Vec<PlayableId> = Vec::new();
+    for uri in track_uris {
+        if let Ok(t_id) = TrackId::from_uri(uri) {
+            playables.push(PlayableId::Track(t_id));
+        } else if let Ok(t_id) = TrackId::from_id(uri) {
+            playables.push(PlayableId::Track(t_id));
+        }
+    }
+
+    if playables.is_empty() {
+        return Ok(());
+    }
+
+    with_auto_reauth(spotify, || async {
+        spotify
+            .playlist_add_items(p_id.clone(), playables.clone(), None)
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to add tracks to playlist: {e}")))?;
+        Ok(())
+    })
+    .await
+}
+
+/// Removes track URIs from a specified playlist.
+#[allow(clippy::missing_errors_doc)]
+pub async fn remove_tracks_from_playlist(
+    spotify: &AuthCodePkceSpotify,
+    playlist_id: &str,
+    track_uris: &[String],
+) -> Result<(), AppError> {
+    use rspotify::clients::OAuthClient;
+    use rspotify::model::{PlayableId, PlaylistId, TrackId};
+
+    let p_id = PlaylistId::from_id(playlist_id)
+        .map_err(|e| AppError::Network(format!("Invalid playlist ID: {e}")))?;
+
+    let mut playables: Vec<PlayableId> = Vec::new();
+    for uri in track_uris {
+        if let Ok(t_id) = TrackId::from_uri(uri) {
+            playables.push(PlayableId::Track(t_id));
+        } else if let Ok(t_id) = TrackId::from_id(uri) {
+            playables.push(PlayableId::Track(t_id));
+        }
+    }
+
+    if playables.is_empty() {
+        return Ok(());
+    }
+
+    with_auto_reauth(spotify, || async {
+        spotify
+            .playlist_remove_all_occurrences_of_items(p_id.clone(), playables.clone(), None)
+            .await
+            .map_err(|e| {
+                AppError::Network(format!("Failed to remove tracks from playlist: {e}"))
+            })?;
+        Ok(())
+    })
+    .await
+}
+
+/// Modifies playlist name, description, and privacy.
+#[allow(clippy::missing_errors_doc)]
+pub async fn change_playlist_details(
+    spotify: &AuthCodePkceSpotify,
+    playlist_id: &str,
+    name: Option<&str>,
+    description: Option<&str>,
+    public: Option<bool>,
+) -> Result<(), AppError> {
+    use rspotify::clients::OAuthClient;
+    use rspotify::model::PlaylistId;
+
+    let p_id = PlaylistId::from_id(playlist_id)
+        .map_err(|e| AppError::Network(format!("Invalid playlist ID: {e}")))?;
+
+    with_auto_reauth(spotify, || async {
+        spotify
+            .playlist_change_detail(p_id.clone(), name, public, description, None)
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to update playlist details: {e}")))?;
+        Ok(())
+    })
+    .await
+}
+
+/// Unfollows (deletes) a playlist for the authenticated user.
+#[allow(clippy::missing_errors_doc)]
+#[allow(deprecated)]
+pub async fn delete_playlist(
+    spotify: &AuthCodePkceSpotify,
+    playlist_id: &str,
+) -> Result<(), AppError> {
+    use rspotify::clients::OAuthClient;
+    use rspotify::model::PlaylistId;
+
+    let p_id = PlaylistId::from_id(playlist_id)
+        .map_err(|e| AppError::Network(format!("Invalid playlist ID: {e}")))?;
+
+    with_auto_reauth(spotify, || async {
+        spotify
+            .playlist_unfollow(p_id.clone())
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to delete playlist: {e}")))?;
+        Ok(())
+    })
+    .await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

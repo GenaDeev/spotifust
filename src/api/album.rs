@@ -199,6 +199,46 @@ pub async fn fetch_album_details(
     .await
 }
 
+/// Saves an album to the authenticated user's library.
+#[allow(clippy::missing_errors_doc)]
+#[allow(deprecated)]
+pub async fn save_album(spotify: &AuthCodePkceSpotify, album_id: &str) -> Result<(), AppError> {
+    use rspotify::clients::OAuthClient;
+    use rspotify::model::AlbumId;
+
+    let a_id = AlbumId::from_id(album_id)
+        .map_err(|e| AppError::Network(format!("Invalid album ID: {e}")))?;
+
+    with_auto_reauth(spotify, || async {
+        spotify
+            .current_user_saved_albums_add([a_id.clone()])
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to save album: {e}")))?;
+        Ok(())
+    })
+    .await
+}
+
+/// Removes an album from the authenticated user's library.
+#[allow(clippy::missing_errors_doc)]
+#[allow(deprecated)]
+pub async fn remove_album(spotify: &AuthCodePkceSpotify, album_id: &str) -> Result<(), AppError> {
+    use rspotify::clients::OAuthClient;
+    use rspotify::model::AlbumId;
+
+    let a_id = AlbumId::from_id(album_id)
+        .map_err(|e| AppError::Network(format!("Invalid album ID: {e}")))?;
+
+    with_auto_reauth(spotify, || async {
+        spotify
+            .current_user_saved_albums_delete([a_id.clone()])
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to remove album: {e}")))?;
+        Ok(())
+    })
+    .await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
