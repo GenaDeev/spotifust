@@ -165,24 +165,28 @@ pub fn view_context_menu(state: &crate::app::ContextMenuState) -> Element<'_, Me
     let x_pos = state.position.x.clamp(10.0, 950.0);
     let y_pos = state.position.y.clamp(10.0, 600.0);
 
-    Container::new(Container::new(menu_card).padding(Padding {
+    let backdrop = Button::new(
+        iced::widget::Space::new()
+            .width(Length::Fill)
+            .height(Length::Fill),
+    )
+    .style(|_theme, _status| iced::widget::button::Style {
+        background: Some(Background::Color(Color::from_rgba(0.0, 0.0, 0.0, 0.25))),
+        ..Default::default()
+    })
+    .on_press(Message::CloseContextMenu);
+
+    let positioned_menu = Container::new(menu_card).padding(Padding {
         top: y_pos,
         right: 0.0,
         bottom: 0.0,
         left: x_pos,
-    }))
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .style(|_theme: &Theme| iced::widget::container::Style {
-        background: Some(Background::Color(Color {
-            r: 0.0,
-            g: 0.0,
-            b: 0.0,
-            a: 0.25,
-        })),
-        ..Default::default()
-    })
-    .into()
+    });
+
+    iced::widget::Stack::new()
+        .push(backdrop)
+        .push(positioned_menu)
+        .into()
 }
 
 fn menu_item_button<'a>(
@@ -229,7 +233,7 @@ fn menu_item_button<'a>(
     .into()
 }
 
-/// Renders centered Modal Overlays.
+/// Renders Modal Dialog Overlays centered on top of the main window.
 #[allow(clippy::too_many_lines)]
 pub fn view_modal<'a>(
     modal: &'a crate::app::ActiveModal,
@@ -240,6 +244,7 @@ pub fn view_modal<'a>(
             track_uris,
             search_query,
         } => {
+            let uris = track_uris.clone();
             let mut list_col = Column::new().spacing(6);
 
             let filtered_playlists: Vec<_> = user_playlists
@@ -250,47 +255,58 @@ pub fn view_modal<'a>(
                 })
                 .collect();
 
-            for pl in filtered_playlists {
-                let p_id = pl.id.clone();
-                let uris = track_uris.clone();
+            if filtered_playlists.is_empty() {
                 list_col = list_col.push(
-                    Button::new(
+                    Text::new("No se encontraron playlists")
+                        .size(13)
+                        .color(theme::TEXT_SECONDARY),
+                );
+            } else {
+                for pl in filtered_playlists {
+                    let pid = pl.id.clone();
+                    let uris_clone = uris.clone();
+
+                    let row_item = Button::new(
                         Row::new()
                             .spacing(12)
                             .align_y(Alignment::Center)
-                            .push(Icon::MusicNote.view_colored(18.0, theme::ACCENT))
+                            .push(Icon::Plus.view_colored(16.0, theme::ACCENT))
                             .push(
-                                Column::new()
-                                    .push(Text::new(&pl.name).size(14).color(theme::TEXT_PRIMARY))
-                                    .push(
-                                        Text::new(format!("{} canciones", pl.total_tracks))
-                                            .size(11)
-                                            .color(theme::TEXT_SECONDARY),
-                                    ),
+                                Text::new(&pl.name)
+                                    .size(13)
+                                    .color(theme::TEXT_PRIMARY)
+                                    .width(Length::Fill),
+                            )
+                            .push(
+                                Text::new(format!("{} canciones", pl.total_tracks))
+                                    .size(11)
+                                    .color(theme::TEXT_SECONDARY),
                             ),
                     )
-                    .padding(10)
+                    .padding([8, 12])
                     .width(Length::Fill)
-                    .on_press(Message::AddTracksToPlaylistAction(p_id, uris))
-                    .style(|_theme, status| match status {
-                        iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                            background: Some(Background::Color(theme::SURFACE_HOVER)),
+                    .on_press(Message::AddTracksToPlaylistAction(pid, uris_clone))
+                    .style(|_t, s| {
+                        let base = iced::widget::button::Style {
+                            background: Some(Background::Color(Color::TRANSPARENT)),
                             border: Border {
                                 radius: theme::RADIUS_SM.into(),
                                 ..Default::default()
                             },
                             ..Default::default()
-                        },
-                        _ => iced::widget::button::Style {
-                            background: Some(Background::Color(theme::SURFACE_CARD)),
-                            border: Border {
-                                radius: theme::RADIUS_SM.into(),
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        },
-                    }),
-                );
+                        };
+                        if matches!(s, iced::widget::button::Status::Hovered) {
+                            iced::widget::button::Style {
+                                background: Some(Background::Color(theme::SURFACE_HOVER)),
+                                ..base
+                            }
+                        } else {
+                            base
+                        }
+                    });
+
+                    list_col = list_col.push(row_item);
+                }
             }
 
             Column::new()
@@ -299,7 +315,7 @@ pub fn view_modal<'a>(
                     Row::new()
                         .align_y(Alignment::Center)
                         .push(
-                            Text::new("Agregar a Playlist")
+                            Text::new("Agregar a playlist")
                                 .size(20)
                                 .font(iced::Font {
                                     weight: iced::font::Weight::Bold,
@@ -413,9 +429,16 @@ pub fn view_modal<'a>(
                         .spacing(12)
                         .push(iced::widget::Space::new().width(Length::Fill))
                         .push(
-                            Button::new(Text::new("Guardar").size(14).color(Color::BLACK))
+                            Button::new(
+                                Text::new("Cancelar").size(13).color(theme::TEXT_SECONDARY),
+                            )
+                            .on_press(Message::CloseModal)
+                            .style(|_t, _s| iced::widget::button::Style::default()),
+                        )
+                        .push(
+                            Button::new(Text::new("Guardar").size(13).color(theme::TEXT_PRIMARY))
+                                .padding([8, 16])
                                 .on_press(Message::SavePlaylistDetailsAction(pid, name, desc))
-                                .padding([10, 24])
                                 .style(|_t, _s| iced::widget::button::Style {
                                     background: Some(Background::Color(theme::ACCENT)),
                                     border: Border {
@@ -436,7 +459,7 @@ pub fn view_modal<'a>(
             Column::new()
                 .spacing(16)
                 .push(
-                    Text::new("¿Eliminar Playlist?")
+                    Text::new("¿Eliminar de Tu biblioteca?")
                         .size(20)
                         .font(iced::Font {
                             weight: iced::font::Weight::Bold,
@@ -446,9 +469,9 @@ pub fn view_modal<'a>(
                 )
                 .push(
                     Text::new(format!(
-                        "¿Estás seguro de que quieres eliminar la playlist '{playlist_name}'? Esta acción no se puede deshacer."
+                        "Esta acción eliminará '{playlist_name}' de tu cuenta de Spotify."
                     ))
-                    .size(14)
+                    .size(13)
                     .color(theme::TEXT_SECONDARY),
                 )
                 .push(
@@ -456,27 +479,26 @@ pub fn view_modal<'a>(
                         .spacing(12)
                         .push(iced::widget::Space::new().width(Length::Fill))
                         .push(
-                            Button::new(Text::new("Cancelar").size(14).color(theme::TEXT_PRIMARY))
-                                .on_press(Message::CloseModal)
-                                .padding([10, 16])
-                                .style(|_t, _s| iced::widget::button::Style::default()),
+                            Button::new(
+                                Text::new("Cancelar").size(13).color(theme::TEXT_SECONDARY),
+                            )
+                            .on_press(Message::CloseModal)
+                            .style(|_t, _s| iced::widget::button::Style::default()),
                         )
                         .push(
-                            Button::new(
-                                Text::new("Eliminar")
-                                    .size(14)
-                                    .color(theme::TEXT_PRIMARY),
-                            )
-                            .on_press(Message::DeletePlaylistConfirmed(pid))
-                            .padding([10, 20])
-                            .style(|_t, _s| iced::widget::button::Style {
-                                background: Some(Background::Color(theme::COLOR_ERROR)),
-                                border: Border {
-                                    radius: theme::RADIUS_PILL.into(),
+                            Button::new(Text::new("Eliminar").size(13).color(theme::TEXT_PRIMARY))
+                                .padding([8, 16])
+                                .on_press(Message::DeletePlaylistConfirmed(pid))
+                                .style(|_t, _s| iced::widget::button::Style {
+                                    background: Some(Background::Color(Color::from_rgb(
+                                        0.9, 0.2, 0.2,
+                                    ))),
+                                    border: Border {
+                                        radius: theme::RADIUS_PILL.into(),
+                                        ..Default::default()
+                                    },
                                     ..Default::default()
-                                },
-                                ..Default::default()
-                            }),
+                                }),
                         ),
                 )
                 .into()
@@ -486,50 +508,65 @@ pub fn view_modal<'a>(
             source_playlist_name,
             search_query,
         } => {
+            let src_id = source_playlist_id.clone();
             let mut list_col = Column::new().spacing(6);
 
             let filtered_playlists: Vec<_> = user_playlists
                 .iter()
                 .filter(|p| {
-                    p.id != *source_playlist_id
+                    p.id != src_id
                         && (search_query.is_empty()
                             || p.name.to_lowercase().contains(&search_query.to_lowercase()))
                 })
                 .collect();
 
-            for pl in filtered_playlists {
-                let target_pid = pl.id.clone();
-                let src_pid = source_playlist_id.clone();
+            if filtered_playlists.is_empty() {
                 list_col = list_col.push(
-                    Button::new(
+                    Text::new("No hay otras playlists disponibles")
+                        .size(13)
+                        .color(theme::TEXT_SECONDARY),
+                );
+            } else {
+                for pl in filtered_playlists {
+                    let target_id = pl.id.clone();
+                    let src_id_clone = src_id.clone();
+
+                    let row_item = Button::new(
                         Row::new()
                             .spacing(12)
                             .align_y(Alignment::Center)
-                            .push(Icon::MusicNote.view_colored(18.0, theme::ACCENT))
-                            .push(Text::new(&pl.name).size(14).color(theme::TEXT_PRIMARY)),
+                            .push(Icon::MusicNote.view_colored(16.0, theme::TEXT_SECONDARY))
+                            .push(
+                                Text::new(&pl.name)
+                                    .size(13)
+                                    .color(theme::TEXT_PRIMARY)
+                                    .width(Length::Fill),
+                            ),
                     )
-                    .padding(10)
+                    .padding([8, 12])
                     .width(Length::Fill)
-                    .on_press(Message::CopyPlaylistTracksAction(src_pid, target_pid))
-                    .style(|_theme, status| match status {
-                        iced::widget::button::Status::Hovered => iced::widget::button::Style {
-                            background: Some(Background::Color(theme::SURFACE_HOVER)),
+                    .on_press(Message::CopyPlaylistTracksAction(src_id_clone, target_id))
+                    .style(|_t, s| {
+                        let base = iced::widget::button::Style {
+                            background: Some(Background::Color(Color::TRANSPARENT)),
                             border: Border {
                                 radius: theme::RADIUS_SM.into(),
                                 ..Default::default()
                             },
                             ..Default::default()
-                        },
-                        _ => iced::widget::button::Style {
-                            background: Some(Background::Color(theme::SURFACE_CARD)),
-                            border: Border {
-                                radius: theme::RADIUS_SM.into(),
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        },
-                    }),
-                );
+                        };
+                        if matches!(s, iced::widget::button::Status::Hovered) {
+                            iced::widget::button::Style {
+                                background: Some(Background::Color(theme::SURFACE_HOVER)),
+                                ..base
+                            }
+                        } else {
+                            base
+                        }
+                    });
+
+                    list_col = list_col.push(row_item);
+                }
             }
 
             Column::new()
@@ -539,7 +576,7 @@ pub fn view_modal<'a>(
                         .align_y(Alignment::Center)
                         .push(
                             Text::new(format!("Copiar canciones de '{source_playlist_name}'"))
-                                .size(18)
+                                .size(20)
                                 .font(iced::Font {
                                     weight: iced::font::Weight::Bold,
                                     ..Default::default()
@@ -552,6 +589,23 @@ pub fn view_modal<'a>(
                                 .on_press(Message::CloseModal)
                                 .style(|_t, _s| iced::widget::button::Style::default()),
                         ),
+                )
+                .push(
+                    TextInput::new("Buscar playlist destino...", search_query)
+                        .on_input(Message::ModalSearchInputChanged)
+                        .padding(10)
+                        .style(|_t, _s| iced::widget::text_input::Style {
+                            background: Background::Color(theme::SURFACE_HOVER),
+                            border: Border {
+                                radius: theme::RADIUS_SM.into(),
+                                color: theme::BORDER_SUBTLE,
+                                width: 1.0,
+                            },
+                            value: theme::TEXT_PRIMARY,
+                            placeholder: theme::TEXT_TERTIARY,
+                            selection: theme::ACCENT,
+                            icon: theme::TEXT_SECONDARY,
+                        }),
                 )
                 .push(
                     Container::new(Scrollable::new(list_col))
@@ -597,18 +651,37 @@ pub fn view_toasts(toast: Option<&String>) -> Element<'_, Message> {
     if let Some(msg) = toast {
         let toast_card = Container::new(
             Row::new()
-                .spacing(10)
+                .spacing(12)
                 .align_y(Alignment::Center)
                 .push(Icon::MusicNote.view_colored(16.0, theme::ACCENT))
-                .push(Text::new(msg).size(13).color(theme::TEXT_PRIMARY)),
+                .push(
+                    Text::new(msg)
+                        .size(13)
+                        .color(theme::TEXT_PRIMARY)
+                        .width(Length::Shrink),
+                )
+                .push(
+                    Button::new(Icon::X.view_colored(14.0, theme::TEXT_SECONDARY))
+                        .padding([2, 6])
+                        .on_press(Message::DismissToast)
+                        .style(|_t, _s| iced::widget::button::Style {
+                            background: Some(Background::Color(Color::TRANSPARENT)),
+                            ..Default::default()
+                        }),
+                ),
         )
-        .padding([12, 20])
+        .padding([10, 16])
         .style(|_theme: &Theme| iced::widget::container::Style {
             background: Some(Background::Color(theme::SURFACE_CARD)),
             border: Border {
                 radius: theme::RADIUS_PILL.into(),
                 color: theme::ACCENT,
                 width: 1.0,
+            },
+            shadow: iced::Shadow {
+                color: Color::from_rgba(0.0, 0.0, 0.0, 0.4),
+                offset: iced::Vector::new(0.0, 4.0),
+                blur_radius: 12.0,
             },
             ..Default::default()
         });

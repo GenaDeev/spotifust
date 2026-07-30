@@ -496,7 +496,7 @@ impl App {
                     Err(_) => Message::CheckLoginFailed,
                 },
             ),
-            Message::CheckLoginFailed | Message::MockAction => Task::none(),
+            Message::CheckLoginFailed | Message::MockAction | Message::PlaybackTick => Task::none(),
 
             Message::LoginSuccess(spotify) => {
                 let mut initial_playback = PlaybackState::default();
@@ -1250,22 +1250,7 @@ impl App {
                 }
                 Task::none()
             }
-            Message::PlaybackTick => {
-                if let AppState::Main { playback, .. } = &mut self.state {
-                    if playback.is_playing {
-                        let duration = playback
-                            .current_track
-                            .as_ref()
-                            .map_or(225_000, |t| t.duration_ms);
-                        if playback.progress_ms + 200 <= duration {
-                            playback.progress_ms += 200;
-                        } else {
-                            playback.progress_ms = duration;
-                        }
-                    }
-                }
-                Task::none()
-            }
+
             Message::PlaybackPositionReceived(pos) => {
                 if let AppState::Main { playback, .. } = &mut self.state {
                     if playback.is_playing {
@@ -1559,7 +1544,15 @@ impl App {
                     *toast_notification =
                         Some(format!("Enlace de '{title}' copiado al portapapeles"));
                 }
-                iced::clipboard::write(url)
+                Task::batch(vec![
+                    iced::clipboard::write(url),
+                    Task::perform(
+                        async {
+                            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                        },
+                        |()| Message::DismissToast,
+                    ),
+                ])
             }
 
             Message::OpenAddToPlaylistModal(uris) => {
@@ -1948,7 +1941,12 @@ impl App {
                 {
                     *toast_notification = Some(msg);
                 }
-                Task::none()
+                Task::perform(
+                    async {
+                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    },
+                    |()| Message::DismissToast,
+                )
             }
 
             Message::DismissToast => {
@@ -1971,7 +1969,12 @@ impl App {
                         Err(e) => *toast_notification = Some(format!("Error: {e}")),
                     }
                 }
-                Task::none()
+                Task::perform(
+                    async {
+                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    },
+                    |()| Message::DismissToast,
+                )
             }
             Message::ToggleShuffle => {
                 if let AppState::Main { playback, .. } = &mut self.state {

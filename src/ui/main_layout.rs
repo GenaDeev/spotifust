@@ -844,15 +844,11 @@ fn view_main_content<'a>(
                 });
 
                 let pl_id = sp.id.clone();
-                #[allow(clippy::cast_precision_loss)]
                 let item_with_context = iced::widget::mouse_area(track_item).on_right_press(
                     Message::OpenTrackContextMenu {
                         track: track_info,
                         from_playlist_id: Some(pl_id),
-                        position: iced::Point::new(
-                            450.0,
-                            (220.0_f32 + (idx as f32 * 46.0_f32)).min(550.0_f32),
-                        ),
+                        position: iced::Point::new(450.0, 300.0),
                     },
                 );
 
@@ -950,7 +946,7 @@ fn view_main_content<'a>(
         } else {
             let mut tracks_column = Column::new().spacing(6);
 
-            for (idx, track) in sa.tracks.iter().enumerate() {
+            for track in &sa.tracks {
                 let track_num = track.track_number.to_string();
                 let dur_str = format_duration(track.duration_ms);
                 let uri = track.uri.clone();
@@ -1021,15 +1017,11 @@ fn view_main_content<'a>(
                     }
                 });
 
-                #[allow(clippy::cast_precision_loss)]
                 let item_with_context = iced::widget::mouse_area(track_item).on_right_press(
                     Message::OpenTrackContextMenu {
                         track: track_info,
                         from_playlist_id: None,
-                        position: iced::Point::new(
-                            450.0,
-                            (220.0_f32 + (idx as f32 * 46.0_f32)).min(550.0_f32),
-                        ),
+                        position: iced::Point::new(450.0, 300.0),
                     },
                 );
 
@@ -1091,40 +1083,65 @@ fn view_main_content<'a>(
     let mut row_1 = Row::new().spacing(12);
     let mut row_2 = Row::new().spacing(12);
 
-    let items_source: Vec<(&str, Option<&str>, Icon, Message)> =
-        if !user_playlists.is_empty() || !user_albums.is_empty() {
-            let mut list = Vec::new();
-            for p in user_playlists.iter().take(3) {
-                list.push((
-                    p.name.as_str(),
-                    p.image_url.as_deref(),
-                    Icon::MusicNote,
-                    Message::SelectPlaylist(p.id.clone()),
-                ));
-            }
-            for a in user_albums.iter().take(3) {
-                list.push((
-                    a.name.as_str(),
-                    a.image_url.as_deref(),
-                    Icon::Album,
-                    Message::SelectAlbum(a.id.clone()),
-                ));
-            }
-            list
-        } else {
-            Vec::new()
-        };
+    let display_playlists = if featured_playlists.is_empty() {
+        user_playlists
+    } else {
+        featured_playlists
+    };
 
-    let quick_grid: Element<'a, Message> = if items_source.is_empty() {
+    let display_albums = if featured_albums.is_empty() {
+        user_albums
+    } else {
+        featured_albums
+    };
+
+    let quick_grid: Element<'a, Message> = if display_playlists.is_empty()
+        && display_albums.is_empty()
+    {
         render_skeleton_quick_grid()
     } else {
-        for (idx, (title, img_url, icon, msg)) in items_source.into_iter().enumerate() {
-            let card = quick_card_with_image(title, img_url, loaded_images, icon, msg);
+        let mut idx = 0;
+        for p in display_playlists.iter().take(3) {
+            let p_clone = p.clone();
+            let card = quick_card_with_image(
+                &p.name,
+                p.image_url.as_deref(),
+                loaded_images,
+                Icon::MusicNote,
+                Message::SelectPlaylist(p.id.clone()),
+            );
+            let card_with_menu =
+                iced::widget::mouse_area(card).on_right_press(Message::OpenPlaylistContextMenu {
+                    playlist: p_clone,
+                    position: iced::Point::new(300.0, 300.0),
+                });
             if idx < 3 {
-                row_1 = row_1.push(card);
+                row_1 = row_1.push(card_with_menu);
             } else {
-                row_2 = row_2.push(card);
+                row_2 = row_2.push(card_with_menu);
             }
+            idx += 1;
+        }
+        for a in display_albums.iter().take(3) {
+            let a_clone = a.clone();
+            let card = quick_card_with_image(
+                &a.name,
+                a.image_url.as_deref(),
+                loaded_images,
+                Icon::Album,
+                Message::SelectAlbum(a.id.clone()),
+            );
+            let card_with_menu =
+                iced::widget::mouse_area(card).on_right_press(Message::OpenAlbumContextMenu {
+                    album: a_clone,
+                    position: iced::Point::new(300.0, 300.0),
+                });
+            if idx < 3 {
+                row_1 = row_1.push(card_with_menu);
+            } else {
+                row_2 = row_2.push(card_with_menu);
+            }
+            idx += 1;
         }
         Column::new().spacing(12).push(row_1).push(row_2).into()
     };
@@ -1143,20 +1160,58 @@ fn view_main_content<'a>(
         .push(Space::new().width(Length::Fill));
 
     let section_1_cards: Element<'a, Message> = if user_top_tracks.is_empty() {
-        render_skeleton_cards(5)
+        if display_albums.is_empty() && display_playlists.is_empty() {
+            render_skeleton_cards(5)
+        } else {
+            let mut row = Row::new().spacing(16);
+            for a in display_albums.iter().take(5) {
+                let a_clone = a.clone();
+                let subtitle = format!("{} • Album", a.artist_name);
+                let card = media_card_with_image(
+                    &a.name,
+                    &subtitle,
+                    a.image_url.as_deref(),
+                    loaded_images,
+                    Icon::Album,
+                    Message::SelectAlbum(a.id.clone()),
+                );
+                let card_with_menu =
+                    iced::widget::mouse_area(card).on_right_press(Message::OpenAlbumContextMenu {
+                        album: a_clone,
+                        position: iced::Point::new(400.0, 350.0),
+                    });
+                row = row.push(card_with_menu);
+            }
+            scroll_row(row)
+        }
     } else {
         let mut row = Row::new().spacing(16);
         for track in user_top_tracks.iter().take(5) {
             let subtitle = format!("{} • Track", track.artist);
             let uri = track.uri.clone();
-            row = row.push(media_card_with_image(
+            let track_info = crate::app::TrackInfo {
+                title: track.title.clone(),
+                artist: track.artist.clone(),
+                album: track.album.clone(),
+                duration_ms: track.duration_ms,
+                image_url: track.image_url.clone(),
+                uri: track.uri.clone(),
+            };
+            let card = media_card_with_image(
                 &track.title,
                 &subtitle,
                 track.image_url.as_deref(),
                 loaded_images,
                 Icon::MusicNote,
                 Message::PlayTrack(uri),
-            ));
+            );
+            let card_with_menu =
+                iced::widget::mouse_area(card).on_right_press(Message::OpenTrackContextMenu {
+                    track: track_info,
+                    from_playlist_id: None,
+                    position: iced::Point::new(400.0, 350.0),
+                });
+            row = row.push(card_with_menu);
         }
         scroll_row(row)
     };
@@ -1174,21 +1229,27 @@ fn view_main_content<'a>(
         )
         .push(Space::new().width(Length::Fill));
 
-    let section_2_cards: Element<'a, Message> = if user_albums.is_empty() {
+    let section_2_cards: Element<'a, Message> = if display_albums.is_empty() {
         render_skeleton_cards(5)
     } else {
         let mut row = Row::new().spacing(16);
-        for a in user_albums.iter().take(5) {
+        for a in display_albums.iter().take(5) {
+            let a_clone = a.clone();
             let subtitle = format!("{} • Album", a.artist_name);
-            let a_id = a.id.clone();
-            row = row.push(media_card_with_image(
+            let card = media_card_with_image(
                 &a.name,
                 &subtitle,
                 a.image_url.as_deref(),
                 loaded_images,
                 Icon::Album,
-                Message::SelectAlbum(a_id),
-            ));
+                Message::SelectAlbum(a.id.clone()),
+            );
+            let card_with_menu =
+                iced::widget::mouse_area(card).on_right_press(Message::OpenAlbumContextMenu {
+                    album: a_clone,
+                    position: iced::Point::new(400.0, 450.0),
+                });
+            row = row.push(card_with_menu);
         }
         scroll_row(row)
     };
@@ -1206,21 +1267,27 @@ fn view_main_content<'a>(
         )
         .push(Space::new().width(Length::Fill));
 
-    let section_3_cards: Element<'a, Message> = if featured_playlists.is_empty() {
+    let section_3_cards: Element<'a, Message> = if display_playlists.is_empty() {
         render_skeleton_cards(5)
     } else {
         let mut row = Row::new().spacing(16);
-        for p in featured_playlists.iter().take(5) {
+        for p in display_playlists.iter().take(5) {
+            let p_clone = p.clone();
             let subtitle = format!("By {}", p.owner_name);
-            let p_id = p.id.clone();
-            row = row.push(media_card_with_image(
+            let card = media_card_with_image(
                 &p.name,
                 &subtitle,
                 p.image_url.as_deref(),
                 loaded_images,
                 Icon::MusicNote,
-                Message::SelectPlaylist(p_id),
-            ));
+                Message::SelectPlaylist(p.id.clone()),
+            );
+            let card_with_menu =
+                iced::widget::mouse_area(card).on_right_press(Message::OpenPlaylistContextMenu {
+                    playlist: p_clone,
+                    position: iced::Point::new(400.0, 550.0),
+                });
+            row = row.push(card_with_menu);
         }
         scroll_row(row)
     };
@@ -1238,21 +1305,27 @@ fn view_main_content<'a>(
         )
         .push(Space::new().width(Length::Fill));
 
-    let section_4_cards: Element<'a, Message> = if featured_albums.is_empty() {
+    let section_4_cards: Element<'a, Message> = if display_albums.is_empty() {
         render_skeleton_cards(5)
     } else {
         let mut row = Row::new().spacing(16);
-        for a in featured_albums.iter().take(5) {
+        for a in display_albums.iter().take(5) {
+            let a_clone = a.clone();
             let subtitle = format!("{} • Album", a.artist_name);
-            let a_id = a.id.clone();
-            row = row.push(media_card_with_image(
+            let card = media_card_with_image(
                 &a.name,
                 &subtitle,
                 a.image_url.as_deref(),
                 loaded_images,
                 Icon::Album,
-                Message::SelectAlbum(a_id),
-            ));
+                Message::SelectAlbum(a.id.clone()),
+            );
+            let card_with_menu =
+                iced::widget::mouse_area(card).on_right_press(Message::OpenAlbumContextMenu {
+                    album: a_clone,
+                    position: iced::Point::new(400.0, 650.0),
+                });
+            row = row.push(card_with_menu);
         }
         scroll_row(row)
     };

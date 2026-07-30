@@ -22,7 +22,13 @@ fn get_spotify_client() -> AuthCodePkceSpotify {
             "app-remote-control",
             "playlist-read-private",
             "playlist-read-collaborative",
-            "user-library-read"
+            "user-library-read",
+            "user-top-read",
+            "playlist-modify-public",
+            "playlist-modify-private",
+            "user-library-modify",
+            "user-follow-read",
+            "user-follow-modify"
         ),
         ..Default::default()
     };
