@@ -29,7 +29,9 @@ fn scan_directory_recursive(dir_path: &Path, tracks: &mut Vec<LocalAudioTrack>) 
     let Ok(entries) = fs::read_dir(dir_path) else {
         return;
     };
-    let supported_exts = ["mp3", "flac", "wav", "ogg", "m4a"];
+    let supported_exts = [
+        "mp3", "flac", "wav", "ogg", "m4a", "aac", "wma", "opus", "aiff", "aif", "alac", "mp4",
+    ];
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -65,6 +67,75 @@ fn scan_directory_recursive(dir_path: &Path, tracks: &mut Vec<LocalAudioTrack>) 
                 }
             }
         }
+    }
+}
+
+#[must_use]
+pub fn get_user_music_dir() -> PathBuf {
+    if let Ok(home) = std::env::var("HOME") {
+        let home_path = PathBuf::from(home);
+        let musica = home_path.join("Música");
+        if musica.exists() {
+            return musica;
+        }
+        let music = home_path.join("Music");
+        if music.exists() {
+            return music;
+        }
+        return musica;
+    }
+    PathBuf::from("/home/elgena/Música")
+}
+
+pub fn match_and_persist_local_tracks(tracks: &mut [crate::api::playlist::PlaylistTrack]) {
+    use crate::api::cache::DiskMetadataCache;
+    use std::collections::HashMap;
+
+    let mut persistent_matches: HashMap<String, String> =
+        DiskMetadataCache::load("local_tracks_matches").unwrap_or_default();
+
+    let user_music_dir = get_user_music_dir();
+    let scanned_files = scan_local_directory(&user_music_dir).unwrap_or_default();
+
+    let mut dirty = false;
+
+    for track in tracks.iter_mut() {
+        let key = if track.uri.is_empty() {
+            format!("{}:{}", track.artist, track.title)
+        } else {
+            track.uri.clone()
+        };
+
+        if let Some(cached_path_str) = persistent_matches.get(&key) {
+            let path = PathBuf::from(cached_path_str);
+            if path.exists() {
+                track.is_local_available = true;
+                track.local_path = Some(path);
+                continue;
+            }
+        }
+
+        let title_clean = track.title.to_lowercase();
+        let artist_clean = track.artist.to_lowercase();
+
+        if let Some(matched) = scanned_files.iter().find(|lf| {
+            let lf_title = lf.title.to_lowercase();
+            let lf_artist = lf.artist.to_lowercase();
+            let lf_filename = lf.file_name.to_lowercase();
+
+            lf_title == title_clean
+                || lf_filename.contains(&title_clean)
+                || (lf_title.contains(&title_clean) && lf_artist.contains(&artist_clean))
+        }) {
+            track.is_local_available = true;
+            track.local_path = Some(matched.path.clone());
+            persistent_matches.insert(key, matched.path.to_string_lossy().to_string());
+            dirty = true;
+        }
+    }
+
+    if dirty {
+        let _ = DiskMetadataCache::save("local_tracks_matches", &persistent_matches);
     }
 }
 

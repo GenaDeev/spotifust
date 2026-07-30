@@ -734,36 +734,7 @@ impl App {
                     if selected.id == playlist_id {
                         selected.is_loading = false;
                         if let Ok(mut tracks) = res {
-                            let music_dir = std::env::var("HOME").map_or_else(
-                                |_| PathBuf::from("/home/elgena/Music"),
-                                |h| PathBuf::from(h).join("Music"),
-                            );
-                            if let Ok(local_files) =
-                                crate::api::local_files::scan_local_directory(&music_dir)
-                            {
-                                for t in &mut tracks {
-                                    if t.is_local {
-                                        let title_lower = t.title.to_lowercase();
-                                        if let Some(matched) = local_files.iter().find(|lf| {
-                                            lf.title.to_lowercase() == title_lower
-                                                || lf
-                                                    .file_name
-                                                    .to_lowercase()
-                                                    .contains(&title_lower)
-                                        }) {
-                                            t.is_local_available = true;
-                                            t.local_path = Some(matched.path.clone());
-                                            if let Some(ref bytes) = matched.cover_image_bytes {
-                                                let handle =
-                                                    iced::widget::image::Handle::from_bytes(
-                                                        bytes.clone(),
-                                                    );
-                                                loaded_images.insert(t.uri.clone(), handle);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            crate::api::local_files::match_and_persist_local_tracks(&mut tracks);
 
                             tasks.extend(load_image_tasks(
                                 tracks.iter().map(|t| t.image_url.clone()),
