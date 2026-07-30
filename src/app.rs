@@ -183,6 +183,7 @@ pub enum Message {
         Result<Vec<crate::api::playlist::PlaylistTrack>, AppError>,
     ),
     SelectAlbum(String),
+    SelectArtist(String),
     AlbumDetailsFetched(String, Result<crate::api::album::AlbumDetail, AppError>),
     PlayTrack(String),
     SidebarFilterSelected(SidebarFilter),
@@ -798,6 +799,9 @@ impl App {
                     }
                 }
                 Task::none()
+            }
+            Message::SelectArtist(artist_name) => {
+                self.update(Message::SearchInputChanged(artist_name))
             }
             Message::AlbumDetailsFetched(album_id, res) => {
                 let mut tasks = Vec::new();

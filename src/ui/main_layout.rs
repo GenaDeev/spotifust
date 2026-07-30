@@ -2315,8 +2315,21 @@ fn view_search_results<'a>(
         tracks_col = tracks_col.push(track_btn);
     }
 
+    let mut artists_row = Row::new().spacing(16);
+    for artist in results.artists.iter().take(6) {
+        let a_id = artist.id.clone();
+        artists_row = artists_row.push(media_card_with_image(
+            &artist.name,
+            "Artist",
+            artist.image_url.as_deref(),
+            loaded_images,
+            Icon::User,
+            Message::SelectArtist(a_id),
+        ));
+    }
+
     let mut albums_row = Row::new().spacing(16);
-    for album in results.albums.iter().take(5) {
+    for album in results.albums.iter().take(6) {
         let subtitle = format!("{} • Album", album.artist_name);
         let a_id = album.id.clone();
         albums_row = albums_row.push(media_card_with_image(
@@ -2329,7 +2342,7 @@ fn view_search_results<'a>(
         ));
     }
 
-    let mut content = Column::new().spacing(24);
+    let mut content = Column::new().spacing(28);
 
     if !results.tracks.is_empty() {
         content = content
@@ -2343,6 +2356,20 @@ fn view_search_results<'a>(
                     .color(theme::TEXT_PRIMARY),
             )
             .push(tracks_col);
+    }
+
+    if !results.artists.is_empty() {
+        content = content
+            .push(
+                Text::new("Artists")
+                    .size(22)
+                    .font(iced::Font {
+                        weight: iced::font::Weight::Bold,
+                        ..Default::default()
+                    })
+                    .color(theme::TEXT_PRIMARY),
+            )
+            .push(scroll_row(artists_row));
     }
 
     if !results.albums.is_empty() {

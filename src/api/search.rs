@@ -48,38 +48,79 @@ pub async fn execute_search(
     }
 
     with_auto_reauth(spotify, || async {
-        let result = spotify
-            .search(query, SearchType::Track, None, None, Some(10), Some(0))
-            .await
-            .map_err(|e| AppError::Network(format!("Search request failed: {e}")))?;
-
         let mut search_results = SearchResults::default();
 
-        if let SearchResult::Tracks(tracks_page) = result {
-            for track in tracks_page.items {
-                let artist = track
-                    .artists
-                    .iter()
-                    .map(|a| a.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ");
+        if let Ok(result) = spotify
+            .search(query, SearchType::Track, None, None, Some(10), Some(0))
+            .await
+        {
+            if let SearchResult::Tracks(tracks_page) = result {
+                for track in tracks_page.items {
+                    let artist = track
+                        .artists
+                        .iter()
+                        .map(|a| a.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ");
 
-                let image_url = track.album.images.first().map(|img| img.url.clone());
-                let track_id = track
-                    .id
-                    .as_ref()
-                    .map_or_else(String::new, ToString::to_string);
-                let uri = track.id.as_ref().map_or_else(String::new, Id::uri);
+                    let image_url = track.album.images.first().map(|img| img.url.clone());
+                    let track_id = track
+                        .id
+                        .as_ref()
+                        .map_or_else(String::new, ToString::to_string);
+                    let uri = track.id.as_ref().map_or_else(String::new, Id::uri);
 
-                search_results.tracks.push(SearchResultTrack {
-                    id: track_id,
-                    title: track.name,
-                    artist,
-                    album: track.album.name,
-                    duration_ms: u32::try_from(track.duration.num_milliseconds()).unwrap_or(0),
-                    uri,
-                    image_url,
-                });
+                    search_results.tracks.push(SearchResultTrack {
+                        id: track_id,
+                        title: track.name,
+                        artist,
+                        album: track.album.name,
+                        duration_ms: u32::try_from(track.duration.num_milliseconds()).unwrap_or(0),
+                        uri,
+                        image_url,
+                    });
+                }
+            }
+        }
+
+        if let Ok(result) = spotify
+            .search(query, SearchType::Album, None, None, Some(6), Some(0))
+            .await
+        {
+            if let SearchResult::Albums(albums_page) = result {
+                for album in albums_page.items {
+                    let artist_name = album
+                        .artists
+                        .iter()
+                        .map(|a| a.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    let image_url = album.images.first().map(|img| img.url.clone());
+
+                    search_results.albums.push(SearchResultAlbum {
+                        id: album.id.map_or_else(String::new, |id| id.to_string()),
+                        name: album.name,
+                        artist_name,
+                        image_url,
+                    });
+                }
+            }
+        }
+
+        if let Ok(result) = spotify
+            .search(query, SearchType::Artist, None, None, Some(6), Some(0))
+            .await
+        {
+            if let SearchResult::Artists(artists_page) = result {
+                for artist in artists_page.items {
+                    let image_url = artist.images.first().map(|img| img.url.clone());
+
+                    search_results.artists.push(SearchResultArtist {
+                        id: artist.id.to_string(),
+                        name: artist.name,
+                        image_url,
+                    });
+                }
             }
         }
 
