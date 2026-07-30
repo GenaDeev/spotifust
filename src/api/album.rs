@@ -70,6 +70,47 @@ pub async fn fetch_saved_albums(
     .await
 }
 
+/// Fetches Spotify new releases and album recommendations.
+#[allow(clippy::missing_errors_doc)]
+pub async fn fetch_new_releases(
+    spotify: &AuthCodePkceSpotify,
+) -> Result<Vec<AlbumSummary>, AppError> {
+    use rspotify::clients::BaseClient;
+    with_auto_reauth(spotify, || async {
+        #[allow(deprecated)]
+        let page = spotify
+            .new_releases_manual(None, Some(10), Some(0))
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to fetch new releases: {e}")))?;
+
+        let mut albums = Vec::new();
+        for full_album in page.items {
+            let artist_name = full_album
+                .artists
+                .iter()
+                .map(|a| a.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            let image_url = full_album.images.first().map(|img| img.url.clone());
+            let album_id = full_album.id.map_or_else(String::new, |id| id.to_string());
+
+            let total_tracks = 0;
+
+            albums.push(AlbumSummary {
+                id: album_id,
+                name: full_album.name,
+                artist_name,
+                image_url,
+                total_tracks,
+                release_date: full_album.release_date.unwrap_or_default(),
+            });
+        }
+        Ok(albums)
+    })
+    .await
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AlbumDetailTrack {
     pub id: String,

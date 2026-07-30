@@ -65,6 +65,8 @@ pub fn view<'a>(
     user_playlists: &'a [crate::api::playlist::PlaylistSummary],
     user_albums: &'a [crate::api::album::AlbumSummary],
     user_top_tracks: &'a [crate::api::tracks::TopTrack],
+    featured_playlists: &'a [crate::api::playlist::PlaylistSummary],
+    featured_albums: &'a [crate::api::album::AlbumSummary],
     search_query: &'a str,
     search_results: &'a crate::api::search::SearchResults,
     is_searching: bool,
@@ -96,6 +98,8 @@ pub fn view<'a>(
         user_playlists,
         user_albums,
         user_top_tracks,
+        featured_playlists,
+        featured_albums,
         search_results,
         is_searching,
         loaded_images,
@@ -563,6 +567,8 @@ fn view_main_content<'a>(
     user_playlists: &'a [crate::api::playlist::PlaylistSummary],
     user_albums: &'a [crate::api::album::AlbumSummary],
     user_top_tracks: &'a [crate::api::tracks::TopTrack],
+    featured_playlists: &'a [crate::api::playlist::PlaylistSummary],
+    featured_albums: &'a [crate::api::album::AlbumSummary],
     search_results: &'a crate::api::search::SearchResults,
     is_searching: bool,
     loaded_images: &'a std::collections::HashMap<String, iced::widget::image::Handle>,
@@ -1129,6 +1135,70 @@ fn view_main_content<'a>(
         scroll_row(row)
     };
 
+    let section_3_header = Row::new()
+        .align_y(Alignment::Center)
+        .push(
+            Text::new("Made For You")
+                .size(22)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_PRIMARY),
+        )
+        .push(Space::new().width(Length::Fill));
+
+    let section_3_cards: Element<'a, Message> = if featured_playlists.is_empty() {
+        render_skeleton_cards(5)
+    } else {
+        let mut row = Row::new().spacing(16);
+        for p in featured_playlists.iter().take(5) {
+            let subtitle = format!("By {}", p.owner_name);
+            let p_id = p.id.clone();
+            row = row.push(media_card_with_image(
+                &p.name,
+                &subtitle,
+                p.image_url.as_deref(),
+                loaded_images,
+                Icon::MusicNote,
+                Message::SelectPlaylist(p_id),
+            ));
+        }
+        scroll_row(row)
+    };
+
+    let section_4_header = Row::new()
+        .align_y(Alignment::Center)
+        .push(
+            Text::new("New Releases & Recommendations")
+                .size(22)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_PRIMARY),
+        )
+        .push(Space::new().width(Length::Fill));
+
+    let section_4_cards: Element<'a, Message> = if featured_albums.is_empty() {
+        render_skeleton_cards(5)
+    } else {
+        let mut row = Row::new().spacing(16);
+        for a in featured_albums.iter().take(5) {
+            let subtitle = format!("{} • Album", a.artist_name);
+            let a_id = a.id.clone();
+            row = row.push(media_card_with_image(
+                &a.name,
+                &subtitle,
+                a.image_url.as_deref(),
+                loaded_images,
+                Icon::Album,
+                Message::SelectAlbum(a_id),
+            ));
+        }
+        scroll_row(row)
+    };
+
     let scroll_content = Column::new()
         .spacing(24)
         .padding(iced::Padding {
@@ -1139,8 +1209,12 @@ fn view_main_content<'a>(
         })
         .push(header)
         .push(quick_grid)
+        .push(section_3_header)
+        .push(section_3_cards)
         .push(section_1_header)
         .push(section_1_cards)
+        .push(section_4_header)
+        .push(section_4_cards)
         .push(section_2_header)
         .push(section_2_cards);
 

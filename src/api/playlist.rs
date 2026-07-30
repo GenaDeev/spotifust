@@ -62,6 +62,40 @@ pub async fn fetch_user_playlists(
     .await
 }
 
+/// Fetches Spotify featured playlists ("Made for You", algorithm recommendations).
+#[allow(clippy::missing_errors_doc)]
+pub async fn fetch_featured_playlists(
+    spotify: &AuthCodePkceSpotify,
+) -> Result<Vec<PlaylistSummary>, AppError> {
+    use rspotify::clients::BaseClient;
+    with_auto_reauth(spotify, || async {
+        let page = spotify
+            .featured_playlists(None, None, None, Some(10), Some(0))
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to fetch featured playlists: {e}")))?;
+
+        let mut playlists = Vec::new();
+        for item in page.playlists.items {
+            let owner_name = item
+                .owner
+                .display_name
+                .unwrap_or_else(|| item.owner.id.to_string());
+            let image_url = item.images.first().map(|img| img.url.clone());
+            #[allow(deprecated)]
+            let total_tracks = item.tracks.total;
+            playlists.push(PlaylistSummary {
+                id: item.id.to_string(),
+                name: item.name,
+                owner_name,
+                image_url,
+                total_tracks,
+            });
+        }
+        Ok(playlists)
+    })
+    .await
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaylistTrack {
     pub id: String,

@@ -163,6 +163,8 @@ pub enum AppState {
         user_playlists: Vec<crate::api::playlist::PlaylistSummary>,
         user_albums: Vec<crate::api::album::AlbumSummary>,
         user_top_tracks: Vec<crate::api::tracks::TopTrack>,
+        featured_playlists: Vec<crate::api::playlist::PlaylistSummary>,
+        featured_albums: Vec<crate::api::album::AlbumSummary>,
         search_query: String,
         search_results: crate::api::search::SearchResults,
         is_searching: bool,
@@ -203,6 +205,8 @@ pub enum Message {
     UserPlaylistsFetched(Result<Vec<crate::api::playlist::PlaylistSummary>, AppError>),
     UserAlbumsFetched(Result<Vec<crate::api::album::AlbumSummary>, AppError>),
     UserTopTracksFetched(Result<Vec<crate::api::tracks::TopTrack>, AppError>),
+    FeaturedPlaylistsFetched(Result<Vec<crate::api::playlist::PlaylistSummary>, AppError>),
+    NewReleasesFetched(Result<Vec<crate::api::album::AlbumSummary>, AppError>),
     CurrentlyPlayingFetched(Result<Option<crate::api::tracks::CurrentlyPlayingInfo>, AppError>),
     SearchInputChanged(String),
     SearchResultsFetched(Result<crate::api::search::SearchResults, AppError>),
@@ -435,6 +439,14 @@ impl App {
                     Vec<crate::api::tracks::TopTrack>,
                 >("user_top_tracks")
                 .unwrap_or_default();
+                let cached_featured_playlists = crate::api::cache::DiskMetadataCache::load::<
+                    Vec<crate::api::playlist::PlaylistSummary>,
+                >("featured_playlists")
+                .unwrap_or_default();
+                let cached_featured_albums = crate::api::cache::DiskMetadataCache::load::<
+                    Vec<crate::api::album::AlbumSummary>,
+                >("featured_albums")
+                .unwrap_or_default();
                 let cached_profile = crate::api::cache::DiskMetadataCache::load::<
                     crate::api::user::UserProfile,
                 >("user_profile");
@@ -447,6 +459,8 @@ impl App {
                     user_playlists: cached_playlists,
                     user_albums: cached_albums,
                     user_top_tracks: cached_top_tracks,
+                    featured_playlists: cached_featured_playlists,
+                    featured_albums: cached_featured_albums,
                     search_query: String::new(),
                     search_results: crate::api::search::SearchResults::default(),
                     is_searching: false,
@@ -471,6 +485,8 @@ impl App {
                 let spotify_4 = Arc::clone(&spotify_arc);
                 let spotify_5 = Arc::clone(&spotify_arc);
                 let spotify_6 = Arc::clone(&spotify_arc);
+                let spotify_7 = Arc::clone(&spotify_arc);
+                let spotify_8 = Arc::clone(&spotify_arc);
 
                 Task::batch([
                     Task::perform(
@@ -507,10 +523,64 @@ impl App {
                         Message::UserTopTracksFetched,
                     ),
                     Task::perform(
-                        async move { crate::api::tracks::fetch_currently_playing(&spotify_6).await },
+                        async move { crate::api::playlist::fetch_featured_playlists(&spotify_6).await },
+                        Message::FeaturedPlaylistsFetched,
+                    ),
+                    Task::perform(
+                        async move { crate::api::album::fetch_new_releases(&spotify_7).await },
+                        Message::NewReleasesFetched,
+                    ),
+                    Task::perform(
+                        async move { crate::api::tracks::fetch_currently_playing(&spotify_8).await },
                         Message::CurrentlyPlayingFetched,
                     ),
                 ])
+            }
+            Message::FeaturedPlaylistsFetched(res) => {
+                let mut tasks = Vec::new();
+                if let Ok(playlists) = res {
+                    let _ = crate::api::cache::DiskMetadataCache::save("featured_playlists", &playlists);
+                    if let AppState::Main {
+                        featured_playlists,
+                        loaded_images,
+                        ..
+                    } = &mut self.state
+                    {
+                        tasks.extend(load_image_tasks(
+                            playlists.iter().map(|p| p.image_url.clone()),
+                            loaded_images,
+                        ));
+                        *featured_playlists = playlists;
+                    }
+                }
+                if tasks.is_empty() {
+                    Task::none()
+                } else {
+                    Task::batch(tasks)
+                }
+            }
+            Message::NewReleasesFetched(res) => {
+                let mut tasks = Vec::new();
+                if let Ok(albums) = res {
+                    let _ = crate::api::cache::DiskMetadataCache::save("featured_albums", &albums);
+                    if let AppState::Main {
+                        featured_albums,
+                        loaded_images,
+                        ..
+                    } = &mut self.state
+                    {
+                        tasks.extend(load_image_tasks(
+                            albums.iter().map(|a| a.image_url.clone()),
+                            loaded_images,
+                        ));
+                        *featured_albums = albums;
+                    }
+                }
+                if tasks.is_empty() {
+                    Task::none()
+                } else {
+                    Task::batch(tasks)
+                }
             }
             Message::UserProfileFetched(res) => {
                 let mut tasks = Vec::new();
@@ -1449,6 +1519,8 @@ impl App {
                 user_playlists,
                 user_albums,
                 user_top_tracks,
+                featured_playlists,
+                featured_albums,
                 search_query,
                 search_results,
                 is_searching,
@@ -1469,6 +1541,8 @@ impl App {
                 user_playlists,
                 user_albums,
                 user_top_tracks,
+                featured_playlists,
+                featured_albums,
                 search_query,
                 search_results,
                 *is_searching,
