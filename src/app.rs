@@ -47,7 +47,7 @@ pub struct SelectedAlbumState {
     pub is_loading: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct TrackInfo {
     pub title: String,
     pub artist: String,
@@ -55,6 +55,35 @@ pub struct TrackInfo {
     pub album: String,
     pub duration_ms: u32,
     pub image_url: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct LastPlaybackState {
+    pub track: TrackInfo,
+    pub track_uri: String,
+    pub progress_ms: u32,
+}
+
+pub fn save_last_playback_state(playback: &PlaybackState) {
+    if let (Some(track), Some(uri)) = (&playback.current_track, &playback.current_track_uri) {
+        let state = LastPlaybackState {
+            track: track.clone(),
+            track_uri: uri.clone(),
+            progress_ms: playback.progress_ms,
+        };
+        let _ = crate::api::cache::DiskMetadataCache::save("last_playback_state", &state);
+    }
+}
+
+pub fn load_last_playback_state(playback: &mut PlaybackState) {
+    if let Some(state) =
+        crate::api::cache::DiskMetadataCache::load::<LastPlaybackState>("last_playback_state")
+    {
+        playback.current_track = Some(state.track);
+        playback.current_track_uri = Some(state.track_uri);
+        playback.progress_ms = state.progress_ms;
+        playback.is_playing = false;
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -388,20 +417,10 @@ impl App {
             Message::CheckLoginFailed | Message::MockAction => Task::none(),
 
             Message::LoginSuccess(spotify) => {
-                let initial_playback = PlaybackState {
-                    is_playing: false,
-                    current_track: None,
-                    progress_ms: 0,
-                    volume: 0.8,
-                    current_track_uri: None,
-                    is_muted: false,
-                    last_volume: 0.8,
-                    is_shuffled: false,
-                    repeat_mode: RepeatMode::Off,
-                };
+                let mut initial_playback = PlaybackState::default();
+                load_last_playback_state(&mut initial_playback);
 
                 let (sw, rw) = load_layout();
-
                 let spotify_arc = Arc::new(*spotify);
 
                 let cached_playlists = crate::api::cache::DiskMetadataCache::load::<
@@ -979,6 +998,7 @@ impl App {
                         if let AppState::Main { playback, .. } = &mut self.state {
                             playback.is_playing = false;
                             playback.progress_ms = *position_ms;
+                            save_last_playback_state(playback);
                         }
                     }
                     PlayerEvent::TrackChanged { audio_item } => {
@@ -1098,6 +1118,9 @@ impl App {
                             }
                         });
                         playback.progress_ms = pos.min(max_dur);
+                        if playback.progress_ms % 4000 < 500 {
+                            save_last_playback_state(playback);
+                        }
                     }
                 }
                 Task::none()
