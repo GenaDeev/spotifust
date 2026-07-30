@@ -72,15 +72,93 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
     let (event_tx, event_rx) = mpsc::channel::<AudioSessionEvent>(32);
 
     let mut librespot_rx = player.get_player_event_channel();
+    let player_cmd = Arc::clone(&player);
+    let rodio_sink_cmd = Arc::clone(&rodio_sink);
+
     tokio::spawn(async move {
         let mut is_playing = false;
         let mut position_ms = 0;
         let mut last_update = tokio::time::Instant::now();
+        let mut current_uri: Option<String> = None;
         let mut interval = tokio::time::interval(std::time::Duration::from_millis(500));
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         loop {
             tokio::select! {
+                maybe_cmd = cmd_rx.recv() => {
+                    if let Some(cmd) = maybe_cmd {
+                        match cmd {
+                            PlayerCommand::Play(uri) => {
+                                rodio_sink_cmd.play();
+                                if uri.trim().is_empty() {
+                                    eprintln!("Cannot play track with empty Spotify URI");
+                                } else {
+                                    let uri_to_parse = if uri.starts_with("spotify:") {
+                                        uri.clone()
+                                    } else {
+                                        format!("spotify:track:{uri}")
+                                    };
+                                    match SpotifyUri::from_uri(&uri_to_parse) {
+                                        Ok(spotify_uri) => {
+                                            player_cmd.load(spotify_uri, true, 0);
+                                            current_uri = Some(uri);
+                                            is_playing = true;
+                                            position_ms = 0;
+                                            last_update = tokio::time::Instant::now();
+                                        }
+                                        Err(e) => {
+                                            eprintln!("Invalid Spotify URI '{uri}': {e}");
+                                        }
+                                    }
+                                }
+                            }
+                            PlayerCommand::Pause => {
+                                player_cmd.pause();
+                                rodio_sink_cmd.pause();
+                                is_playing = false;
+                                let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
+                            }
+                            PlayerCommand::Resume => {
+                                player_cmd.play();
+                                rodio_sink_cmd.play();
+                                is_playing = true;
+                                last_update = tokio::time::Instant::now();
+                                let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
+                            }
+                            PlayerCommand::SkipNext | PlayerCommand::SkipPrev => {
+                                if let Some(ref uri) = current_uri {
+                                    let uri_to_parse = if uri.starts_with("spotify:") {
+                                        uri.clone()
+                                    } else {
+                                        format!("spotify:track:{uri}")
+                                    };
+                                    match SpotifyUri::from_uri(&uri_to_parse) {
+                                        Ok(spotify_uri) => {
+                                            player_cmd.load(spotify_uri, true, 0);
+                                            is_playing = true;
+                                            position_ms = 0;
+                                            last_update = tokio::time::Instant::now();
+                                        }
+                                        Err(e) => {
+                                            eprintln!("Invalid Spotify URI '{uri}' on skip: {e}");
+                                        }
+                                    }
+                                }
+                            }
+                            PlayerCommand::Seek(pos_ms) => {
+                                player_cmd.seek(pos_ms);
+                                position_ms = pos_ms;
+                                last_update = tokio::time::Instant::now();
+                                let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
+                            }
+                            PlayerCommand::Volume(vol) => {
+                                rodio_sink_cmd.set_volume(vol.clamp(0.0, 1.0));
+                            }
+                        }
+                    } else {
+                        break;
+                    }
+                }
                 maybe_event = librespot_rx.recv() => {
                     if let Some(event) = maybe_event {
                         match &event {
@@ -128,69 +206,6 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                             break;
                         }
                     }
-                }
-            }
-        }
-    });
-
-    let player_cmd = Arc::clone(&player);
-    let rodio_sink_cmd = Arc::clone(&rodio_sink);
-    tokio::spawn(async move {
-        let mut current_uri: Option<String> = None;
-
-        while let Some(cmd) = cmd_rx.recv().await {
-            match cmd {
-                PlayerCommand::Play(uri) => {
-                    rodio_sink_cmd.play();
-                    if uri.trim().is_empty() {
-                        eprintln!("Cannot play track with empty Spotify URI");
-                    } else {
-                        let uri_to_parse = if uri.starts_with("spotify:") {
-                            uri.clone()
-                        } else {
-                            format!("spotify:track:{uri}")
-                        };
-                        match SpotifyUri::from_uri(&uri_to_parse) {
-                            Ok(spotify_uri) => {
-                                player_cmd.load(spotify_uri, true, 0);
-                                current_uri = Some(uri);
-                            }
-                            Err(e) => {
-                                eprintln!("Invalid Spotify URI '{uri}': {e}");
-                            }
-                        }
-                    }
-                }
-                PlayerCommand::Pause => {
-                    player_cmd.pause();
-                    rodio_sink_cmd.pause();
-                }
-                PlayerCommand::Resume => {
-                    player_cmd.play();
-                    rodio_sink_cmd.play();
-                }
-                PlayerCommand::SkipNext | PlayerCommand::SkipPrev => {
-                    if let Some(ref uri) = current_uri {
-                        let uri_to_parse = if uri.starts_with("spotify:") {
-                            uri.clone()
-                        } else {
-                            format!("spotify:track:{uri}")
-                        };
-                        match SpotifyUri::from_uri(&uri_to_parse) {
-                            Ok(spotify_uri) => {
-                                player_cmd.load(spotify_uri, true, 0);
-                            }
-                            Err(e) => {
-                                eprintln!("Invalid Spotify URI '{uri}' on skip: {e}");
-                            }
-                        }
-                    }
-                }
-                PlayerCommand::Seek(pos_ms) => {
-                    player_cmd.seek(pos_ms);
-                }
-                PlayerCommand::Volume(vol) => {
-                    rodio_sink_cmd.set_volume(vol.clamp(0.0, 1.0));
                 }
             }
         }

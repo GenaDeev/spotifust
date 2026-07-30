@@ -1122,12 +1122,7 @@ impl App {
                                 u32::MAX
                             }
                         });
-                        let new_pos = pos.min(max_dur);
-                        if new_pos >= playback.progress_ms
-                            || playback.progress_ms.saturating_sub(new_pos) > 1000
-                        {
-                            playback.progress_ms = new_pos;
-                        }
+                        playback.progress_ms = pos.min(max_dur);
                     }
                 }
                 Task::none()
