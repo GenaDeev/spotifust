@@ -2593,9 +2593,6 @@ fn render_skeleton_cards<'a>(count: usize) -> Element<'a, Message> {
 }
 
 fn render_skeleton_quick_grid<'a>() -> Element<'a, Message> {
-    let mut row_1 = Row::new().spacing(12);
-    let mut row_2 = Row::new().spacing(12);
-
     fn make_skeleton_card<'a>() -> Element<'a, Message> {
         Container::new(
             Row::new()
@@ -2642,6 +2639,9 @@ fn render_skeleton_quick_grid<'a>() -> Element<'a, Message> {
         })
         .into()
     }
+
+    let mut row_1 = Row::new().spacing(12);
+    let mut row_2 = Row::new().spacing(12);
 
     for _ in 0..3 {
         row_1 = row_1.push(make_skeleton_card());

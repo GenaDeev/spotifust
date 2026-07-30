@@ -75,7 +75,19 @@ pub fn save_last_playback_state(playback: &PlaybackState) {
     }
 }
 
+pub fn save_saved_volume(volume: f32) {
+    let _ = crate::api::cache::DiskMetadataCache::save("saved_volume", &volume);
+}
+
+#[must_use]
+pub fn load_saved_volume() -> f32 {
+    crate::api::cache::DiskMetadataCache::load::<f32>("saved_volume").unwrap_or(0.8)
+}
+
 pub fn load_last_playback_state(playback: &mut PlaybackState) {
+    let saved_vol = load_saved_volume();
+    playback.volume = saved_vol;
+    playback.last_volume = saved_vol;
     if let Some(state) =
         crate::api::cache::DiskMetadataCache::load::<LastPlaybackState>("last_playback_state")
     {
@@ -109,14 +121,15 @@ pub struct PlaybackState {
 
 impl Default for PlaybackState {
     fn default() -> Self {
+        let vol = load_saved_volume();
         Self {
             is_playing: false,
             current_track: None,
             progress_ms: 0,
-            volume: 1.0,
+            volume: vol,
             current_track_uri: None,
             is_muted: false,
-            last_volume: 1.0,
+            last_volume: vol,
             is_shuffled: false,
             repeat_mode: RepeatMode::Off,
         }
@@ -539,7 +552,10 @@ impl App {
             Message::FeaturedPlaylistsFetched(res) => {
                 let mut tasks = Vec::new();
                 if let Ok(playlists) = res {
-                    let _ = crate::api::cache::DiskMetadataCache::save("featured_playlists", &playlists);
+                    let _ = crate::api::cache::DiskMetadataCache::save(
+                        "featured_playlists",
+                        &playlists,
+                    );
                     if let AppState::Main {
                         featured_playlists,
                         loaded_images,
@@ -1324,6 +1340,7 @@ impl App {
                         playback.is_muted = false;
                         playback.last_volume = clamped_vol;
                     }
+                    save_saved_volume(clamped_vol);
                     if let Some(session) = audio_session {
                         let _ = session.cmd_tx.try_send(PlayerCommand::Volume(clamped_vol));
                     }
@@ -1343,6 +1360,7 @@ impl App {
                         playback.is_muted = false;
                         playback.last_volume = new_vol;
                     }
+                    save_saved_volume(new_vol);
                     if let Some(session) = audio_session {
                         let _ = session.cmd_tx.try_send(PlayerCommand::Volume(new_vol));
                     }
@@ -1364,6 +1382,7 @@ impl App {
                             playback.last_volume
                         };
                         playback.volume = target_vol;
+                        save_saved_volume(target_vol);
                         if let Some(session) = audio_session {
                             let _ = session.cmd_tx.try_send(PlayerCommand::Volume(target_vol));
                         }
@@ -1371,6 +1390,7 @@ impl App {
                         playback.is_muted = true;
                         playback.last_volume = playback.volume;
                         playback.volume = 0.0;
+                        save_saved_volume(0.0);
                         if let Some(session) = audio_session {
                             let _ = session.cmd_tx.try_send(PlayerCommand::Volume(0.0));
                         }
