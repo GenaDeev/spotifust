@@ -865,9 +865,54 @@ fn view_main_content<'a>(
             tracks_column.into()
         };
 
+        let action_row: Element<'a, Message> = if let Some(first_track) = sp.tracks.first() {
+            let first_uri = first_track.uri.clone();
+            let play_btn = Button::new(
+                Container::new(Icon::Play.view_colored(24.0, Color::BLACK))
+                    .width(Length::Fixed(56.0))
+                    .height(Length::Fixed(56.0))
+                    .align_x(iced::alignment::Horizontal::Center)
+                    .align_y(iced::alignment::Vertical::Center),
+            )
+            .padding(0)
+            .on_press(Message::PlayTrack(first_uri))
+            .style(|_t, status| {
+                let base = iced::widget::button::Style {
+                    background: Some(Background::Color(theme::ACCENT)),
+                    border: Border {
+                        radius: 28.0.into(),
+                        ..Default::default()
+                    },
+                    shadow: iced::Shadow {
+                        color: Color::from_rgba(0.0, 0.0, 0.0, 0.4),
+                        offset: iced::Vector::new(0.0, 4.0),
+                        blur_radius: 12.0,
+                    },
+                    ..Default::default()
+                };
+                match status {
+                    iced::widget::button::Status::Hovered
+                    | iced::widget::button::Status::Pressed => iced::widget::button::Style {
+                        background: Some(Background::Color(Color::from_rgb(0.15, 0.85, 0.40))),
+                        ..base
+                    },
+                    _ => base,
+                }
+            });
+
+            Row::new()
+                .spacing(16)
+                .align_y(Alignment::Center)
+                .push(play_btn)
+                .into()
+        } else {
+            Space::new().height(Length::Fixed(0.0)).into()
+        };
+
         let page_column = Column::new()
             .spacing(20)
             .push(playlist_header)
+            .push(action_row)
             .push(content_body);
 
         let scrollable = thin_scrollable(Container::new(page_column).padding(iced::Padding {
@@ -1038,9 +1083,54 @@ fn view_main_content<'a>(
             tracks_column.into()
         };
 
+        let action_row: Element<'a, Message> = if let Some(first_track) = sa.tracks.first() {
+            let first_uri = first_track.uri.clone();
+            let play_btn = Button::new(
+                Container::new(Icon::Play.view_colored(24.0, Color::BLACK))
+                    .width(Length::Fixed(56.0))
+                    .height(Length::Fixed(56.0))
+                    .align_x(iced::alignment::Horizontal::Center)
+                    .align_y(iced::alignment::Vertical::Center),
+            )
+            .padding(0)
+            .on_press(Message::PlayTrack(first_uri))
+            .style(|_t, status| {
+                let base = iced::widget::button::Style {
+                    background: Some(Background::Color(theme::ACCENT)),
+                    border: Border {
+                        radius: 28.0.into(),
+                        ..Default::default()
+                    },
+                    shadow: iced::Shadow {
+                        color: Color::from_rgba(0.0, 0.0, 0.0, 0.4),
+                        offset: iced::Vector::new(0.0, 4.0),
+                        blur_radius: 12.0,
+                    },
+                    ..Default::default()
+                };
+                match status {
+                    iced::widget::button::Status::Hovered
+                    | iced::widget::button::Status::Pressed => iced::widget::button::Style {
+                        background: Some(Background::Color(Color::from_rgb(0.15, 0.85, 0.40))),
+                        ..base
+                    },
+                    _ => base,
+                }
+            });
+
+            Row::new()
+                .spacing(16)
+                .align_y(Alignment::Center)
+                .push(play_btn)
+                .into()
+        } else {
+            Space::new().height(Length::Fixed(0.0)).into()
+        };
+
         let page_column = Column::new()
             .spacing(20)
             .push(album_header)
+            .push(action_row)
             .push(content_body);
 
         let scrollable = thin_scrollable(Container::new(page_column).padding(iced::Padding {
@@ -1766,14 +1856,22 @@ fn view_playback_bar<'a>(
     let controls = Row::new()
         .spacing(16)
         .align_y(Alignment::Center)
-        .push(icon_button_plain(Icon::Shuffle, Message::ToggleShuffle))
+        .push(icon_button_plain_active(
+            Icon::Shuffle,
+            Message::ToggleShuffle,
+            playback.is_shuffled,
+        ))
         .push(icon_button_plain(Icon::SkipPrev, Message::SkipPrev))
         .push(icon_button_circle_accent(
             play_pause_icon,
             Message::TogglePlayback,
         ))
         .push(icon_button_plain(Icon::SkipNext, Message::SkipNext))
-        .push(icon_button_plain(Icon::Repeat, Message::ToggleRepeat));
+        .push(icon_button_plain_active(
+            Icon::Repeat,
+            Message::ToggleRepeat,
+            playback.repeat_mode != crate::app::RepeatMode::Off,
+        ));
 
     let duration_ms = playback
         .current_track

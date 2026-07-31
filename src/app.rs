@@ -213,6 +213,7 @@ pub enum AppState {
         selected_album: Option<SelectedAlbumState>,
         user_queue: Vec<TrackInfo>,
         context_queue: Vec<TrackInfo>,
+        original_context_queue: Vec<TrackInfo>,
         context_index: usize,
         history: Vec<TrackInfo>,
         active_context_menu: Option<ContextMenuState>,
@@ -555,6 +556,7 @@ impl App {
                     selected_album: None,
                     user_queue: Vec::new(),
                     context_queue: Vec::new(),
+                    original_context_queue: Vec::new(),
                     context_index: 0,
                     history: Vec::new(),
                     active_context_menu: None,
@@ -1026,6 +1028,7 @@ impl App {
                     search_results,
                     loaded_images,
                     context_queue,
+                    original_context_queue,
                     context_index,
                     history,
                     ..
@@ -1057,7 +1060,11 @@ impl App {
                         if let Some(idx) = new_ctx.iter().position(|t| t.uri == uri) {
                             *context_index = idx;
                             found_info = Some(new_ctx[idx].clone());
+                            original_context_queue.clone_from(&new_ctx);
                             *context_queue = new_ctx;
+                            if playback.is_shuffled && *context_index + 1 < context_queue.len() {
+                                shuffle_slice(&mut context_queue[*context_index + 1..]);
+                            }
                         }
                     } else if let Some(sa) = selected_album {
                         let new_ctx: Vec<TrackInfo> = sa
@@ -1075,7 +1082,11 @@ impl App {
                         if let Some(idx) = new_ctx.iter().position(|t| t.uri == uri) {
                             *context_index = idx;
                             found_info = Some(new_ctx[idx].clone());
+                            original_context_queue.clone_from(&new_ctx);
                             *context_queue = new_ctx;
+                            if playback.is_shuffled && *context_index + 1 < context_queue.len() {
+                                shuffle_slice(&mut context_queue[*context_index + 1..]);
+                            }
                         }
                     }
 
@@ -2108,13 +2119,27 @@ impl App {
                 if let AppState::Main {
                     playback,
                     context_queue,
+                    original_context_queue,
                     context_index,
                     ..
                 } = &mut self.state
                 {
                     playback.is_shuffled = !playback.is_shuffled;
-                    if playback.is_shuffled && *context_index + 1 < context_queue.len() {
-                        shuffle_slice(&mut context_queue[*context_index + 1..]);
+                    if playback.is_shuffled {
+                        if original_context_queue.is_empty() {
+                            original_context_queue.clone_from(context_queue);
+                        }
+                        if *context_index + 1 < context_queue.len() {
+                            shuffle_slice(&mut context_queue[*context_index + 1..]);
+                        }
+                    } else if !original_context_queue.is_empty() {
+                        let curr_uri = playback.current_track.as_ref().map(|t| t.uri.clone());
+                        *context_queue = original_context_queue.clone();
+                        if let Some(uri) = curr_uri {
+                            if let Some(pos) = context_queue.iter().position(|t| t.uri == uri) {
+                                *context_index = pos;
+                            }
+                        }
                     }
                 }
                 Task::none()
