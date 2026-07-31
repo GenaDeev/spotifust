@@ -1499,7 +1499,7 @@ fn view_right_panel<'a>(
                 )
             } else {
                 Container::new(
-                    Text::new("Sin canción reproduciéndose")
+                    Text::new("No track playing")
                         .size(12)
                         .color(theme::TEXT_SECONDARY),
                 )
@@ -1510,7 +1510,7 @@ fn view_right_panel<'a>(
             let next_header_row = Row::new()
                 .align_y(Alignment::Center)
                 .push(
-                    Text::new("A continuación en la fila")
+                    Text::new("Next in Queue")
                         .size(14)
                         .font(iced::Font {
                             weight: iced::font::Weight::Bold,
@@ -1526,7 +1526,7 @@ fn view_right_panel<'a>(
                 next_header_row
                     .push(
                         Button::new(
-                            Text::new("Vaciar fila")
+                            Text::new("Clear queue")
                                 .size(11)
                                 .color(theme::TEXT_SECONDARY),
                         )
@@ -1547,7 +1547,7 @@ fn view_right_panel<'a>(
                         .align_x(Alignment::Center)
                         .push(Icon::Queue.view_colored(32.0, theme::TEXT_TERTIARY))
                         .push(
-                            Text::new("La fila está vacía")
+                            Text::new("Queue is empty")
                                 .size(13)
                                 .font(iced::Font {
                                     weight: iced::font::Weight::Bold,
@@ -1556,11 +1556,9 @@ fn view_right_panel<'a>(
                                 .color(theme::TEXT_SECONDARY),
                         )
                         .push(
-                            Text::new(
-                                "Agregá canciones haciendo clic derecho en cualquier canción.",
-                            )
-                            .size(11)
-                            .color(theme::TEXT_TERTIARY),
+                            Text::new("Add tracks by right-clicking any song.")
+                                .size(11)
+                                .color(theme::TEXT_TERTIARY),
                         ),
                 )
                 .padding(24)

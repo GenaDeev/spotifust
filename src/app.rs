@@ -2020,7 +2020,7 @@ impl App {
                     let title = track.title.clone();
                     play_queue.push(track);
                     *active_context_menu = None;
-                    *toast_notification = Some(format!("Agregado a la fila: {title}"));
+                    *toast_notification = Some(format!("Added to queue: {title}"));
                 }
                 Task::perform(
                     async {
