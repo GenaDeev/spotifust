@@ -211,7 +211,10 @@ pub enum AppState {
         sidebar_filter: SidebarFilter,
         selected_playlist: Option<SelectedPlaylistState>,
         selected_album: Option<SelectedAlbumState>,
-        play_queue: Vec<TrackInfo>,
+        user_queue: Vec<TrackInfo>,
+        context_queue: Vec<TrackInfo>,
+        context_index: usize,
+        history: Vec<TrackInfo>,
         active_context_menu: Option<ContextMenuState>,
         active_modal: Option<ActiveModal>,
         toast_notification: Option<String>,
@@ -550,7 +553,10 @@ impl App {
                     sidebar_filter: SidebarFilter::All,
                     selected_playlist: None,
                     selected_album: None,
-                    play_queue: Vec::new(),
+                    user_queue: Vec::new(),
+                    context_queue: Vec::new(),
+                    context_index: 0,
+                    history: Vec::new(),
                     active_context_menu: None,
                     active_modal: None,
                     toast_notification: None,
@@ -1019,26 +1025,72 @@ impl App {
                     selected_album,
                     search_results,
                     loaded_images,
+                    context_queue,
+                    context_index,
+                    history,
                     ..
                 } = &mut self.state
                 {
+                    if let Some(curr) = playback.current_track.clone() {
+                        history.push(curr);
+                    }
+
                     playback.current_track_uri = Some(uri.clone());
                     playback.is_playing = true;
                     playback.progress_ms = 0;
 
                     let mut found_info: Option<TrackInfo> = None;
 
-                    if let Some(t) = user_top_tracks.iter().find(|t| t.uri == uri) {
-                        found_info = Some(TrackInfo {
-                            title: t.title.clone(),
-                            artist: t.artist.clone(),
-                            album: t.album.clone(),
-                            duration_ms: t.duration_ms,
-                            image_url: t.image_url.clone(),
-                            uri: uri.clone(),
-                        });
-                    } else if let Some(sp) = selected_playlist {
-                        if let Some(t) = sp.tracks.iter().find(|t| t.uri == uri) {
+                    if let Some(sp) = selected_playlist {
+                        let new_ctx: Vec<TrackInfo> = sp
+                            .tracks
+                            .iter()
+                            .map(|t| TrackInfo {
+                                title: t.title.clone(),
+                                artist: t.artist.clone(),
+                                album: t.album.clone(),
+                                duration_ms: t.duration_ms,
+                                image_url: t.image_url.clone(),
+                                uri: t.uri.clone(),
+                            })
+                            .collect();
+                        if let Some(idx) = new_ctx.iter().position(|t| t.uri == uri) {
+                            *context_index = idx;
+                            found_info = Some(new_ctx[idx].clone());
+                            *context_queue = new_ctx;
+                        }
+                    } else if let Some(sa) = selected_album {
+                        let new_ctx: Vec<TrackInfo> = sa
+                            .tracks
+                            .iter()
+                            .map(|t| TrackInfo {
+                                title: t.title.clone(),
+                                artist: t.artist.clone(),
+                                album: sa.name.clone(),
+                                duration_ms: t.duration_ms,
+                                image_url: sa.image_url.clone(),
+                                uri: t.uri.clone(),
+                            })
+                            .collect();
+                        if let Some(idx) = new_ctx.iter().position(|t| t.uri == uri) {
+                            *context_index = idx;
+                            found_info = Some(new_ctx[idx].clone());
+                            *context_queue = new_ctx;
+                        }
+                    }
+
+                    if found_info.is_none() {
+                        if let Some(t) = user_top_tracks.iter().find(|t| t.uri == uri) {
+                            found_info = Some(TrackInfo {
+                                title: t.title.clone(),
+                                artist: t.artist.clone(),
+                                album: t.album.clone(),
+                                duration_ms: t.duration_ms,
+                                image_url: t.image_url.clone(),
+                                uri: uri.clone(),
+                            });
+                        } else if let Some(t) = search_results.tracks.iter().find(|t| t.uri == uri)
+                        {
                             found_info = Some(TrackInfo {
                                 title: t.title.clone(),
                                 artist: t.artist.clone(),
@@ -1048,26 +1100,6 @@ impl App {
                                 uri: uri.clone(),
                             });
                         }
-                    } else if let Some(sa) = selected_album {
-                        if let Some(t) = sa.tracks.iter().find(|t| t.uri == uri) {
-                            found_info = Some(TrackInfo {
-                                title: t.title.clone(),
-                                artist: t.artist.clone(),
-                                album: sa.name.clone(),
-                                duration_ms: t.duration_ms,
-                                image_url: sa.image_url.clone(),
-                                uri: uri.clone(),
-                            });
-                        }
-                    } else if let Some(t) = search_results.tracks.iter().find(|t| t.uri == uri) {
-                        found_info = Some(TrackInfo {
-                            title: t.title.clone(),
-                            artist: t.artist.clone(),
-                            album: t.album.clone(),
-                            duration_ms: t.duration_ms,
-                            image_url: t.image_url.clone(),
-                            uri: uri.clone(),
-                        });
                     }
 
                     let mut tasks = Vec::new();
@@ -1258,18 +1290,16 @@ impl App {
 
             Message::PlaybackPositionReceived(pos) => {
                 if let AppState::Main { playback, .. } = &mut self.state {
-                    if playback.is_playing {
-                        let max_dur = playback.current_track.as_ref().map_or(u32::MAX, |t| {
-                            if t.duration_ms > 0 {
-                                t.duration_ms
-                            } else {
-                                u32::MAX
-                            }
-                        });
-                        playback.progress_ms = pos.min(max_dur);
-                        if playback.progress_ms % 4000 < 500 {
-                            save_last_playback_state(playback);
+                    let max_dur = playback.current_track.as_ref().map_or(u32::MAX, |t| {
+                        if t.duration_ms > 0 {
+                            t.duration_ms
+                        } else {
+                            u32::MAX
                         }
+                    });
+                    playback.progress_ms = pos.min(max_dur);
+                    if playback.is_playing && playback.progress_ms % 4000 < 500 {
+                        save_last_playback_state(playback);
                     }
                 }
                 Task::none()
@@ -1348,33 +1378,114 @@ impl App {
             }
             Message::SkipNext => {
                 if let AppState::Main {
-                    play_queue,
+                    user_queue,
+                    context_queue,
+                    context_index,
+                    history,
                     playback,
                     audio_session,
+                    loaded_images,
                     ..
                 } = &mut self.state
                 {
-                    if !play_queue.is_empty() {
-                        let next_track = play_queue.remove(0);
+                    if let Some(curr) = playback.current_track.clone() {
+                        history.push(curr);
+                    }
+
+                    let next_track_opt = if !user_queue.is_empty() {
+                        Some(user_queue.remove(0))
+                    } else if playback.repeat_mode == RepeatMode::One
+                        && playback.current_track.is_some()
+                    {
+                        playback.current_track.clone()
+                    } else if *context_index + 1 < context_queue.len() {
+                        *context_index += 1;
+                        Some(context_queue[*context_index].clone())
+                    } else if playback.repeat_mode == RepeatMode::Context
+                        && !context_queue.is_empty()
+                    {
+                        *context_index = 0;
+                        Some(context_queue[0].clone())
+                    } else {
+                        None
+                    };
+
+                    if let Some(next_track) = next_track_opt {
                         playback.current_track = Some(next_track.clone());
                         playback.progress_ms = 0;
                         playback.is_playing = true;
                         if let Some(session) = audio_session {
-                            let _ = session.cmd_tx.try_send(PlayerCommand::Play(next_track.uri));
+                            let _ = session
+                                .cmd_tx
+                                .try_send(PlayerCommand::Play(next_track.uri.clone()));
                         }
-                    } else if let Some(session) = audio_session {
-                        let _ = session.cmd_tx.try_send(PlayerCommand::SkipNext);
+                        if let Some(ref img) = next_track.image_url {
+                            return Task::batch(load_image_tasks(
+                                std::iter::once(Some(img.clone())),
+                                loaded_images,
+                            ));
+                        }
+                    } else {
+                        playback.is_playing = false;
+                        playback.progress_ms = 0;
                     }
                 }
                 Task::none()
             }
             Message::SkipPrev => {
                 if let AppState::Main {
-                    audio_session: Some(session),
+                    history,
+                    context_queue,
+                    context_index,
+                    playback,
+                    audio_session,
+                    loaded_images,
                     ..
                 } = &mut self.state
                 {
-                    let _ = session.cmd_tx.try_send(PlayerCommand::SkipPrev);
+                    if playback.progress_ms > 3000 {
+                        playback.progress_ms = 0;
+                        if let Some(session) = audio_session {
+                            let _ = session.cmd_tx.try_send(PlayerCommand::Seek(0));
+                        }
+                    } else if let Some(prev_track) = history.pop() {
+                        playback.current_track = Some(prev_track.clone());
+                        playback.progress_ms = 0;
+                        playback.is_playing = true;
+                        if let Some(session) = audio_session {
+                            let _ = session
+                                .cmd_tx
+                                .try_send(PlayerCommand::Play(prev_track.uri.clone()));
+                        }
+                        if let Some(ref img) = prev_track.image_url {
+                            return Task::batch(load_image_tasks(
+                                std::iter::once(Some(img.clone())),
+                                loaded_images,
+                            ));
+                        }
+                    } else if *context_index > 0 && *context_index < context_queue.len() {
+                        *context_index -= 1;
+                        let prev_track = context_queue[*context_index].clone();
+                        playback.current_track = Some(prev_track.clone());
+                        playback.progress_ms = 0;
+                        playback.is_playing = true;
+                        if let Some(session) = audio_session {
+                            let _ = session
+                                .cmd_tx
+                                .try_send(PlayerCommand::Play(prev_track.uri.clone()));
+                        }
+                        if let Some(ref img) = prev_track.image_url {
+                            return Task::batch(load_image_tasks(
+                                std::iter::once(Some(img.clone())),
+                                loaded_images,
+                            ));
+                        }
+                    } else {
+                        playback.progress_ms = 0;
+                        if let Some(session) = audio_session {
+                            let _ = session.cmd_tx.try_send(PlayerCommand::Seek(0));
+                        }
+                    }
                 }
                 Task::none()
             }
@@ -1994,8 +2105,17 @@ impl App {
                 )
             }
             Message::ToggleShuffle => {
-                if let AppState::Main { playback, .. } = &mut self.state {
+                if let AppState::Main {
+                    playback,
+                    context_queue,
+                    context_index,
+                    ..
+                } = &mut self.state
+                {
                     playback.is_shuffled = !playback.is_shuffled;
+                    if playback.is_shuffled && *context_index + 1 < context_queue.len() {
+                        shuffle_slice(&mut context_queue[*context_index + 1..]);
+                    }
                 }
                 Task::none()
             }
@@ -2011,14 +2131,14 @@ impl App {
             }
             Message::AddToQueue(track) => {
                 if let AppState::Main {
-                    play_queue,
+                    user_queue,
                     active_context_menu,
                     toast_notification,
                     ..
                 } = &mut self.state
                 {
                     let title = track.title.clone();
-                    play_queue.push(track);
+                    user_queue.push(track);
                     *active_context_menu = None;
                     *toast_notification = Some(format!("Added to queue: {title}"));
                 }
@@ -2030,52 +2150,65 @@ impl App {
                 )
             }
             Message::RemoveFromQueue(idx) => {
-                if let AppState::Main { play_queue, .. } = &mut self.state {
-                    if idx < play_queue.len() {
-                        play_queue.remove(idx);
+                if let AppState::Main { user_queue, .. } = &mut self.state {
+                    if idx < user_queue.len() {
+                        user_queue.remove(idx);
                     }
                 }
                 Task::none()
             }
             Message::MoveQueueItemUp(idx) => {
-                if let AppState::Main { play_queue, .. } = &mut self.state {
-                    if idx > 0 && idx < play_queue.len() {
-                        play_queue.swap(idx, idx - 1);
+                if let AppState::Main { user_queue, .. } = &mut self.state {
+                    if idx > 0 && idx < user_queue.len() {
+                        user_queue.swap(idx, idx - 1);
                     }
                 }
                 Task::none()
             }
             Message::MoveQueueItemDown(idx) => {
-                if let AppState::Main { play_queue, .. } = &mut self.state {
-                    if idx + 1 < play_queue.len() {
-                        play_queue.swap(idx, idx + 1);
+                if let AppState::Main { user_queue, .. } = &mut self.state {
+                    if idx + 1 < user_queue.len() {
+                        user_queue.swap(idx, idx + 1);
                     }
                 }
                 Task::none()
             }
             Message::PlayQueueIndex(idx) => {
                 if let AppState::Main {
-                    play_queue,
+                    user_queue,
                     playback,
                     audio_session,
+                    loaded_images,
+                    history,
                     ..
                 } = &mut self.state
                 {
-                    if idx < play_queue.len() {
-                        let next_track = play_queue.remove(idx);
+                    if idx < user_queue.len() {
+                        if let Some(curr) = playback.current_track.clone() {
+                            history.push(curr);
+                        }
+                        let next_track = user_queue.remove(idx);
                         playback.current_track = Some(next_track.clone());
                         playback.progress_ms = 0;
                         playback.is_playing = true;
                         if let Some(session) = audio_session {
-                            let _ = session.cmd_tx.try_send(PlayerCommand::Play(next_track.uri));
+                            let _ = session
+                                .cmd_tx
+                                .try_send(PlayerCommand::Play(next_track.uri.clone()));
+                        }
+                        if let Some(ref img) = next_track.image_url {
+                            return Task::batch(load_image_tasks(
+                                std::iter::once(Some(img.clone())),
+                                loaded_images,
+                            ));
                         }
                     }
                 }
                 Task::none()
             }
             Message::ClearQueue => {
-                if let AppState::Main { play_queue, .. } = &mut self.state {
-                    play_queue.clear();
+                if let AppState::Main { user_queue, .. } = &mut self.state {
+                    user_queue.clear();
                 }
                 Task::none()
             }
@@ -2182,7 +2315,9 @@ impl App {
                 sidebar_filter,
                 selected_playlist,
                 selected_album,
-                play_queue,
+                user_queue,
+                context_queue,
+                context_index,
                 loaded_images,
                 window_width,
                 active_context_menu,
@@ -2207,7 +2342,9 @@ impl App {
                 *sidebar_filter,
                 selected_playlist.as_ref(),
                 selected_album.as_ref(),
-                play_queue,
+                user_queue,
+                context_queue,
+                *context_index,
                 loaded_images,
                 *window_width,
                 active_context_menu.as_ref(),
@@ -2336,4 +2473,21 @@ fn load_image_tasks(
         }
     }
     tasks
+}
+
+#[allow(clippy::cast_possible_truncation)]
+fn shuffle_slice<T>(slice: &mut [T]) {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let seed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(12345, |d| d.as_nanos() as u64);
+    let mut state = seed;
+    let len = slice.len();
+    for i in (1..len).rev() {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        let j = (state % (i as u64 + 1)) as usize;
+        slice.swap(i, j);
+    }
 }
