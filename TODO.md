@@ -104,6 +104,8 @@
 - [x] Implement Repeat modes: No Repeat, Repeat Queue, Repeat One
 - [x] Implement "Add to queue" action from track context menus
 - [x] Implement track reordering and control within the play queue view
+- [x] Implement Spotify-style structured User Queue, Context Queue, and playback History stack
+- [x] Eliminate progress bar jumps and sync position directly with audio stream
 - [ ] Spotify Connect: Full bi-directional Spotify Connect integration for remote control and device sync
 - [x] Crossfade: Smooth audio crossfade between tracks (configurable duration in Settings)
 - [ ] Implement multi-band DSP Audio Equalizer with presets (Flat, Bass Boost, Vocal, Rock, Pop) integrated into `rodio` audio pipeline
