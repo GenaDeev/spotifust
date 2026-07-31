@@ -103,6 +103,7 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                                     match SpotifyUri::from_uri(&uri_to_parse) {
                                         Ok(spotify_uri) => {
                                             player_cmd.load(spotify_uri, true, 0);
+                                            player_cmd.play();
                                             current_uri = Some(uri);
                                             is_playing = true;
                                             position_ms = 0;
