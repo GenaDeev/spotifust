@@ -73,7 +73,9 @@ pub fn view<'a>(
     sidebar_filter: SidebarFilter,
     selected_playlist: Option<&'a crate::app::SelectedPlaylistState>,
     selected_album: Option<&'a crate::app::SelectedAlbumState>,
-    play_queue: &'a [crate::app::TrackInfo],
+    user_queue: &'a [crate::app::TrackInfo],
+    context_queue: &'a [crate::app::TrackInfo],
+    context_index: usize,
     loaded_images: &'a std::collections::HashMap<String, iced::widget::image::Handle>,
     window_width: f32,
     active_context_menu: Option<&'a crate::app::ContextMenuState>,
@@ -111,7 +113,9 @@ pub fn view<'a>(
         active_right_panel,
         right_panel_width,
         playback,
-        play_queue,
+        user_queue,
+        context_queue,
+        context_index,
         loaded_images,
     );
     let playback_bar = view_playback_bar(playback, active_right_panel, loaded_images);
@@ -757,14 +761,15 @@ fn view_main_content<'a>(
 
                     let local_badge = Container::new(
                         Text::new("LOCAL")
-                            .size(9)
+                            .size(10)
                             .font(iced::Font {
                                 weight: iced::font::Weight::Bold,
                                 ..Default::default()
                             })
                             .color(badge_color),
                     )
-                    .padding([2, 6])
+                    .padding([3, 8])
+                    .width(Length::Shrink)
                     .style(move |_theme: &Theme| container::Style {
                         background: Some(Background::Color(badge_bg)),
                         border: Border {
@@ -1355,7 +1360,9 @@ fn view_right_panel<'a>(
     active_tab: Option<RightPanelTab>,
     width: f32,
     playback: &'a PlaybackState,
-    play_queue: &'a [crate::app::TrackInfo],
+    user_queue: &'a [crate::app::TrackInfo],
+    context_queue: &'a [crate::app::TrackInfo],
+    context_index: usize,
     loaded_images: &'a std::collections::HashMap<String, iced::widget::image::Handle>,
 ) -> Element<'a, Message> {
     let Some(tab) = active_tab else {
@@ -1364,7 +1371,7 @@ fn view_right_panel<'a>(
 
     let title_text = match tab {
         RightPanelTab::NowPlaying => "Now Playing",
-        RightPanelTab::Queue => "Fila de reproducción",
+        RightPanelTab::Queue => "Queue",
         RightPanelTab::Lyrics => "Lyrics",
     };
 
@@ -1480,7 +1487,7 @@ fn view_right_panel<'a>(
                 .into()
         }
         RightPanelTab::Queue => {
-            let current_header = Text::new("Ahora sonando")
+            let current_header = Text::new("Now Playing")
                 .size(14)
                 .font(iced::Font {
                     weight: iced::font::Weight::Bold,
@@ -1507,7 +1514,7 @@ fn view_right_panel<'a>(
                 .into()
             };
 
-            let next_header_row = Row::new()
+            let next_user_header_row = Row::new()
                 .align_y(Alignment::Center)
                 .push(
                     Text::new("Next in Queue")
@@ -1520,56 +1527,27 @@ fn view_right_panel<'a>(
                 )
                 .push(Space::new().width(Length::Fill));
 
-            let next_header: Element<'a, Message> = if play_queue.is_empty() {
-                next_header_row.into()
+            let user_queue_section: Element<'a, Message> = if user_queue.is_empty() {
+                Space::new().height(Length::Fixed(0.0)).into()
             } else {
-                next_header_row
-                    .push(
-                        Button::new(
-                            Text::new("Clear queue")
-                                .size(11)
-                                .color(theme::TEXT_SECONDARY),
-                        )
-                        .padding([4, 8])
-                        .on_press(Message::ClearQueue)
-                        .style(|_t, _s| iced::widget::button::Style {
-                            background: Some(Background::Color(Color::TRANSPARENT)),
-                            ..Default::default()
-                        }),
+                let user_header = next_user_header_row.push(
+                    Button::new(
+                        Text::new("Clear queue")
+                            .size(11)
+                            .color(theme::TEXT_SECONDARY),
                     )
-                    .into()
-            };
+                    .padding([4, 8])
+                    .on_press(Message::ClearQueue)
+                    .style(|_t, _s| iced::widget::button::Style {
+                        background: Some(Background::Color(Color::TRANSPARENT)),
+                        ..Default::default()
+                    }),
+                );
 
-            let queue_list: Element<'a, Message> = if play_queue.is_empty() {
-                Container::new(
-                    Column::new()
-                        .spacing(8)
-                        .align_x(Alignment::Center)
-                        .push(Icon::Queue.view_colored(32.0, theme::TEXT_TERTIARY))
-                        .push(
-                            Text::new("Queue is empty")
-                                .size(13)
-                                .font(iced::Font {
-                                    weight: iced::font::Weight::Bold,
-                                    ..Default::default()
-                                })
-                                .color(theme::TEXT_SECONDARY),
-                        )
-                        .push(
-                            Text::new("Add tracks by right-clicking any song.")
-                                .size(11)
-                                .color(theme::TEXT_TERTIARY),
-                        ),
-                )
-                .padding(24)
-                .width(Length::Fill)
-                .align_x(iced::alignment::Horizontal::Center)
-                .into()
-            } else {
                 let mut col = Column::new().spacing(6);
-                let queue_len = play_queue.len();
+                let queue_len = user_queue.len();
 
-                for (idx, track) in play_queue.iter().enumerate() {
+                for (idx, track) in user_queue.iter().enumerate() {
                     let t_title = track.title.clone();
                     let t_artist = track.artist.clone();
 
@@ -1634,15 +1612,79 @@ fn view_right_panel<'a>(
                     col = col.push(item_row);
                 }
 
-                col.into()
+                Column::new().spacing(8).push(user_header).push(col).into()
             };
+
+            let context_header = Text::new("Next from Context")
+                .size(14)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                })
+                .color(theme::TEXT_PRIMARY);
+
+            let context_queue_section: Element<'a, Message> =
+                if context_queue.is_empty() || context_index + 1 >= context_queue.len() {
+                    if user_queue.is_empty() {
+                        Container::new(
+                            Column::new()
+                                .spacing(8)
+                                .align_x(Alignment::Center)
+                                .push(Icon::Queue.view_colored(32.0, theme::TEXT_TERTIARY))
+                                .push(
+                                    Text::new("Queue is empty")
+                                        .size(13)
+                                        .font(iced::Font {
+                                            weight: iced::font::Weight::Bold,
+                                            ..Default::default()
+                                        })
+                                        .color(theme::TEXT_SECONDARY),
+                                )
+                                .push(
+                                    Text::new("Add tracks by right-clicking any song.")
+                                        .size(11)
+                                        .color(theme::TEXT_TERTIARY),
+                                ),
+                        )
+                        .padding(24)
+                        .width(Length::Fill)
+                        .align_x(iced::alignment::Horizontal::Center)
+                        .into()
+                    } else {
+                        Space::new().height(Length::Fixed(0.0)).into()
+                    }
+                } else {
+                    let mut col = Column::new().spacing(6);
+                    for (_idx, track) in context_queue
+                        .iter()
+                        .enumerate()
+                        .skip(context_index + 1)
+                        .take(15)
+                    {
+                        let t_uri = track.uri.clone();
+                        let item = sidebar_item(
+                            &track.title,
+                            &track.artist,
+                            Icon::MusicNote,
+                            false,
+                            false,
+                            Message::PlayTrack(t_uri),
+                        );
+                        col = col.push(item);
+                    }
+                    Column::new()
+                        .spacing(8)
+                        .push(context_header)
+                        .push(col)
+                        .into()
+                };
 
             Column::new()
                 .spacing(16)
                 .push(current_header)
                 .push(current_item)
-                .push(next_header)
-                .push(queue_list)
+                .push(user_queue_section)
+                .push(context_queue_section)
                 .into()
         }
     };
@@ -1713,7 +1755,6 @@ fn view_playback_bar<'a>(
                 )
                 .push(Text::new(artist_name).size(11).color(theme::TEXT_SECONDARY)),
         )
-        .push(view_equalizer_bars(playback.is_playing))
         .push(icon_button_circle(Icon::Heart, Message::MockAction));
 
     let play_pause_icon = if playback.is_playing {
@@ -3016,37 +3057,6 @@ fn view_settings_page<'a>() -> Element<'a, Message> {
             }),
     )
     .into()
-}
-
-fn view_equalizer_bars<'a>(is_playing: bool) -> Element<'a, Message> {
-    if !is_playing {
-        return Space::new().into();
-    }
-
-    let heights = [10.0, 18.0, 14.0, 20.0];
-    let mut row = Row::new().spacing(3).align_y(Alignment::End);
-
-    for &h in &heights {
-        row = row.push(
-            Container::new(Space::new())
-                .width(Length::Fixed(3.0))
-                .height(Length::Fixed(h))
-                .style(|_theme: &Theme| container::Style {
-                    background: Some(Background::Color(theme::ACCENT)),
-                    border: Border {
-                        radius: 1.5.into(),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                }),
-        );
-    }
-
-    Container::new(row)
-        .padding([4, 6])
-        .height(Length::Fixed(24.0))
-        .align_y(Alignment::Center)
-        .into()
 }
 
 fn view_mini_player<'a>(
