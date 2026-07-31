@@ -15,7 +15,9 @@ pub enum PlayerCommand {
     Play(String),
     Pause,
     Resume,
+    #[allow(dead_code)]
     SkipNext,
+    #[allow(dead_code)]
     SkipPrev,
     Seek(u32),
     Volume(f32),
@@ -116,6 +118,7 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                                 player_cmd.pause();
                                 rodio_sink_cmd.pause();
                                 is_playing = false;
+                                last_update = tokio::time::Instant::now();
                                 let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
                             }
                             PlayerCommand::Resume => {
@@ -172,6 +175,7 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                             PlayerEvent::Paused { position_ms: pos, .. } => {
                                 is_playing = false;
                                 position_ms = *pos;
+                                last_update = tokio::time::Instant::now();
                                 let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
                             }
                             PlayerEvent::Stopped { .. } | PlayerEvent::EndOfTrack { .. } => {
@@ -195,17 +199,17 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                     }
                 }
                 _ = interval.tick() => {
+                    let now = tokio::time::Instant::now();
                     if is_playing {
-                        let now = tokio::time::Instant::now();
                         #[allow(clippy::cast_possible_truncation)]
                         let elapsed = now.duration_since(last_update).as_millis() as u32;
                         position_ms += elapsed;
-                        last_update = now;
 
                         if event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await.is_err() {
                             break;
                         }
                     }
+                    last_update = now;
                 }
             }
         }
