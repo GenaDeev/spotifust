@@ -324,6 +324,11 @@ pub enum Message {
     ToggleShuffle,
     ToggleRepeat,
     AddToQueue(TrackInfo),
+    RemoveFromQueue(usize),
+    MoveQueueItemUp(usize),
+    MoveQueueItemDown(usize),
+    PlayQueueIndex(usize),
+    ClearQueue,
     // Mock UI Actions
     MockAction,
     // Error Actions
@@ -1343,11 +1348,23 @@ impl App {
             }
             Message::SkipNext => {
                 if let AppState::Main {
-                    audio_session: Some(session),
+                    play_queue,
+                    playback,
+                    audio_session,
                     ..
                 } = &mut self.state
                 {
-                    let _ = session.cmd_tx.try_send(PlayerCommand::SkipNext);
+                    if !play_queue.is_empty() {
+                        let next_track = play_queue.remove(0);
+                        playback.current_track = Some(next_track.clone());
+                        playback.progress_ms = 0;
+                        playback.is_playing = true;
+                        if let Some(session) = audio_session {
+                            let _ = session.cmd_tx.try_send(PlayerCommand::Play(next_track.uri));
+                        }
+                    } else if let Some(session) = audio_session {
+                        let _ = session.cmd_tx.try_send(PlayerCommand::SkipNext);
+                    }
                 }
                 Task::none()
             }
@@ -1993,8 +2010,72 @@ impl App {
                 Task::none()
             }
             Message::AddToQueue(track) => {
-                if let AppState::Main { play_queue, .. } = &mut self.state {
+                if let AppState::Main {
+                    play_queue,
+                    active_context_menu,
+                    toast_notification,
+                    ..
+                } = &mut self.state
+                {
+                    let title = track.title.clone();
                     play_queue.push(track);
+                    *active_context_menu = None;
+                    *toast_notification = Some(format!("Agregado a la fila: {title}"));
+                }
+                Task::perform(
+                    async {
+                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    },
+                    |()| Message::DismissToast,
+                )
+            }
+            Message::RemoveFromQueue(idx) => {
+                if let AppState::Main { play_queue, .. } = &mut self.state {
+                    if idx < play_queue.len() {
+                        play_queue.remove(idx);
+                    }
+                }
+                Task::none()
+            }
+            Message::MoveQueueItemUp(idx) => {
+                if let AppState::Main { play_queue, .. } = &mut self.state {
+                    if idx > 0 && idx < play_queue.len() {
+                        play_queue.swap(idx, idx - 1);
+                    }
+                }
+                Task::none()
+            }
+            Message::MoveQueueItemDown(idx) => {
+                if let AppState::Main { play_queue, .. } = &mut self.state {
+                    if idx + 1 < play_queue.len() {
+                        play_queue.swap(idx, idx + 1);
+                    }
+                }
+                Task::none()
+            }
+            Message::PlayQueueIndex(idx) => {
+                if let AppState::Main {
+                    play_queue,
+                    playback,
+                    audio_session,
+                    ..
+                } = &mut self.state
+                {
+                    if idx < play_queue.len() {
+                        let next_track = play_queue.remove(idx);
+                        playback.current_track = Some(next_track.clone());
+                        playback.progress_ms = 0;
+                        playback.is_playing = true;
+                        if let Some(session) = audio_session {
+                            let _ = session.cmd_tx.try_send(PlayerCommand::Play(next_track.uri));
+                        }
+                    }
+                }
+                Task::none()
+            }
+            Message::ClearQueue => {
+                if let AppState::Main { play_queue, .. } = &mut self.state {
+                    play_queue.clear();
                 }
                 Task::none()
             }
@@ -2101,6 +2182,7 @@ impl App {
                 sidebar_filter,
                 selected_playlist,
                 selected_album,
+                play_queue,
                 loaded_images,
                 window_width,
                 active_context_menu,
@@ -2125,6 +2207,7 @@ impl App {
                 *sidebar_filter,
                 selected_playlist.as_ref(),
                 selected_album.as_ref(),
+                play_queue,
                 loaded_images,
                 *window_width,
                 active_context_menu.as_ref(),

@@ -73,6 +73,7 @@ pub fn view<'a>(
     sidebar_filter: SidebarFilter,
     selected_playlist: Option<&'a crate::app::SelectedPlaylistState>,
     selected_album: Option<&'a crate::app::SelectedAlbumState>,
+    play_queue: &'a [crate::app::TrackInfo],
     loaded_images: &'a std::collections::HashMap<String, iced::widget::image::Handle>,
     window_width: f32,
     active_context_menu: Option<&'a crate::app::ContextMenuState>,
@@ -110,6 +111,7 @@ pub fn view<'a>(
         active_right_panel,
         right_panel_width,
         playback,
+        play_queue,
         loaded_images,
     );
     let playback_bar = view_playback_bar(playback, active_right_panel, loaded_images);
@@ -1083,25 +1085,11 @@ fn view_main_content<'a>(
     let mut row_1 = Row::new().spacing(12);
     let mut row_2 = Row::new().spacing(12);
 
-    let display_playlists = if featured_playlists.is_empty() {
-        user_playlists
-    } else {
-        featured_playlists
-    };
-
-    let display_albums = if featured_albums.is_empty() {
-        user_albums
-    } else {
-        featured_albums
-    };
-
-    let quick_grid: Element<'a, Message> = if display_playlists.is_empty()
-        && display_albums.is_empty()
-    {
+    let quick_grid: Element<'a, Message> = if user_playlists.is_empty() && user_albums.is_empty() {
         render_skeleton_quick_grid()
     } else {
         let mut idx = 0;
-        for p in display_playlists.iter().take(3) {
+        for p in user_playlists.iter().take(3) {
             let p_clone = p.clone();
             let card = quick_card_with_image(
                 &p.name,
@@ -1122,7 +1110,7 @@ fn view_main_content<'a>(
             }
             idx += 1;
         }
-        for a in display_albums.iter().take(3) {
+        for a in user_albums.iter().take(3) {
             let a_clone = a.clone();
             let card = quick_card_with_image(
                 &a.name,
@@ -1160,30 +1148,7 @@ fn view_main_content<'a>(
         .push(Space::new().width(Length::Fill));
 
     let section_1_cards: Element<'a, Message> = if user_top_tracks.is_empty() {
-        if display_albums.is_empty() && display_playlists.is_empty() {
-            render_skeleton_cards(5)
-        } else {
-            let mut row = Row::new().spacing(16);
-            for a in display_albums.iter().take(5) {
-                let a_clone = a.clone();
-                let subtitle = format!("{} • Album", a.artist_name);
-                let card = media_card_with_image(
-                    &a.name,
-                    &subtitle,
-                    a.image_url.as_deref(),
-                    loaded_images,
-                    Icon::Album,
-                    Message::SelectAlbum(a.id.clone()),
-                );
-                let card_with_menu =
-                    iced::widget::mouse_area(card).on_right_press(Message::OpenAlbumContextMenu {
-                        album: a_clone,
-                        position: iced::Point::new(400.0, 350.0),
-                    });
-                row = row.push(card_with_menu);
-            }
-            scroll_row(row)
-        }
+        render_skeleton_cards(5)
     } else {
         let mut row = Row::new().spacing(16);
         for track in user_top_tracks.iter().take(5) {
@@ -1229,11 +1194,11 @@ fn view_main_content<'a>(
         )
         .push(Space::new().width(Length::Fill));
 
-    let section_2_cards: Element<'a, Message> = if display_albums.is_empty() {
+    let section_2_cards: Element<'a, Message> = if user_albums.is_empty() {
         render_skeleton_cards(5)
     } else {
         let mut row = Row::new().spacing(16);
-        for a in display_albums.iter().take(5) {
+        for a in user_albums.iter().take(5) {
             let a_clone = a.clone();
             let subtitle = format!("{} • Album", a.artist_name);
             let card = media_card_with_image(
@@ -1267,11 +1232,11 @@ fn view_main_content<'a>(
         )
         .push(Space::new().width(Length::Fill));
 
-    let section_3_cards: Element<'a, Message> = if display_playlists.is_empty() {
+    let section_3_cards: Element<'a, Message> = if featured_playlists.is_empty() {
         render_skeleton_cards(5)
     } else {
         let mut row = Row::new().spacing(16);
-        for p in display_playlists.iter().take(5) {
+        for p in featured_playlists.iter().take(5) {
             let p_clone = p.clone();
             let subtitle = format!("By {}", p.owner_name);
             let card = media_card_with_image(
@@ -1305,11 +1270,11 @@ fn view_main_content<'a>(
         )
         .push(Space::new().width(Length::Fill));
 
-    let section_4_cards: Element<'a, Message> = if display_albums.is_empty() {
+    let section_4_cards: Element<'a, Message> = if featured_albums.is_empty() {
         render_skeleton_cards(5)
     } else {
         let mut row = Row::new().spacing(16);
-        for a in display_albums.iter().take(5) {
+        for a in featured_albums.iter().take(5) {
             let a_clone = a.clone();
             let subtitle = format!("{} • Album", a.artist_name);
             let card = media_card_with_image(
@@ -1390,6 +1355,7 @@ fn view_right_panel<'a>(
     active_tab: Option<RightPanelTab>,
     width: f32,
     playback: &'a PlaybackState,
+    play_queue: &'a [crate::app::TrackInfo],
     loaded_images: &'a std::collections::HashMap<String, iced::widget::image::Handle>,
 ) -> Element<'a, Message> {
     let Some(tab) = active_tab else {
@@ -1398,7 +1364,7 @@ fn view_right_panel<'a>(
 
     let title_text = match tab {
         RightPanelTab::NowPlaying => "Now Playing",
-        RightPanelTab::Queue => "Queue",
+        RightPanelTab::Queue => "Fila de reproducción",
         RightPanelTab::Lyrics => "Lyrics",
     };
 
@@ -1514,7 +1480,7 @@ fn view_right_panel<'a>(
                 .into()
         }
         RightPanelTab::Queue => {
-            let current_header = Text::new("Now Playing")
+            let current_header = Text::new("Ahora sonando")
                 .size(14)
                 .font(iced::Font {
                     weight: iced::font::Weight::Bold,
@@ -1522,55 +1488,156 @@ fn view_right_panel<'a>(
                 })
                 .color(theme::TEXT_PRIMARY);
 
-            let (curr_title, curr_artist) = if let Some(track) = &playback.current_track {
-                (track.title.as_str(), track.artist.as_str())
+            let current_item: Element<'a, Message> = if let Some(track) = &playback.current_track {
+                sidebar_item(
+                    &track.title,
+                    &track.artist,
+                    Icon::Play,
+                    true,
+                    false,
+                    Message::MockAction,
+                )
             } else {
-                ("Synthetic Horizon", "Spotifust Audio Engine")
+                Container::new(
+                    Text::new("Sin canción reproduciéndose")
+                        .size(12)
+                        .color(theme::TEXT_SECONDARY),
+                )
+                .padding(8)
+                .into()
             };
 
-            let current_item = sidebar_item(
-                curr_title,
-                curr_artist,
-                Icon::Play,
-                true,
-                false,
-                Message::MockAction,
-            );
+            let next_header_row = Row::new()
+                .align_y(Alignment::Center)
+                .push(
+                    Text::new("A continuación en la fila")
+                        .size(14)
+                        .font(iced::Font {
+                            weight: iced::font::Weight::Bold,
+                            ..Default::default()
+                        })
+                        .color(theme::TEXT_PRIMARY),
+                )
+                .push(Space::new().width(Length::Fill));
 
-            let next_header = Text::new("Next in Queue")
-                .size(14)
-                .font(iced::Font {
-                    weight: iced::font::Weight::Bold,
-                    ..Default::default()
-                })
-                .color(theme::TEXT_PRIMARY);
+            let next_header: Element<'a, Message> = if play_queue.is_empty() {
+                next_header_row.into()
+            } else {
+                next_header_row
+                    .push(
+                        Button::new(
+                            Text::new("Vaciar fila")
+                                .size(11)
+                                .color(theme::TEXT_SECONDARY),
+                        )
+                        .padding([4, 8])
+                        .on_press(Message::ClearQueue)
+                        .style(|_t, _s| iced::widget::button::Style {
+                            background: Some(Background::Color(Color::TRANSPARENT)),
+                            ..Default::default()
+                        }),
+                    )
+                    .into()
+            };
 
-            let queue_list = Column::new()
-                .spacing(4)
-                .push(sidebar_item(
-                    "Sunset Drive",
-                    "The Midnight",
-                    Icon::MusicNote,
-                    false,
-                    false,
-                    Message::MockAction,
-                ))
-                .push(sidebar_item(
-                    "Tech Noir",
-                    "GUNSHIP",
-                    Icon::Album,
-                    false,
-                    false,
-                    Message::MockAction,
-                ))
-                .push(sidebar_item(
-                    "Resonance",
-                    "HOME",
-                    Icon::Queue,
-                    false,
-                    false,
-                    Message::MockAction,
-                ));
+            let queue_list: Element<'a, Message> = if play_queue.is_empty() {
+                Container::new(
+                    Column::new()
+                        .spacing(8)
+                        .align_x(Alignment::Center)
+                        .push(Icon::Queue.view_colored(32.0, theme::TEXT_TERTIARY))
+                        .push(
+                            Text::new("La fila está vacía")
+                                .size(13)
+                                .font(iced::Font {
+                                    weight: iced::font::Weight::Bold,
+                                    ..Default::default()
+                                })
+                                .color(theme::TEXT_SECONDARY),
+                        )
+                        .push(
+                            Text::new(
+                                "Agregá canciones haciendo clic derecho en cualquier canción.",
+                            )
+                            .size(11)
+                            .color(theme::TEXT_TERTIARY),
+                        ),
+                )
+                .padding(24)
+                .width(Length::Fill)
+                .align_x(iced::alignment::Horizontal::Center)
+                .into()
+            } else {
+                let mut col = Column::new().spacing(6);
+                let queue_len = play_queue.len();
+
+                for (idx, track) in play_queue.iter().enumerate() {
+                    let t_title = track.title.clone();
+                    let t_artist = track.artist.clone();
+
+                    let play_btn = Button::new(Icon::Play.view_colored(14.0, theme::ACCENT))
+                        .padding(4)
+                        .on_press(Message::PlayQueueIndex(idx))
+                        .style(|_t, _s| iced::widget::button::Style::default());
+
+                    let up_btn: Element<'a, Message> = if idx > 0 {
+                        Button::new(Icon::ChevronUp.view_colored(14.0, theme::TEXT_SECONDARY))
+                            .padding(2)
+                            .on_press(Message::MoveQueueItemUp(idx))
+                            .style(|_t, _s| iced::widget::button::Style::default())
+                            .into()
+                    } else {
+                        Space::new().width(Length::Fixed(18.0)).into()
+                    };
+
+                    let down_btn: Element<'a, Message> = if idx + 1 < queue_len {
+                        Button::new(Icon::ChevronDown.view_colored(14.0, theme::TEXT_SECONDARY))
+                            .padding(2)
+                            .on_press(Message::MoveQueueItemDown(idx))
+                            .style(|_t, _s| iced::widget::button::Style::default())
+                            .into()
+                    } else {
+                        Space::new().width(Length::Fixed(18.0)).into()
+                    };
+
+                    let remove_btn =
+                        Button::new(Icon::Trash.view_colored(14.0, Color::from_rgb(0.9, 0.3, 0.3)))
+                            .padding(4)
+                            .on_press(Message::RemoveFromQueue(idx))
+                            .style(|_t, _s| iced::widget::button::Style::default());
+
+                    let item_row = Container::new(
+                        Row::new()
+                            .spacing(8)
+                            .align_y(Alignment::Center)
+                            .push(play_btn)
+                            .push(
+                                Column::new()
+                                    .spacing(2)
+                                    .push(Text::new(t_title).size(13).color(theme::TEXT_PRIMARY))
+                                    .push(Text::new(t_artist).size(11).color(theme::TEXT_SECONDARY))
+                                    .width(Length::Fill),
+                            )
+                            .push(up_btn)
+                            .push(down_btn)
+                            .push(remove_btn),
+                    )
+                    .padding([8, 12])
+                    .style(|_theme| container::Style {
+                        background: Some(Background::Color(theme::SURFACE_CARD)),
+                        border: Border {
+                            radius: theme::RADIUS_SM.into(),
+                            color: theme::BORDER_SUBTLE,
+                            width: 1.0,
+                        },
+                        ..Default::default()
+                    });
+
+                    col = col.push(item_row);
+                }
+
+                col.into()
+            };
 
             Column::new()
                 .spacing(16)

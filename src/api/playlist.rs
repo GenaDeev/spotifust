@@ -193,7 +193,7 @@ pub async fn add_tracks_to_playlist(
     use rspotify::clients::OAuthClient;
     use rspotify::model::{PlayableId, PlaylistId, TrackId};
 
-    let p_id = PlaylistId::from_id(playlist_id)
+    let p_id = PlaylistId::from_id_or_uri(playlist_id)
         .map_err(|e| AppError::Network(format!("Invalid playlist ID: {e}")))?;
 
     let mut playables: Vec<PlayableId> = Vec::new();
@@ -229,7 +229,7 @@ pub async fn remove_tracks_from_playlist(
     use rspotify::clients::OAuthClient;
     use rspotify::model::{PlayableId, PlaylistId, TrackId};
 
-    let p_id = PlaylistId::from_id(playlist_id)
+    let p_id = PlaylistId::from_id_or_uri(playlist_id)
         .map_err(|e| AppError::Network(format!("Invalid playlist ID: {e}")))?;
 
     let mut playables: Vec<PlayableId> = Vec::new();
@@ -269,7 +269,7 @@ pub async fn change_playlist_details(
     use rspotify::clients::OAuthClient;
     use rspotify::model::PlaylistId;
 
-    let p_id = PlaylistId::from_id(playlist_id)
+    let p_id = PlaylistId::from_id_or_uri(playlist_id)
         .map_err(|e| AppError::Network(format!("Invalid playlist ID: {e}")))?;
 
     with_auto_reauth(spotify, || async {
@@ -292,7 +292,7 @@ pub async fn delete_playlist(
     use rspotify::clients::OAuthClient;
     use rspotify::model::PlaylistId;
 
-    let p_id = PlaylistId::from_id(playlist_id)
+    let p_id = PlaylistId::from_id_or_uri(playlist_id)
         .map_err(|e| AppError::Network(format!("Invalid playlist ID: {e}")))?;
 
     with_auto_reauth(spotify, || async {
