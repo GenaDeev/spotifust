@@ -2155,24 +2155,33 @@ impl App {
                 Task::none()
             }
             Message::AddToQueue(track) => {
+                let mut tasks = Vec::new();
                 if let AppState::Main {
                     user_queue,
                     active_context_menu,
                     toast_notification,
+                    loaded_images,
                     ..
                 } = &mut self.state
                 {
                     let title = track.title.clone();
+                    if let Some(ref img) = track.image_url {
+                        tasks.extend(load_image_tasks(
+                            std::iter::once(Some(img.clone())),
+                            loaded_images,
+                        ));
+                    }
                     user_queue.push(track);
                     *active_context_menu = None;
                     *toast_notification = Some(format!("Added to queue: {title}"));
                 }
-                Task::perform(
+                tasks.push(Task::perform(
                     async {
                         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                     },
                     |()| Message::DismissToast,
-                )
+                ));
+                Task::batch(tasks)
             }
             Message::RemoveFromQueue(idx) => {
                 if let AppState::Main { user_queue, .. } = &mut self.state {

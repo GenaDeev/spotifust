@@ -1586,12 +1586,13 @@ fn view_right_panel<'a>(
                 .color(theme::TEXT_PRIMARY);
 
             let current_item: Element<'a, Message> = if let Some(track) = &playback.current_track {
-                sidebar_item(
+                sidebar_item_with_image(
                     &track.title,
                     &track.artist,
-                    Icon::Play,
+                    track.image_url.as_deref(),
+                    loaded_images,
+                    Icon::MusicNote,
                     true,
-                    false,
                     Message::MockAction,
                 )
             } else {
@@ -1640,6 +1641,13 @@ fn view_right_panel<'a>(
                 for (idx, track) in user_queue.iter().enumerate() {
                     let t_title = track.title.clone();
                     let t_artist = track.artist.clone();
+                    let cover = view_image_or_icon(
+                        track.image_url.as_deref(),
+                        loaded_images,
+                        Icon::MusicNote,
+                        40.0,
+                        theme::RADIUS_SM,
+                    );
 
                     let play_btn = Button::new(Icon::Play.view_colored(14.0, theme::ACCENT))
                         .padding(4)
@@ -1677,6 +1685,7 @@ fn view_right_panel<'a>(
                             .spacing(8)
                             .align_y(Alignment::Center)
                             .push(play_btn)
+                            .push(cover)
                             .push(
                                 Column::new()
                                     .spacing(2)
@@ -1688,7 +1697,7 @@ fn view_right_panel<'a>(
                             .push(down_btn)
                             .push(remove_btn),
                     )
-                    .padding([8, 12])
+                    .padding([6, 10])
                     .style(|_theme| container::Style {
                         background: Some(Background::Color(theme::SURFACE_CARD)),
                         border: Border {
@@ -1752,11 +1761,12 @@ fn view_right_panel<'a>(
                         .take(15)
                     {
                         let t_uri = track.uri.clone();
-                        let item = sidebar_item(
+                        let item = sidebar_item_with_image(
                             &track.title,
                             &track.artist,
+                            track.image_url.as_deref(),
+                            loaded_images,
                             Icon::MusicNote,
-                            false,
                             false,
                             Message::PlayTrack(t_uri),
                         );
