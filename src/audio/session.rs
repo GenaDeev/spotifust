@@ -56,11 +56,11 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
         .map_err(|e| AppError::Playback(format!("Librespot login failed: {e}")))?;
 
     let player_config = PlayerConfig {
-        bitrate: Bitrate::Bitrate320,
+        bitrate: Bitrate::Bitrate160,
         ..PlayerConfig::default()
     };
 
-    let (audio_tx, audio_rx) = std::sync::mpsc::sync_channel::<Vec<f32>>(8);
+    let (audio_tx, audio_rx) = std::sync::mpsc::sync_channel::<Vec<f32>>(32);
     let rodio_sink = crate::audio::sink::spawn_rodio_thread(audio_rx)?;
 
     let player = Player::new(
@@ -150,7 +150,9 @@ pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppE
                                 }
                             }
                             PlayerCommand::Seek(pos_ms) => {
+                                rodio_sink_cmd.clear();
                                 player_cmd.seek(pos_ms);
+                                rodio_sink_cmd.play();
                                 position_ms = pos_ms;
                                 last_update = tokio::time::Instant::now();
                                 let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
