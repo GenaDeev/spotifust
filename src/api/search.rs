@@ -1,6 +1,6 @@
 use crate::api::auth::{map_rspotify_error, with_auto_reauth};
 use crate::error::AppError;
-use rspotify::model::{SearchResult, SearchType};
+use rspotify::model::SearchType;
 use rspotify::prelude::Id;
 use rspotify::{AuthCodePkceSpotify, clients::BaseClient};
 
@@ -38,7 +38,13 @@ pub struct SearchResults {
     pub artists: Vec<SearchResultArtist>,
 }
 
+/// Results requested per category; one request covers tracks, albums and artists.
+const SEARCH_LIMIT: u32 = 10;
+
 /// Executes a search query across tracks, albums, and artists (`/search`).
+///
+/// Uses a single multi-type request: the three sequential per-type requests this
+/// replaced cost three round trips (~1.8 s on a 240 ms RTT link).
 #[allow(clippy::missing_errors_doc)]
 pub async fn execute_search(
     spotify: &AuthCodePkceSpotify,
@@ -49,84 +55,82 @@ pub async fn execute_search(
     }
 
     with_auto_reauth(spotify, || async {
-        let mut search_results = SearchResults::default();
-
-        let track_res = spotify
-            .search(query, SearchType::Track, None, None, Some(10), Some(0))
+        let res = spotify
+            .search_multiple(
+                query,
+                [SearchType::Track, SearchType::Album, SearchType::Artist],
+                None,
+                None,
+                Some(SEARCH_LIMIT),
+                Some(0),
+            )
             .await
             .map_err(map_rspotify_error)?;
 
-        if let SearchResult::Tracks(tracks_page) = track_res {
-            for track in tracks_page.items {
-                let artist = track
-                    .artists
-                    .iter()
-                    .map(|a| a.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ");
+        let tracks = res
+            .tracks
+            .map(|page| {
+                page.items
+                    .into_iter()
+                    .map(|track| SearchResultTrack {
+                        id: track.id.as_ref().map_or_else(String::new, ToString::to_string),
+                        uri: track.id.as_ref().map_or_else(String::new, Id::uri),
+                        artist: track
+                            .artists
+                            .iter()
+                            .map(|a| a.name.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                        image_url: crate::api::best_image_url(&track.album.images),
+                        album: track.album.name,
+                        duration_ms: u32::try_from(track.duration.num_milliseconds())
+                            .unwrap_or(0),
+                        explicit: track.explicit,
+                        title: track.name,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
 
-                let image_url = track.album.images.first().map(|img| img.url.clone());
-                let track_id = track
-                    .id
-                    .as_ref()
-                    .map_or_else(String::new, ToString::to_string);
-                let uri = track.id.as_ref().map_or_else(String::new, Id::uri);
+        let albums = res
+            .albums
+            .map(|page| {
+                page.items
+                    .into_iter()
+                    .map(|album| SearchResultAlbum {
+                        id: album.id.map_or_else(String::new, |id| id.to_string()),
+                        artist_name: album
+                            .artists
+                            .iter()
+                            .map(|a| a.name.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                        image_url: crate::api::best_image_url(&album.images),
+                        name: album.name,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
 
-                search_results.tracks.push(SearchResultTrack {
-                    id: track_id,
-                    title: track.name,
-                    artist,
-                    album: track.album.name,
-                    duration_ms: u32::try_from(track.duration.num_milliseconds()).unwrap_or(0),
-                    uri,
-                    image_url,
-                    explicit: track.explicit,
-                });
-            }
-        }
+        let artists = res
+            .artists
+            .map(|page| {
+                page.items
+                    .into_iter()
+                    .map(|artist| SearchResultArtist {
+                        id: artist.id.to_string(),
+                        image_url: crate::api::best_image_url(&artist.images),
+                        name: artist.name,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
 
-        let album_res = spotify
-            .search(query, SearchType::Album, None, None, Some(6), Some(0))
-            .await
-            .map_err(map_rspotify_error)?;
-
-        if let SearchResult::Albums(albums_page) = album_res {
-            for album in albums_page.items {
-                let artist_name = album
-                    .artists
-                    .iter()
-                    .map(|a| a.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let image_url = album.images.first().map(|img| img.url.clone());
-
-                search_results.albums.push(SearchResultAlbum {
-                    id: album.id.map_or_else(String::new, |id| id.to_string()),
-                    name: album.name,
-                    artist_name,
-                    image_url,
-                });
-            }
-        }
-
-        let artist_res = spotify
-            .search(query, SearchType::Artist, None, None, Some(6), Some(0))
-            .await
-            .map_err(map_rspotify_error)?;
-
-        if let SearchResult::Artists(artists_page) = artist_res {
-            for artist in artists_page.items {
-                let image_url = artist.images.first().map(|img| img.url.clone());
-
-                search_results.artists.push(SearchResultArtist {
-                    id: artist.id.to_string(),
-                    name: artist.name,
-                    image_url,
-                });
-            }
-        }
-
-        Ok(search_results)
+        Ok(SearchResults {
+            tracks,
+            albums,
+            artists,
+        })
     })
     .await
 }
@@ -156,5 +160,29 @@ mod tests {
             explicit: true,
         };
         assert!(t.explicit);
+    }
+}
+
+#[cfg(test)]
+mod live_tests {
+    #[tokio::test]
+    #[ignore = "hits the Spotify Web API; run with SPOTIFUST_LIVE_KEYRING=1"]
+    async fn live_search_latency() {
+        let t0 = std::time::Instant::now();
+        let spotify = crate::api::auth::check_existing_login()
+            .await
+            .expect("stored login");
+        println!("login/refresh: {:?}", t0.elapsed());
+        for q in ["oasis", "oasis wonderwall", "soda stereo"] {
+            let t = std::time::Instant::now();
+            let res = super::execute_search(&spotify, q).await.expect("search");
+            println!(
+                "search '{q}': {:?} ({} tracks, {} albums, {} artists)",
+                t.elapsed(),
+                res.tracks.len(),
+                res.albums.len(),
+                res.artists.len()
+            );
+        }
     }
 }

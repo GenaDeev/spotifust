@@ -36,10 +36,24 @@ fn get_spotify_client() -> AuthCodePkceSpotify {
     AuthCodePkceSpotify::new(creds, oauth)
 }
 
+/// Keychain service all Spotifust secrets live under.
+///
+/// Unit tests get their own service so flows like "session expired" can't wipe the
+/// developer's real login. Live (`#[ignore]`d) tests that need the real login opt
+/// back in with `SPOTIFUST_LIVE_KEYRING=1`.
+#[must_use]
+pub fn keyring_service() -> &'static str {
+    if cfg!(test) && std::env::var_os("SPOTIFUST_LIVE_KEYRING").is_none() {
+        "spotifust-test"
+    } else {
+        "spotifust"
+    }
+}
+
 /// Saves the refresh token to the OS keychain via `keyring`.
 #[allow(clippy::missing_errors_doc)]
 pub fn save_refresh_token_to_keyring(refresh_token: &str) -> Result<(), AppError> {
-    let entry = keyring::Entry::new("spotifust", "spotify_refresh_token")
+    let entry = keyring::Entry::new(keyring_service(), "spotify_refresh_token")
         .map_err(|e| AppError::Auth(format!("Keyring error: {e}")))?;
     entry
         .set_password(refresh_token)
@@ -50,7 +64,7 @@ pub fn save_refresh_token_to_keyring(refresh_token: &str) -> Result<(), AppError
 /// Retrieves the refresh token from the OS keychain via `keyring`.
 #[allow(clippy::missing_errors_doc)]
 pub fn get_refresh_token_from_keyring() -> Result<String, AppError> {
-    let entry = keyring::Entry::new("spotifust", "spotify_refresh_token")
+    let entry = keyring::Entry::new(keyring_service(), "spotify_refresh_token")
         .map_err(|e| AppError::Auth(format!("Keyring error: {e}")))?;
     entry
         .get_password()
@@ -60,10 +74,59 @@ pub fn get_refresh_token_from_keyring() -> Result<String, AppError> {
 /// Deletes the refresh token from the OS keychain via `keyring`.
 #[allow(clippy::missing_errors_doc)]
 pub fn delete_refresh_token_from_keyring() -> Result<(), AppError> {
-    let entry = keyring::Entry::new("spotifust", "spotify_refresh_token")
+    let entry = keyring::Entry::new(keyring_service(), "spotify_refresh_token")
         .map_err(|e| AppError::Auth(format!("Keyring error: {e}")))?;
     let _ = entry.delete_credential();
+    delete_session_token();
     Ok(())
+}
+
+const TOKEN_KEYRING_USER: &str = "spotify_session_token";
+
+/// Minimum lifetime left on a cached access token for it to be reused at startup.
+const TOKEN_REUSE_MARGIN_SECS: i64 = 300;
+
+/// Stores the whole OAuth token (access + refresh) in the OS keychain so the next
+/// launch can skip the refresh round trip while the access token is still valid.
+pub fn save_session_token(token: &rspotify::Token) {
+    if let Some(refresh_token) = &token.refresh_token {
+        let _ = save_refresh_token_to_keyring(refresh_token);
+    }
+    if let (Ok(entry), Ok(json)) = (
+        keyring::Entry::new(keyring_service(), TOKEN_KEYRING_USER),
+        serde_json::to_string(token),
+    ) {
+        let _ = entry.set_password(&json);
+    }
+}
+
+fn load_session_token() -> Option<rspotify::Token> {
+    let json = keyring::Entry::new(keyring_service(), TOKEN_KEYRING_USER)
+        .ok()?
+        .get_password()
+        .ok()?;
+    serde_json::from_str(&json).ok()
+}
+
+fn delete_session_token() {
+    if let Ok(entry) = keyring::Entry::new(keyring_service(), TOKEN_KEYRING_USER) {
+        let _ = entry.delete_credential();
+    }
+}
+
+/// True when `token` stays valid for at least [`TOKEN_REUSE_MARGIN_SECS`].
+fn token_is_fresh(token: &rspotify::Token) -> bool {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX));
+    !token.is_expired()
+        && token
+            .expires_at
+            .is_some_and(|at| at.timestamp() > now + TOKEN_REUSE_MARGIN_SECS)
+}
+
+async fn snapshot_token(spotify: &AuthCodePkceSpotify) -> Option<rspotify::Token> {
+    spotify.get_token().lock().await.ok()?.clone()
 }
 
 #[allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
@@ -114,9 +177,11 @@ pub async fn do_login_flow() -> Result<AuthCodePkceSpotify, AppError> {
         .clone()
         .ok_or_else(|| AppError::Auth("No token obtained".to_string()))?;
 
-    if let Some(refresh_token) = &token.refresh_token {
-        save_refresh_token_to_keyring(refresh_token)?;
+    drop(token_guard);
+    if token.refresh_token.is_none() {
+        return Err(AppError::Auth("Spotify returned no refresh token".to_string()));
     }
+    save_session_token(&token);
 
     Ok(spotify)
 }
@@ -126,6 +191,21 @@ pub async fn check_existing_login() -> Result<AuthCodePkceSpotify, AppError> {
     let refresh_token = get_refresh_token_from_keyring()?;
 
     let spotify = get_spotify_client();
+
+    // Fast path: reuse the cached access token while it's still valid, saving a
+    // full round trip to accounts.spotify.com before the UI can load anything.
+    if let Some(cached) = load_session_token()
+        .filter(token_is_fresh)
+        .filter(|t| t.refresh_token.as_deref() == Some(refresh_token.as_str()))
+    {
+        *spotify
+            .get_token()
+            .lock()
+            .await
+            .map_err(|e| AppError::Auth(format!("Failed to lock token mutex: {e:?}")))? =
+            Some(cached);
+        return Ok(spotify);
+    }
 
     // We construct a mock token just with the refresh token so rspotify can refresh it
     let token = rspotify::model::Token {
@@ -143,7 +223,10 @@ pub async fn check_existing_login() -> Result<AuthCodePkceSpotify, AppError> {
     spotify
         .refresh_token()
         .await
-        .map_err(|e| AppError::Auth(format!("Failed to refresh token: {e}")))?;
+        .map_err(|e| classify_refresh_error(&e))?;
+    if let Some(token) = snapshot_token(&spotify).await {
+        save_session_token(&token);
+    }
 
     Ok(spotify)
 }
@@ -192,10 +275,29 @@ pub async fn refresh_token_if_expired(spotify: &AuthCodePkceSpotify) -> Result<(
         spotify
             .refresh_token()
             .await
-            .map_err(|e| AppError::Auth(format!("Failed to silently refresh token: {e}")))?;
+            .map_err(|e| classify_refresh_error(&e))?;
+        if let Some(token) = snapshot_token(spotify).await {
+            save_session_token(&token);
+        }
     }
 
     Ok(())
+}
+
+/// Only a rejected refresh token (HTTP 400/401) means the login is gone; anything
+/// else (offline, DNS, 5xx) is transient and must not log the user out.
+fn classify_refresh_error(e: &rspotify::ClientError) -> AppError {
+    if let rspotify::ClientError::Http(http_err) = e {
+        if let rspotify::http::HttpError::StatusCode(resp) = http_err.as_ref() {
+            if matches!(
+                resp.status(),
+                reqwest::StatusCode::BAD_REQUEST | reqwest::StatusCode::UNAUTHORIZED
+            ) {
+                return AppError::Auth(format!("Failed to refresh token: {e}"));
+            }
+        }
+    }
+    AppError::Network(format!("Failed to refresh token: {e}"))
 }
 
 #[must_use]
@@ -246,14 +348,9 @@ where
                 attempts += 1;
                 tokio::time::sleep(std::time::Duration::from_secs(secs)).await;
             }
-            Err(AppError::Auth(_) | AppError::Network(_)) if attempts < 1 => {
+            Err(AppError::Auth(_)) if attempts < 1 => {
                 attempts += 1;
-                if refresh_token_if_expired(spotify).await.is_ok() {
-                    continue;
-                }
-                return Err(AppError::Auth(
-                    "Session expired. Please log in again.".to_string(),
-                ));
+                refresh_token_if_expired(spotify).await?;
             }
             Err(e) => return Err(e),
         }
@@ -266,7 +363,7 @@ mod tests {
 
     #[test]
     fn test_keyring_service_and_account_name() {
-        let res = keyring::Entry::new("spotifust", "spotify_refresh_token");
+        let res = keyring::Entry::new(keyring_service(), "spotify_refresh_token");
         let _ = res;
     }
 

@@ -7,6 +7,11 @@ use std::time::{Duration, Instant};
 
 #[must_use]
 pub fn get_cache_dir() -> PathBuf {
+    // Unit tests exercise "session expired" flows that clear the cache; keep them
+    // away from the real user cache and settings.
+    if cfg!(test) {
+        return std::env::temp_dir().join("spotifust-test-cache");
+    }
     if let Ok(home) = std::env::var("HOME") {
         PathBuf::from(home).join(".cache").join("spotifust")
     } else {
@@ -24,73 +29,79 @@ pub fn url_to_filename(url: &str) -> String {
     format!("{:x}.img", hasher.finish())
 }
 
+/// Longest edge, in pixels, of cached artwork. Covers are drawn at most ~240px wide.
+const THUMBNAIL_EDGE: u32 = 256;
+
+fn image_http_client() -> &'static reqwest::Client {
+    static CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+    // One pooled client: reusing TLS connections to i.scdn.co makes a grid of
+    // covers load an order of magnitude faster than a handshake per image.
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(Duration::from_secs(20))
+            .pool_max_idle_per_host(8)
+            .build()
+            .unwrap_or_default()
+    })
+}
+
 /// Image cache manager for downloading and storing album artwork locally.
 pub struct ImageCache;
 
 impl ImageCache {
-    /// Retrieves a cached image path or downloads it if missing.
+    /// Returns thumbnail bytes for `url`, from disk when cached or downloaded otherwise.
+    ///
+    /// Decoding and resizing happen on the blocking pool so a burst of covers never
+    /// stalls the async workers that also drive the audio session.
     #[allow(clippy::missing_errors_doc)]
-    pub async fn get_or_fetch_image(url: &str) -> Result<PathBuf, AppError> {
+    pub async fn fetch_image_bytes(url: String) -> Result<(String, Vec<u8>), AppError> {
         let dir = get_cache_dir().join("images");
-        fs::create_dir_all(&dir)
-            .map_err(|e| AppError::Cache(format!("Failed to create image cache directory: {e}")))?;
+        let file_path = dir.join(url_to_filename(&url));
 
-        let filename = url_to_filename(url);
-        let file_path = dir.join(filename);
-
-        if file_path.exists() {
-            if let Ok(metadata) = fs::metadata(&file_path) {
-                if metadata.len() > 0 {
-                    return Ok(file_path);
-                }
+        let cached_path = file_path.clone();
+        if let Ok(Ok(bytes)) = tokio::task::spawn_blocking(move || fs::read(cached_path)).await {
+            if !bytes.is_empty() {
+                return Ok((url, bytes));
             }
-            let _ = fs::remove_file(&file_path);
         }
 
-        let resp = reqwest::get(url)
+        let resp = image_http_client()
+            .get(&url)
+            .send()
             .await
             .map_err(|e| AppError::Network(format!("Failed to download image from {url}: {e}")))?;
-
         if !resp.status().is_success() {
             return Err(AppError::Network(format!(
                 "Image download returned status {}",
                 resp.status()
             )));
         }
-
         let bytes = resp
             .bytes()
             .await
             .map_err(|e| AppError::Network(format!("Failed to read image bytes: {e}")))?;
-
         if bytes.is_empty() {
             return Err(AppError::Network("Downloaded empty image bytes".into()));
         }
 
-        let processed = optimize_image_bytes(&bytes);
-        fs::write(&file_path, processed)
-            .map_err(|e| AppError::Cache(format!("Failed to save image to disk: {e}")))?;
-
-        Ok(file_path)
-    }
-
-    #[allow(clippy::missing_errors_doc)]
-    pub async fn fetch_image_bytes(url: String) -> Result<(String, Vec<u8>), AppError> {
-        let file_path = Self::get_or_fetch_image(&url).await?;
-        let bytes = fs::read(&file_path)
-            .map_err(|e| AppError::Cache(format!("Failed to read cached image file: {e}")))?;
-        let processed = optimize_image_bytes(&bytes);
-        if processed.len() < bytes.len() {
+        let processed = tokio::task::spawn_blocking(move || {
+            let processed = optimize_image_bytes(&bytes);
+            let _ = fs::create_dir_all(&dir);
             let _ = fs::write(&file_path, &processed);
-        }
+            processed
+        })
+        .await
+        .map_err(|e| AppError::Cache(format!("Image processing task failed: {e}")))?;
         Ok((url, processed))
     }
 }
 
+/// Downscales artwork to [`THUMBNAIL_EDGE`] so the renderer decodes and scales
+/// small images instead of 640px originals on every frame they're drawn.
 fn optimize_image_bytes(bytes: &[u8]) -> Vec<u8> {
     if let Ok(img) = image::load_from_memory(bytes) {
-        if img.width() > 300 || img.height() > 300 {
-            let thumb = img.thumbnail(300, 300);
+        if img.width() > THUMBNAIL_EDGE || img.height() > THUMBNAIL_EDGE {
+            let thumb = img.thumbnail(THUMBNAIL_EDGE, THUMBNAIL_EDGE);
             let mut cursor = std::io::Cursor::new(Vec::new());
             let format = if img.color().has_alpha() {
                 image::ImageFormat::Png

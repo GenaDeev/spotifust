@@ -36,7 +36,7 @@ pub async fn fetch_user_playlists(
                     .owner
                     .display_name
                     .unwrap_or_else(|| item.owner.id.to_string());
-                let image_url = item.images.first().map(|img| img.url.clone());
+                let image_url = crate::api::best_image_url(&item.images);
 
                 #[allow(deprecated)]
                 let total_tracks = item.tracks.total;
@@ -80,7 +80,7 @@ pub async fn fetch_featured_playlists(
                     .owner
                     .display_name
                     .unwrap_or_else(|| item.owner.id.to_string());
-                let image_url = item.images.first().map(|img| img.url.clone());
+                let image_url = crate::api::best_image_url(&item.images);
                 #[allow(deprecated)]
                 let total_tracks = item.tracks.total;
                 playlists.push(PlaylistSummary {
@@ -112,7 +112,7 @@ pub async fn fetch_featured_playlists(
                         .owner
                         .display_name
                         .unwrap_or_else(|| item.owner.id.to_string());
-                    let image_url = item.images.first().map(|img| img.url.clone());
+                    let image_url = crate::api::best_image_url(&item.images);
                     #[allow(deprecated)]
                     let total_tracks = item.tracks.total;
                     playlists.push(PlaylistSummary {
@@ -179,7 +179,7 @@ pub async fn fetch_playlist_tracks(
                         .collect::<Vec<_>>()
                         .join(", ");
 
-                    let image_url = full_track.album.images.first().map(|img| img.url.clone());
+                    let image_url = crate::api::best_image_url(&full_track.album.images);
                     let track_id = full_track
                         .id
                         .as_ref()

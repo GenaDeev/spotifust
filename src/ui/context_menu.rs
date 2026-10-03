@@ -5,8 +5,14 @@ use iced::widget::{Button, Column, Container, Row, Scrollable, Text, TextInput};
 use iced::{Alignment, Background, Border, Color, Element, Length, Padding, Theme};
 
 /// Renders a floating, high-performance Spotify-styled context menu.
+const MENU_WIDTH: f32 = 190.0;
+const MENU_HEIGHT_ESTIMATE: f32 = 230.0;
+
 #[allow(clippy::too_many_lines)]
-pub fn view_context_menu(state: &crate::app::ContextMenuState) -> Element<'_, Message> {
+pub fn view_context_menu(
+    state: &crate::app::ContextMenuState,
+    window: iced::Size,
+) -> Element<'_, Message> {
     let mut menu_col = Column::new().spacing(4).padding(6);
 
     match &state.target {
@@ -21,40 +27,40 @@ pub fn view_context_menu(state: &crate::app::ContextMenuState) -> Element<'_, Me
 
             menu_col = menu_col.push(menu_item_button(
                 Icon::Queue,
-                "Agregar a la fila",
+                "Add to queue",
                 Message::AddToQueue(track.clone()),
             ));
 
             menu_col = menu_col.push(menu_item_button(
                 Icon::Plus,
-                "Agregar a playlist",
+                "Add to playlist",
                 Message::OpenAddToPlaylistModal(vec![track_uri.clone()]),
             ));
 
             if let Some(pl_id) = from_playlist_id {
                 menu_col = menu_col.push(menu_item_button(
                     Icon::Trash,
-                    "Eliminar de esta playlist",
+                    "Remove from this playlist",
                     Message::RemoveTrackFromCurrentPlaylist(pl_id.clone(), track_uri.clone()),
                 ));
             }
 
             menu_col = menu_col.push(menu_item_button(
                 Icon::Album,
-                "Ir al álbum",
+                "Go to album",
                 Message::SelectAlbum(album_name),
             ));
 
             menu_col = menu_col.push(menu_item_button(
                 Icon::User,
-                "Ir al artista",
+                "Go to artist",
                 Message::SelectArtist(artist_name),
             ));
 
             let share_url = format!("https://open.spotify.com/track/{track_uri}");
             menu_col = menu_col.push(menu_item_button(
                 Icon::Share,
-                "Copiar link",
+                "Copy link",
                 Message::CopyShareLink(track_title, share_url),
             ));
         }
@@ -65,19 +71,19 @@ pub fn view_context_menu(state: &crate::app::ContextMenuState) -> Element<'_, Me
 
             menu_col = menu_col.push(menu_item_button(
                 Icon::Heart,
-                "Guardar en biblioteca",
+                "Save to Your Library",
                 Message::SaveAlbumToggle(album_id.clone(), false),
             ));
 
             menu_col = menu_col.push(menu_item_button(
                 Icon::Plus,
-                "Agregar a playlist",
+                "Add to playlist",
                 Message::OpenAddToPlaylistModal(vec![album_id]),
             ));
 
             menu_col = menu_col.push(menu_item_button(
                 Icon::Share,
-                "Copiar link",
+                "Copy link",
                 Message::CopyShareLink(album_name, share_url),
             ));
         }
@@ -88,13 +94,13 @@ pub fn view_context_menu(state: &crate::app::ContextMenuState) -> Element<'_, Me
 
             menu_col = menu_col.push(menu_item_button(
                 Icon::Edit,
-                "Editar detalles",
+                "Edit details",
                 Message::OpenEditPlaylistModal(pl_id.clone(), pl_name.clone(), String::new()),
             ));
 
             menu_col = menu_col.push(menu_item_button(
                 Icon::Trash,
-                "Eliminar playlist",
+                "Delete playlist",
                 Message::OpenConfirmDeletePlaylistModal(pl_id.clone(), pl_name.clone()),
             ));
 
@@ -106,13 +112,13 @@ pub fn view_context_menu(state: &crate::app::ContextMenuState) -> Element<'_, Me
 
             menu_col = menu_col.push(menu_item_button(
                 Icon::Plus,
-                "Copiar a otra playlist",
+                "Copy to another playlist",
                 Message::OpenCopyPlaylistModal(pl_id, pl_name.clone()),
             ));
 
             menu_col = menu_col.push(menu_item_button(
                 Icon::Share,
-                "Copiar link",
+                "Copy link",
                 Message::CopyShareLink(pl_name, share_url),
             ));
         }
@@ -125,13 +131,13 @@ pub fn view_context_menu(state: &crate::app::ContextMenuState) -> Element<'_, Me
 
             menu_col = menu_col.push(menu_item_button(
                 Icon::User,
-                format!("Seguir a {aname}"),
+                format!("Follow {aname}"),
                 Message::FollowArtistToggle(aid.clone(), false),
             ));
 
             menu_col = menu_col.push(menu_item_button(
                 Icon::Trash,
-                "Dejar de seguir",
+                "Unfollow",
                 Message::FollowArtistToggle(aid, true),
             ));
         }
@@ -154,8 +160,20 @@ pub fn view_context_menu(state: &crate::app::ContextMenuState) -> Element<'_, Me
             ..Default::default()
         });
 
-    let x_pos = state.position.x.clamp(10.0, 950.0);
-    let y_pos = state.position.y.clamp(10.0, 600.0);
+    // Keep the menu fully on screen: flip it left/up when the click is near the
+    // right/bottom edge instead of letting it run off the window.
+    let x_pos = if state.position.x + MENU_WIDTH + 10.0 > window.width {
+        state.position.x - MENU_WIDTH
+    } else {
+        state.position.x
+    }
+    .clamp(10.0, (window.width - MENU_WIDTH - 10.0).max(10.0));
+    let y_pos = if state.position.y + MENU_HEIGHT_ESTIMATE + 10.0 > window.height {
+        state.position.y - MENU_HEIGHT_ESTIMATE
+    } else {
+        state.position.y
+    }
+    .clamp(10.0, (window.height - MENU_HEIGHT_ESTIMATE - 10.0).max(10.0));
 
     let backdrop = Button::new(
         iced::widget::Space::new()
@@ -163,7 +181,7 @@ pub fn view_context_menu(state: &crate::app::ContextMenuState) -> Element<'_, Me
             .height(Length::Fill),
     )
     .style(|_theme, _status| iced::widget::button::Style {
-        background: Some(Background::Color(Color::from_rgba(0.0, 0.0, 0.0, 0.25))),
+        background: Some(Background::Color(Color::TRANSPARENT)),
         ..Default::default()
     })
     .on_press(Message::CloseContextMenu);
@@ -307,7 +325,7 @@ pub fn view_modal<'a>(
                     Row::new()
                         .align_y(Alignment::Center)
                         .push(
-                            Text::new("Agregar a playlist")
+                            Text::new("Add to playlist")
                                 .size(20)
                                 .font(iced::Font {
                                     weight: iced::font::Weight::Bold,
@@ -323,7 +341,7 @@ pub fn view_modal<'a>(
                         ),
                 )
                 .push(
-                    TextInput::new("Buscar playlist...", search_query)
+                    TextInput::new("Search playlists…", search_query)
                         .on_input(Message::ModalSearchInputChanged)
                         .padding(10)
                         .style(|_t, _s| iced::widget::text_input::Style {
@@ -361,7 +379,7 @@ pub fn view_modal<'a>(
                     Row::new()
                         .align_y(Alignment::Center)
                         .push(
-                            Text::new("Editar Playlist")
+                            Text::new("Edit playlist")
                                 .size(20)
                                 .font(iced::Font {
                                     weight: iced::font::Weight::Bold,
@@ -395,12 +413,12 @@ pub fn view_modal<'a>(
                         }),
                 )
                 .push(
-                    Text::new("Descripción")
+                    Text::new("Description")
                         .size(12)
                         .color(theme::TEXT_SECONDARY),
                 )
                 .push(
-                    TextInput::new("Descripción opcional", description_input)
+                    TextInput::new("Optional description", description_input)
                         .on_input(Message::ModalDescInputChanged)
                         .padding(10)
                         .style(|_t, _s| iced::widget::text_input::Style {
@@ -422,13 +440,13 @@ pub fn view_modal<'a>(
                         .push(iced::widget::Space::new().width(Length::Fill))
                         .push(
                             Button::new(
-                                Text::new("Cancelar").size(13).color(theme::TEXT_SECONDARY),
+                                Text::new("Cancel").size(13).color(theme::TEXT_SECONDARY),
                             )
                             .on_press(Message::CloseModal)
                             .style(|_t, _s| iced::widget::button::Style::default()),
                         )
                         .push(
-                            Button::new(Text::new("Guardar").size(13).color(theme::TEXT_PRIMARY))
+                            Button::new(Text::new("Save").size(13).color(theme::TEXT_PRIMARY))
                                 .padding([8, 16])
                                 .on_press(Message::SavePlaylistDetailsAction(pid, name, desc))
                                 .style(|_t, _s| iced::widget::button::Style {
@@ -451,7 +469,7 @@ pub fn view_modal<'a>(
             Column::new()
                 .spacing(16)
                 .push(
-                    Text::new("¿Eliminar de Tu biblioteca?")
+                    Text::new("Delete from Your Library?")
                         .size(20)
                         .font(iced::Font {
                             weight: iced::font::Weight::Bold,
@@ -461,7 +479,7 @@ pub fn view_modal<'a>(
                 )
                 .push(
                     Text::new(format!(
-                        "Esta acción eliminará '{playlist_name}' de tu cuenta de Spotify."
+                        "This will remove '{playlist_name}' from your Spotify account."
                     ))
                     .size(13)
                     .color(theme::TEXT_SECONDARY),
@@ -472,13 +490,13 @@ pub fn view_modal<'a>(
                         .push(iced::widget::Space::new().width(Length::Fill))
                         .push(
                             Button::new(
-                                Text::new("Cancelar").size(13).color(theme::TEXT_SECONDARY),
+                                Text::new("Cancel").size(13).color(theme::TEXT_SECONDARY),
                             )
                             .on_press(Message::CloseModal)
                             .style(|_t, _s| iced::widget::button::Style::default()),
                         )
                         .push(
-                            Button::new(Text::new("Eliminar").size(13).color(theme::TEXT_PRIMARY))
+                            Button::new(Text::new("Delete").size(13).color(theme::TEXT_PRIMARY))
                                 .padding([8, 16])
                                 .on_press(Message::DeletePlaylistConfirmed(pid))
                                 .style(|_t, _s| iced::widget::button::Style {
@@ -567,7 +585,7 @@ pub fn view_modal<'a>(
                     Row::new()
                         .align_y(Alignment::Center)
                         .push(
-                            Text::new(format!("Copiar canciones de '{source_playlist_name}'"))
+                            Text::new(format!("Copy songs from '{source_playlist_name}'"))
                                 .size(20)
                                 .font(iced::Font {
                                     weight: iced::font::Weight::Bold,
@@ -583,7 +601,7 @@ pub fn view_modal<'a>(
                         ),
                 )
                 .push(
-                    TextInput::new("Buscar playlist destino...", search_query)
+                    TextInput::new("Search destination playlist…", search_query)
                         .on_input(Message::ModalSearchInputChanged)
                         .padding(10)
                         .style(|_t, _s| iced::widget::text_input::Style {

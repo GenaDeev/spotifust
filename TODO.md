@@ -169,8 +169,15 @@
 - [x] Disk persistence test concurrency & settings preservation: prevent `clear_cache_disk` from wiping user settings and serialize disk tests with a mutex to eliminate multi-threaded test race conditions.
 - [ ] Memory profiling harness on Linux: set up automated RSS tracking with `heaptrack` or `valgrind --tool=massif` to guarantee the < 25 MB ceiling under long-running playback.
 - [ ] Bounded channel capacity tuning: monitor high-bitrate (320kbps) audio decoding backpressure against rodio sink buffer consumption under low-spec CPU constraints.
+- [x] Polish pass (2026-10-03): playback auth via one-time device pairing (keymaster client id, credentials in OS keychain), rodio queue backpressure (whole tracks were buffered in RAM), playback position measured from audibly played samples, LRCLIB camelCase fix + synced-lyrics follow, artist page resilient to 403s, Wikipedia bio disambiguation, image cache 20 → 160 handles with lazy per-row cover loading, virtualized playlist/album lists, static pre-scaled logo handle (was re-decoded every frame), no nested/horizontal scrollables, clipped single-line text, context menus anchored at the cursor.
+- [ ] Font fallback RSS: cosmic-text maps ~380 system font files (~65 MB of shared, file-backed RSS) while searching fallback glyphs; consider bundling a font and restricting the font database to keep RSS near the 25 MB target.
+- [ ] Spotify development-mode API restrictions: `/artists/{id}/top-tracks`, `/artists/{id}/related-artists` and `/browse/new-releases` return 403 and `/recommendations` returns 404. Artist "Popular" now falls back to search, but "New Releases" and autoplay recommendations need replacement data sources.
+- [ ] Audio settings (bitrate, normalisation, gapless) are persisted but only apply after the audio session reconnects (next launch); rebuild the session when they change.
+- [ ] Localization: UI strings are hard-coded English even though a UI language setting exists; route them through a translation table.
 
 ## Blocked / Needs Human Decision
 
 - [ ] Decision on D-Bus / MPRIS2 crate dependency: select between lightweight raw D-Bus connection or `zbus` crate for Linux desktop media player integration.
 - [ ] Decision on System Tray crate dependency: select between `tray-icon` (cross-platform, Tauri-maintained) or minimal platform-native hooks for system tray integration.
+- [ ] Confirm the playback auth approach: librespot streaming only works with credentials issued to Spotify's desktop (keymaster) client id, obtained through the OAuth device flow (`spotify.com/pair`, no local port). Web API calls still use Spotifust's own PKCE client. Approve keeping this, or pick an alternative.
+- [ ] Keep or remove `examples/playback_probe.rs` (diagnostic tool, adds the `uuid` dev-dependency).
