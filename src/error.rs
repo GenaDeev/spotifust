@@ -9,6 +9,10 @@ pub enum AppError {
     #[error("Playback error: {0}")]
     Playback(String),
 
+    /// The librespot session needs (re-)pairing with the user's Spotify account.
+    #[error("Playback pairing required: {0}")]
+    PlaybackPairing(String),
+
     #[error("Network error: {0}")]
     Network(String),
 

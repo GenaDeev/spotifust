@@ -12,6 +12,8 @@ use tokio::sync::mpsc;
 #[derive(Debug, Clone)]
 pub enum PlayerCommand {
     Play(String),
+    /// Load a track and start playing at the given position (ms).
+    PlayFrom(String, u32),
     Pause,
     Resume,
     #[allow(dead_code)]
@@ -75,34 +77,50 @@ impl AudioBitrate {
     pub const ALL: [Self; 3] = [Self::Normal96k, Self::High160k, Self::VeryHigh320k];
 }
 
-#[allow(dead_code)]
-pub async fn connect_with_token(access_token: &str) -> Result<AudioSession, AppError> {
-    connect_with_token_and_config(access_token, AudioBitrate::default(), true, true).await
-}
-
-#[allow(dead_code)]
-pub async fn connect_with_token_and_bitrate(
-    access_token: &str,
-    bitrate: AudioBitrate,
-) -> Result<AudioSession, AppError> {
-    connect_with_token_and_config(access_token, bitrate, true, true).await
-}
-
-#[allow(clippy::too_many_lines)]
-pub async fn connect_with_token_and_config(
-    access_token: &str,
+/// Connects a librespot session from the reusable credentials stored in the keychain.
+///
+/// Returns [`AppError::PlaybackPairing`] when there are no usable credentials, which
+/// tells the UI to start the device pairing flow.
+#[allow(clippy::missing_errors_doc)]
+pub async fn connect_stored(
     bitrate: AudioBitrate,
     normalisation: bool,
     gapless: bool,
 ) -> Result<AudioSession, AppError> {
-    let credentials = Credentials::with_access_token(access_token);
-    let session_config = SessionConfig::default();
+    let credentials = crate::audio::credentials::load_stored_credentials().ok_or_else(|| {
+        AppError::PlaybackPairing("No playback credentials stored".to_string())
+    })?;
+    match connect_with_credentials(credentials, bitrate, normalisation, gapless).await {
+        Err(AppError::PlaybackPairing(reason)) => {
+            crate::audio::credentials::delete_stored_credentials();
+            Err(AppError::PlaybackPairing(reason))
+        }
+        other => other,
+    }
+}
 
-    let session = Session::new(session_config, None);
+#[allow(clippy::too_many_lines, clippy::missing_errors_doc)]
+pub async fn connect_with_credentials(
+    credentials: Credentials,
+    bitrate: AudioBitrate,
+    normalisation: bool,
+    gapless: bool,
+) -> Result<AudioSession, AppError> {
+    let session = Session::new(SessionConfig::default(), None);
     session
         .connect(credentials, false)
         .await
-        .map_err(|e| AppError::Playback(format!("Librespot login failed: {e}")))?;
+        .map_err(|e| AppError::PlaybackPairing(format!("Spotify rejected the login: {e}")))?;
+
+    // Every track load needs a login5 token; verify it now so a bad credential
+    // surfaces as "pair again" instead of every track being "unavailable".
+    session
+        .login5()
+        .auth_token()
+        .await
+        .map_err(|e| AppError::PlaybackPairing(format!("Spotify denied playback access: {e}")))?;
+
+    crate::audio::credentials::store_session_credentials(&session)?;
 
     let player_config = PlayerConfig {
         bitrate: bitrate.to_librespot_bitrate(),
@@ -111,14 +129,23 @@ pub async fn connect_with_token_and_config(
         ..PlayerConfig::default()
     };
 
-    let (audio_tx, audio_rx) = std::sync::mpsc::sync_channel::<Vec<f32>>(8);
-    let rodio_sink = crate::audio::sink::spawn_rodio_thread(audio_rx)?;
+    let clock = Arc::new(crate::audio::sink::PlaybackClock::default());
+    let (audio_tx, audio_rx) =
+        std::sync::mpsc::sync_channel::<crate::audio::sink::PcmPacket>(8);
+    let rodio_sink = crate::audio::sink::spawn_rodio_thread(audio_rx, Arc::clone(&clock))?;
+    let sink_clock = Arc::clone(&clock);
 
+    let watch_session = session.clone();
     let player = Player::new(
         player_config,
         session,
         Box::new(NoOpVolume) as Box<dyn VolumeGetter + Send>,
-        move || Box::new(crate::audio::sink::MpscSink::new(audio_tx.clone())),
+        move || {
+            Box::new(crate::audio::sink::MpscSink::new(
+                audio_tx.clone(),
+                Arc::clone(&sink_clock),
+            ))
+        },
     );
 
     let (cmd_tx, mut cmd_rx) = mpsc::channel::<PlayerCommand>(16);
@@ -130,125 +157,141 @@ pub async fn connect_with_token_and_config(
 
     tokio::spawn(async move {
         let mut is_playing = false;
-        let mut position_ms = 0;
-        let mut last_update = tokio::time::Instant::now();
+        let mut track_ended = false;
+        // Generation of the current track/seek and the track position it starts at.
+        let mut generation = 0_u64;
+        let mut base_ms = 0_u32;
+        let mut last_sent: Option<u32> = None;
         let mut interval = tokio::time::interval(std::time::Duration::from_millis(250));
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
+        // Position of what is audible right now. Until a new track's first samples
+        // reach the speakers this stays at its start, so the bar never runs ahead.
+        let audible = |generation: u64, base_ms: u32| {
+            clock
+                .played_ms(generation)
+                .map_or(base_ms, |played| base_ms.saturating_add(played))
+        };
 
         loop {
             tokio::select! {
                 maybe_cmd = cmd_rx.recv() => {
-                    if let Some(cmd) = maybe_cmd {
-                        match cmd {
-                            PlayerCommand::Play(uri) => {
-                                rodio_sink_cmd.clear();
-                                rodio_sink_cmd.play();
-                                if uri.trim().is_empty() {
-                                    eprintln!("Cannot play track with empty Spotify URI");
-                                } else {
-                                    let uri_to_parse = if uri.starts_with("spotify:") {
-                                        uri.clone()
-                                    } else {
-                                        format!("spotify:track:{uri}")
-                                    };
-                                    match SpotifyUri::from_uri(&uri_to_parse) {
-                                        Ok(spotify_uri) => {
-                                            player_cmd.load(spotify_uri, true, 0);
-                                            is_playing = true;
-                                            position_ms = 0;
-                                            last_update = tokio::time::Instant::now();
-                                        }
-                                        Err(e) => {
-                                            eprintln!("Invalid Spotify URI '{uri}': {e}");
-                                        }
+                    let Some(cmd) = maybe_cmd else { break };
+                    let cmd = match cmd {
+                        PlayerCommand::Play(uri) => PlayerCommand::PlayFrom(uri, 0),
+                        other => other,
+                    };
+                    match cmd {
+                        PlayerCommand::PlayFrom(uri, start_ms) => {
+                            if watch_session.is_invalid() {
+                                let _ = event_tx.send(AudioSessionEvent::SessionExpired).await;
+                                break;
+                            }
+                            if uri.trim().is_empty() {
+                                eprintln!("Cannot play track with empty Spotify URI");
+                                continue;
+                            }
+                            let uri_to_parse = if uri.starts_with("spotify:") {
+                                uri.clone()
+                            } else {
+                                format!("spotify:track:{uri}")
+                            };
+                            match SpotifyUri::from_uri(&uri_to_parse) {
+                                Ok(spotify_uri) => {
+                                    // After a natural end of track the sink still holds
+                                    // the song's last moments: let them play out
+                                    // instead of clipping it when auto-advancing.
+                                    let flush = !track_ended;
+                                    if flush {
+                                        rodio_sink_cmd.clear();
                                     }
+                                    track_ended = false;
+                                    generation = clock.next_generation(flush);
+                                    base_ms = start_ms;
+                                    rodio_sink_cmd.play();
+                                    player_cmd.load(spotify_uri, true, start_ms);
+                                    is_playing = true;
+                                    last_sent = Some(start_ms);
+                                    let _ = event_tx
+                                        .send(AudioSessionEvent::PositionMs(start_ms))
+                                        .await;
                                 }
-                            }
-                            PlayerCommand::Pause => {
-                                player_cmd.pause();
-                                rodio_sink_cmd.pause();
-                                is_playing = false;
-                                last_update = tokio::time::Instant::now();
-                                let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
-                            }
-                            PlayerCommand::Resume => {
-                                rodio_sink_cmd.play();
-                                player_cmd.play();
-                                is_playing = true;
-                                last_update = tokio::time::Instant::now();
-                                let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
-                            }
-                            PlayerCommand::Stop => {
-                                player_cmd.stop();
-                                rodio_sink_cmd.stop();
-                                is_playing = false;
-                                position_ms = 0;
-                                let _ = event_tx.send(AudioSessionEvent::PositionMs(0)).await;
-                            }
-                            PlayerCommand::SkipNext | PlayerCommand::SkipPrev => {}
-                            PlayerCommand::Seek(pos_ms) => {
-                                rodio_sink_cmd.clear();
-                                player_cmd.seek(pos_ms);
-                                rodio_sink_cmd.play();
-                                position_ms = pos_ms;
-                                last_update = tokio::time::Instant::now();
-                                let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
-                            }
-                            PlayerCommand::Volume(vol) => {
-                                rodio_sink_cmd.set_volume(vol.clamp(0.0, 1.0));
+                                Err(e) => eprintln!("Invalid Spotify URI '{uri}': {e}"),
                             }
                         }
-                    } else {
-                        break;
+                        PlayerCommand::Pause => {
+                            player_cmd.pause();
+                            rodio_sink_cmd.pause();
+                            is_playing = false;
+                            let pos = audible(generation, base_ms);
+                            last_sent = Some(pos);
+                            let _ = event_tx.send(AudioSessionEvent::PositionMs(pos)).await;
+                        }
+                        PlayerCommand::Resume => {
+                            rodio_sink_cmd.play();
+                            player_cmd.play();
+                            is_playing = true;
+                        }
+                        PlayerCommand::Stop => {
+                            player_cmd.stop();
+                            rodio_sink_cmd.stop();
+                            is_playing = false;
+                            generation = clock.next_generation(true);
+                            base_ms = 0;
+                            last_sent = Some(0);
+                            let _ = event_tx.send(AudioSessionEvent::PositionMs(0)).await;
+                        }
+                        PlayerCommand::Play(_)
+                        | PlayerCommand::SkipNext
+                        | PlayerCommand::SkipPrev => {}
+                        PlayerCommand::Seek(pos_ms) => {
+                            track_ended = false;
+                            rodio_sink_cmd.clear();
+                            generation = clock.next_generation(true);
+                            base_ms = pos_ms;
+                            player_cmd.seek(pos_ms);
+                            if is_playing {
+                                rodio_sink_cmd.play();
+                            }
+                            last_sent = Some(pos_ms);
+                            let _ = event_tx.send(AudioSessionEvent::PositionMs(pos_ms)).await;
+                        }
+                        PlayerCommand::Volume(vol) => {
+                            rodio_sink_cmd.set_volume(vol.clamp(0.0, 1.0));
+                        }
                     }
                 }
                 maybe_event = librespot_rx.recv() => {
-                    if let Some(event) = maybe_event {
-                        match &event {
-                            PlayerEvent::Seeked { position_ms: pos, .. }
-                            | PlayerEvent::Playing { position_ms: pos, .. } => {
-                                is_playing = true;
-                                position_ms = *pos;
-                                last_update = tokio::time::Instant::now();
-                                let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
-                            }
-                            PlayerEvent::Paused { position_ms: pos, .. } => {
-                                is_playing = false;
-                                position_ms = *pos;
-                                last_update = tokio::time::Instant::now();
-                                let _ = event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await;
-                            }
-                            PlayerEvent::Stopped { .. } | PlayerEvent::EndOfTrack { .. } => {
-                                is_playing = false;
-                                position_ms = 0;
-                                let _ = event_tx.send(AudioSessionEvent::PositionMs(0)).await;
-                            }
-                            PlayerEvent::Unavailable { .. } => {
-                                is_playing = false;
-                            }
-                            _ => {}
-                        }
-
-                        if event_tx.send(AudioSessionEvent::Player(event)).await.is_err() {
-                            break;
-                        }
-                    } else {
+                    let Some(event) = maybe_event else {
                         let _ = event_tx.send(AudioSessionEvent::SessionExpired).await;
+                        break;
+                    };
+                    // librespot's own `position_ms` values describe the decoder, which
+                    // runs ahead of the speakers; positions come from the clock instead.
+                    match &event {
+                        PlayerEvent::Playing { .. } => is_playing = true,
+                        PlayerEvent::Paused { .. } | PlayerEvent::Unavailable { .. } => {
+                            is_playing = false;
+                        }
+                        PlayerEvent::EndOfTrack { .. } => track_ended = true,
+                        PlayerEvent::Stopped { .. } => {
+                            is_playing = false;
+                            track_ended = false;
+                        }
+                        _ => {}
+                    }
+                    if event_tx.send(AudioSessionEvent::Player(event)).await.is_err() {
                         break;
                     }
                 }
                 _ = interval.tick() => {
-                    let now = tokio::time::Instant::now();
-                    if is_playing {
-                        #[allow(clippy::cast_possible_truncation)]
-                        let elapsed = now.duration_since(last_update).as_millis() as u32;
-                        position_ms += elapsed;
-
-                        if event_tx.send(AudioSessionEvent::PositionMs(position_ms)).await.is_err() {
+                    let pos = audible(generation, base_ms);
+                    if last_sent != Some(pos) {
+                        last_sent = Some(pos);
+                        if event_tx.send(AudioSessionEvent::PositionMs(pos)).await.is_err() {
                             break;
                         }
                     }
-                    last_update = now;
                 }
             }
         }

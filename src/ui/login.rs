@@ -6,11 +6,9 @@ use iced::{
     widget::{Button, Column, Container, Image, Row, Text},
 };
 
-const LOGO_BYTES: &[u8] = include_bytes!("../../assets/spotifust.png");
-
 #[allow(clippy::too_many_lines)]
 pub fn view(is_loading: bool, error: Option<&str>) -> Element<'_, Message> {
-    let logo_handle = iced::widget::image::Handle::from_bytes(LOGO_BYTES);
+    let logo_handle = crate::ui::logo_handle();
     let logo = Image::new(logo_handle)
         .width(Length::Fixed(84.0))
         .height(Length::Fixed(84.0))

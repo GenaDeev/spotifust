@@ -34,7 +34,7 @@ pub async fn fetch_top_tracks(spotify: &AuthCodePkceSpotify) -> Result<Vec<TopTr
                 .collect::<Vec<_>>()
                 .join(", ");
 
-            let image_url = full_track.album.images.first().map(|img| img.url.clone());
+            let image_url = crate::api::best_image_url(&full_track.album.images);
             let track_id = full_track
                 .id
                 .as_ref()
@@ -104,7 +104,7 @@ pub async fn fetch_currently_playing(
             let duration_ms = u32::try_from(full_track.duration.num_milliseconds()).unwrap_or(0);
             let uri = full_track.id.as_ref().map_or_else(String::new, Id::uri);
 
-            let image_url = full_track.album.images.first().map(|img| img.url.clone());
+            let image_url = crate::api::best_image_url(&full_track.album.images);
 
             Ok(Some(CurrentlyPlayingInfo {
                 title: full_track.name,
@@ -210,7 +210,7 @@ pub async fn fetch_recommendations(
                             let track_id =
                                 t.id.as_ref().map_or_else(String::new, ToString::to_string);
                             let uri = t.id.as_ref().map_or_else(String::new, Id::uri);
-                            let image_url = t.album.images.first().map(|img| img.url.clone());
+                            let image_url = crate::api::best_image_url(&t.album.images);
                             fallback_tracks.push(TopTrack {
                                 id: track_id,
                                 title: t.name,
@@ -246,7 +246,7 @@ pub async fn fetch_recommendations(
                 .join(", ");
             let track_id = t.id.as_ref().map_or_else(String::new, ToString::to_string);
             let uri = t.id.as_ref().map_or_else(String::new, Id::uri);
-            let image_url = t.album.images.first().map(|img| img.url.clone());
+            let image_url = crate::api::best_image_url(&t.album.images);
             tracks.push(TopTrack {
                 id: track_id,
                 title: t.name,

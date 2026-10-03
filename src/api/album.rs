@@ -40,7 +40,7 @@ pub async fn fetch_saved_albums(
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                let image_url = full_album.images.first().map(|img| img.url.clone());
+                let image_url = crate::api::best_image_url(&full_album.images);
                 let album_id = full_album.id.to_string();
 
                 #[allow(deprecated)]
@@ -88,7 +88,7 @@ pub async fn fetch_new_releases(
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                let image_url = full_album.images.first().map(|img| img.url.clone());
+                let image_url = crate::api::best_image_url(&full_album.images);
                 let album_id = full_album.id.map_or_else(String::new, |id| id.to_string());
 
                 let total_tracks = 0;
@@ -125,7 +125,7 @@ pub async fn fetch_new_releases(
                         .map(|a| a.name.as_str())
                         .collect::<Vec<_>>()
                         .join(", ");
-                    let image_url = item.images.first().map(|img| img.url.clone());
+                    let image_url = crate::api::best_image_url(&item.images);
                     let album_id = item.id.map_or_else(String::new, |id| id.to_string());
                     albums.push(AlbumSummary {
                         id: album_id,
@@ -191,7 +191,7 @@ pub async fn fetch_album_details(
             .collect::<Vec<_>>()
             .join(", ");
 
-        let image_url = full_album.images.first().map(|img| img.url.clone());
+        let image_url = crate::api::best_image_url(&full_album.images);
         let total_tracks = full_album.tracks.total;
 
         let mut tracks = Vec::new();

@@ -4,13 +4,27 @@ use crate::error::AppError;
 use crate::ui::login;
 use iced::{Element, Task};
 use librespot::playback::player::PlayerEvent;
-use rspotify::clients::BaseClient;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-pub const IMAGE_CACHE_CAPACITY: usize = 20;
+/// Decoded-handle cache size. Entries are 256px JPEG thumbnails (~15-25 KB each),
+/// so 160 covers stay around 3-4 MB while a whole library page keeps its art.
+pub const IMAGE_CACHE_CAPACITY: usize = 160;
+
+/// Recent searches kept in memory.
+const SEARCH_CACHE_CAPACITY: usize = 32;
+/// Typing pause before a search request goes out. Short enough to feel instant,
+/// long enough to not fire one request per keystroke.
+const SEARCH_DEBOUNCE: std::time::Duration = std::time::Duration::from_millis(150);
+
+fn search_cache_key(query: &str) -> String {
+    query.trim().to_lowercase()
+}
+
+/// Covers fetched eagerly when a playlist opens; the rest load as rows scroll into view.
+const PLAYLIST_ROWS_PREFETCH: usize = 30;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NavigationItem {
@@ -243,6 +257,7 @@ pub enum RepeatMode {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)] // independent player flags, not a state machine
 pub struct PlaybackState {
     pub is_playing: bool,
     pub current_track: Option<TrackInfo>,
@@ -254,6 +269,9 @@ pub struct PlaybackState {
     pub is_shuffled: bool,
     pub repeat_mode: RepeatMode,
     pub last_seek: Option<(std::time::Instant, u32)>,
+    /// Whether the live audio session has `current_track` loaded (false for a
+    /// track restored from disk at startup).
+    pub track_loaded: bool,
 }
 
 impl Default for PlaybackState {
@@ -270,6 +288,7 @@ impl Default for PlaybackState {
             is_shuffled: false,
             repeat_mode: RepeatMode::Off,
             last_seek: None,
+            track_loaded: false,
         }
     }
 }
@@ -281,6 +300,36 @@ pub struct SelectedPlaylistState {
     pub image_url: Option<String>,
     pub tracks: Vec<crate::api::playlist::PlaylistTrack>,
     pub is_loading: bool,
+}
+
+/// Connection state of the librespot audio session, surfaced in the UI.
+#[derive(Debug, Clone, Default)]
+pub enum PlaybackLink {
+    /// Connecting with stored credentials.
+    #[default]
+    Connecting,
+    /// Waiting for the user to approve the device pairing in a browser.
+    AwaitingApproval { user_code: String, url: String },
+    /// Audio session is live.
+    Ready,
+    /// Connection failed for a reason other than missing pairing.
+    Failed(String),
+}
+
+/// Visible window of the main content scrollable, used to virtualize long track lists.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ScrollWindow {
+    pub offset_y: f32,
+    pub viewport_height: f32,
+}
+
+impl Default for ScrollWindow {
+    fn default() -> Self {
+        Self {
+            offset_y: 0.0,
+            viewport_height: 1200.0,
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -302,6 +351,8 @@ pub enum ContextMenuTarget {
 pub struct ContextMenuState {
     pub target: ContextMenuTarget,
     pub position: iced::Point,
+    /// Whether `position` is the real cursor location of the click that opened it.
+    pub anchored: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -337,6 +388,10 @@ pub enum AppState {
         nav_item: NavigationItem,
         playback: PlaybackState,
         audio_session: Option<AudioSession>,
+        playback_link: PlaybackLink,
+        pending_play_uri: Option<String>,
+        main_scroll: ScrollWindow,
+        pending_images: std::collections::HashSet<String>,
         user_profile: Option<crate::api::user::UserProfile>,
         user_playlists: Vec<crate::api::playlist::PlaylistSummary>,
         user_albums: Vec<crate::api::album::AlbumSummary>,
@@ -346,6 +401,8 @@ pub enum AppState {
         search_query: String,
         search_results: crate::api::search::SearchResults,
         is_searching: bool,
+        /// Recent query → results, so retyping or backspacing is instant.
+        search_cache: crate::api::cache::LruCache<String, crate::api::search::SearchResults>,
         sidebar_filter: SidebarFilter,
         selected_playlist: Option<SelectedPlaylistState>,
         selected_album: Option<SelectedAlbumState>,
@@ -367,9 +424,18 @@ pub enum AppState {
         dragging_sidebar: bool,
         dragging_right_panel: bool,
         window_width: f32,
+        window_height: f32,
+        /// Where (and when) the last right click happened, to place context menus.
+        last_right_click: Option<(iced::Point, std::time::Instant)>,
         navigation_history: Vec<NavDestination>,
         forward_history: Vec<NavDestination>,
         current_lyrics: Option<crate::api::lyrics::LyricsData>,
+        /// Track URI the lyrics panel is showing (or loading) lyrics for.
+        lyrics_key: Option<String>,
+        /// Artist the bio card is showing (or loading).
+        bio_key: Option<String>,
+        /// Index of the highlighted synced lyric line, to scroll only when it changes.
+        lyrics_line: Option<usize>,
         is_loading_lyrics: bool,
         current_artist_bio: Option<crate::api::artist::ArtistBio>,
         is_loading_artist_bio: bool,
@@ -413,7 +479,9 @@ pub enum Message {
     NewReleasesFetched(Result<Vec<crate::api::album::AlbumSummary>, AppError>),
     CurrentlyPlayingFetched(Result<Option<crate::api::tracks::CurrentlyPlayingInfo>, AppError>),
     SearchInputChanged(String),
-    SearchResultsFetched(Result<crate::api::search::SearchResults, AppError>),
+    /// Fired after a short typing pause; searches only if the query is still current.
+    SearchDebounced(String),
+    SearchResultsFetched(String, Result<crate::api::search::SearchResults, AppError>),
     SelectPlaylist(String),
     PlaylistTracksFetched(
         String,
@@ -425,10 +493,16 @@ pub enum Message {
     ArtistDetailsFetched(String, Result<crate::api::artist::ArtistDetail, AppError>),
     PlayTrack(String),
     SidebarFilterSelected(SidebarFilter),
-    ImageLoaded(Result<(String, Vec<u8>), AppError>),
+    RequestImages(Vec<String>),
+    ImageLoaded(String, Result<Vec<u8>, AppError>),
     ClearSelection,
     // Audio Messages
     AudioSessionConnected(AudioSession),
+    PlaybackSessionResult(Result<AudioSession, AppError>),
+    PlaybackPairingStarted(Result<crate::audio::credentials::PairingRequest, AppError>),
+    RetryPlaybackConnection,
+    OpenPlaybackPairingUrl,
+    MainContentScrolled(ScrollWindow),
     PlayerEventReceived(PlayerEvent),
     PlaybackPositionReceived(u32),
     PlaybackTick,
@@ -500,13 +574,14 @@ pub enum Message {
     EndPanelDrag,
     PanelDragMoved(f32),
     ToggleRightPanel(RightPanelTab),
-    WindowResized(f32),
+    WindowResized(iced::Size),
+    RightClickAt(iced::Point),
     NavigateBack,
     NavigateForward,
-    FetchLyrics(String, String),
-    LyricsFetched(Result<crate::api::lyrics::LyricsData, AppError>),
-    FetchArtistBio(String),
-    ArtistBioFetched(Result<crate::api::artist::ArtistBio, AppError>),
+    /// Lyrics for the track with the given URI.
+    LyricsFetched(String, Result<crate::api::lyrics::LyricsData, AppError>),
+    /// Bio for the given (primary) artist name.
+    ArtistBioFetched(String, Result<crate::api::artist::ArtistBio, AppError>),
     SeekToMs(u32),
     ToggleAutoplay,
     AutoplayRecommendationsFetched(Result<Vec<crate::api::tracks::TopTrack>, AppError>),
@@ -525,6 +600,46 @@ pub enum Message {
     ToggleAudioNormalization,
     ToggleGaplessPlayback,
     AppCloseRequested,
+}
+
+/// Emits the cursor position of every right click. The cursor position is tracked
+/// inside the stream itself, so mouse movement never wakes up `update()`.
+struct RightClickRecipe;
+
+impl iced::advanced::subscription::Recipe for RightClickRecipe {
+    type Output = Message;
+
+    fn hash(&self, state: &mut iced::advanced::subscription::Hasher) {
+        use std::hash::Hash;
+        std::any::TypeId::of::<Self>().hash(state);
+    }
+
+    fn stream(
+        self: Box<Self>,
+        input: iced::advanced::subscription::EventStream,
+    ) -> futures::stream::BoxStream<'static, Self::Output> {
+        use futures::StreamExt;
+        let mut cursor = iced::Point::ORIGIN;
+        Box::pin(input.filter_map(move |event| {
+            let msg = match event {
+                iced::advanced::subscription::Event::Interaction {
+                    event: iced::Event::Mouse(mouse_event),
+                    ..
+                } => match mouse_event {
+                    iced::mouse::Event::CursorMoved { position } => {
+                        cursor = position;
+                        None
+                    }
+                    iced::mouse::Event::ButtonPressed(iced::mouse::Button::Right) => {
+                        Some(Message::RightClickAt(cursor))
+                    }
+                    _ => None,
+                },
+                _ => None,
+            };
+            futures::future::ready(msg)
+        }))
+    }
 }
 
 struct PlayerEventsRecipe {
@@ -660,6 +775,7 @@ impl App {
                         },
                     ));
                 }
+                subs.push(iced::advanced::subscription::from_recipe(RightClickRecipe));
                 if *dragging_sidebar || *dragging_right_panel {
                     subs.push(iced::event::listen().filter_map(|event| match event {
                         iced::Event::Mouse(iced::mouse::Event::CursorMoved { position }) => {
@@ -673,7 +789,7 @@ impl App {
                 }
                 subs.push(iced::event::listen().filter_map(|event| match event {
                     iced::Event::Window(iced::window::Event::Resized(size)) => {
-                        Some(Message::WindowResized(size.width))
+                        Some(Message::WindowResized(size))
                     }
                     iced::Event::Window(iced::window::Event::CloseRequested) => {
                         Some(Message::AppCloseRequested)
@@ -982,8 +1098,175 @@ impl App {
         Task::none()
     }
 
-    #[allow(clippy::too_many_lines)]
+    /// Runs [`Self::update_inner`] and, whenever the current track or the open
+    /// right panel changed, loads the lyrics / artist bio that panel now needs.
     pub fn update(&mut self, message: Message) -> Task<Message> {
+        let panels_before = self.panel_key();
+        let page_before = self.page_key();
+        let mut task = self.update_inner(message);
+        let panels_after = self.panel_key();
+        if panels_after != panels_before {
+            let tab_changed = panels_after.as_ref().map(|k| k.1) != panels_before.as_ref().map(|k| k.1);
+            if tab_changed {
+                if let AppState::Main { lyrics_line, .. } = &mut self.state {
+                    *lyrics_line = None;
+                }
+                task = Task::batch([
+                    task,
+                    iced::widget::operation::snap_to(
+                        crate::ui::main_layout::RIGHT_PANEL_SCROLL_ID,
+                        iced::widget::operation::RelativeOffset::START,
+                    ),
+                ]);
+            }
+            task = Task::batch([task, self.refresh_track_panels()]);
+        }
+        if self.page_key() != page_before {
+            // Each page starts at the top; the scrollable widget state would
+            // otherwise carry the previous page's offset over.
+            if let AppState::Main { main_scroll, .. } = &mut self.state {
+                *main_scroll = ScrollWindow {
+                    offset_y: 0.0,
+                    ..*main_scroll
+                };
+            }
+            task = Task::batch([
+                task,
+                iced::widget::operation::snap_to(
+                    crate::ui::main_layout::MAIN_SCROLL_ID,
+                    iced::widget::operation::RelativeOffset::START,
+                ),
+            ]);
+        }
+        task
+    }
+
+    fn page_key(&self) -> Option<NavDestination> {
+        match &self.state {
+            AppState::Main {
+                nav_item,
+                selected_playlist,
+                selected_album,
+                selected_artist,
+                ..
+            } => Some(get_current_destination(
+                *nav_item,
+                selected_playlist.as_ref(),
+                selected_album.as_ref(),
+                selected_artist.as_ref(),
+                "",
+            )),
+            _ => None,
+        }
+    }
+
+    fn panel_key(&self) -> Option<(Option<String>, Option<RightPanelTab>)> {
+        match &self.state {
+            AppState::Main {
+                playback,
+                active_right_panel,
+                ..
+            } => Some((
+                playback.current_track.as_ref().map(|t| t.uri.clone()),
+                *active_right_panel,
+            )),
+            _ => None,
+        }
+    }
+
+    /// Keeps the active synced lyric line in view as playback advances.
+    #[allow(clippy::cast_precision_loss)]
+    fn follow_lyrics(&mut self) -> Task<Message> {
+        let AppState::Main {
+            playback,
+            active_right_panel: Some(RightPanelTab::Lyrics),
+            current_lyrics: Some(lyrics),
+            lyrics_line,
+            ..
+        } = &mut self.state
+        else {
+            return Task::none();
+        };
+        if !lyrics.synced || lyrics.lines.len() < 2 {
+            return Task::none();
+        }
+        let active = lyrics
+            .lines
+            .iter()
+            .rposition(|l| l.timestamp_ms <= playback.progress_ms);
+        if active == *lyrics_line {
+            return Task::none();
+        }
+        *lyrics_line = active;
+        // Line heights vary with wrapping, so position proportionally and keep a few
+        // lines of context above the active one.
+        let count = lyrics.lines.len() as f32;
+        let y = ((active.unwrap_or(0) as f32 - 3.0) / (count - 6.0).max(1.0)).clamp(0.0, 1.0);
+        iced::widget::operation::snap_to(
+            crate::ui::main_layout::RIGHT_PANEL_SCROLL_ID,
+            iced::widget::operation::RelativeOffset { x: 0.0, y },
+        )
+    }
+
+    fn refresh_track_panels(&mut self) -> Task<Message> {
+        let AppState::Main {
+            playback,
+            active_right_panel,
+            current_lyrics,
+            lyrics_key,
+            lyrics_line,
+            is_loading_lyrics,
+            current_artist_bio,
+            bio_key,
+            is_loading_artist_bio,
+            ..
+        } = &mut self.state
+        else {
+            return Task::none();
+        };
+        let Some(track) = &playback.current_track else {
+            return Task::none();
+        };
+        match active_right_panel {
+            Some(RightPanelTab::Lyrics) if lyrics_key.as_deref() != Some(track.uri.as_str()) => {
+                *lyrics_key = Some(track.uri.clone());
+                *lyrics_line = None;
+                *current_lyrics = None;
+                *is_loading_lyrics = true;
+                let key = track.uri.clone();
+                let (title, artist, album, duration) = (
+                    track.title.clone(),
+                    track.artist.clone(),
+                    track.album.clone(),
+                    track.duration_ms,
+                );
+                Task::perform(
+                    async move {
+                        crate::api::lyrics::fetch_lyrics(&title, &artist, &album, duration).await
+                    },
+                    move |res| Message::LyricsFetched(key.clone(), res),
+                )
+            }
+            Some(RightPanelTab::NowPlaying) => {
+                let artist = crate::api::lyrics::primary_artist(&track.artist).to_string();
+                if artist.is_empty() || bio_key.as_deref() == Some(artist.as_str()) {
+                    return Task::none();
+                }
+                *bio_key = Some(artist.clone());
+                *current_artist_bio = None;
+                *is_loading_artist_bio = true;
+                let key = artist.clone();
+                Task::perform(
+                    async move { crate::api::artist::fetch_artist_bio(&artist).await },
+                    move |res| Message::ArtistBioFetched(key.clone(), res),
+                )
+            }
+            _ => Task::none(),
+        }
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn update_inner(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ErrorEncountered(e) => {
                 if matches!(e, AppError::Auth(_)) {
@@ -1072,6 +1355,10 @@ impl App {
                     nav_item: NavigationItem::Home,
                     playback: initial_playback,
                     audio_session: None,
+                    playback_link: PlaybackLink::Connecting,
+                    pending_play_uri: None,
+                    main_scroll: ScrollWindow::default(),
+                    pending_images: std::collections::HashSet::new(),
                     user_profile: cached_profile,
                     user_playlists: cached_playlists,
                     user_albums: cached_albums,
@@ -1081,6 +1368,7 @@ impl App {
                     search_query: String::new(),
                     search_results: crate::api::search::SearchResults::default(),
                     is_searching: false,
+                    search_cache: crate::api::cache::LruCache::new(SEARCH_CACHE_CAPACITY),
                     sidebar_filter: SidebarFilter::All,
                     selected_playlist: None,
                     selected_album: None,
@@ -1102,9 +1390,14 @@ impl App {
                     dragging_sidebar: false,
                     dragging_right_panel: false,
                     window_width: 1200.0,
+                    window_height: 800.0,
+                    last_right_click: None,
                     navigation_history: Vec::new(),
                     forward_history: Vec::new(),
                     current_lyrics: None,
+                    lyrics_key: None,
+                    bio_key: None,
+                    lyrics_line: None,
                     is_loading_lyrics: false,
                     current_artist_bio: None,
                     is_loading_artist_bio: false,
@@ -1120,7 +1413,6 @@ impl App {
                     gapless_playback: load_gapless_playback(),
                 };
 
-                let spotify_1 = Arc::clone(&spotify_arc);
                 let spotify_2 = Arc::clone(&spotify_arc);
                 let spotify_3 = Arc::clone(&spotify_arc);
                 let spotify_4 = Arc::clone(&spotify_arc);
@@ -1130,28 +1422,10 @@ impl App {
                 let spotify_8 = Arc::clone(&spotify_arc);
 
                 Task::batch([
-                    Task::perform(
-                        async move {
-                            let token_mutex = spotify_1.get_token();
-                            let token_guard = token_mutex.lock().await.map_err(|e| {
-                                AppError::Auth(format!("Failed to lock token mutex: {e:?}"))
-                            })?;
-                            let token_ref = (*token_guard).as_ref().ok_or_else(|| {
-                                AppError::Auth("No access token available".to_string())
-                            })?;
-                            let access_token = token_ref.access_token.clone();
-                            crate::audio::session::connect_with_token_and_config(
-                                &access_token,
-                                load_audio_bitrate(),
-                                load_audio_normalization(),
-                                load_gapless_playback(),
-                            )
-                            .await
-                        },
-                        |res| match res {
-                            Ok(audio_session) => Message::AudioSessionConnected(audio_session),
-                            Err(e) => Message::ErrorEncountered(e),
-                        },
+                    connect_playback_task(
+                        load_audio_bitrate(),
+                        load_audio_normalization(),
+                        load_gapless_playback(),
                     ),
                     Task::perform(
                         async move { crate::api::user::fetch_user_profile(&spotify_2).await },
@@ -1366,9 +1640,10 @@ impl App {
                 if let AppState::Main {
                     search_query,
                     search_results,
+                    search_cache,
                     is_searching,
-                    spotify_client,
                     nav_item,
+                    loaded_images,
                     ..
                 } = &mut self.state
                 {
@@ -1378,47 +1653,80 @@ impl App {
                     if query.trim().is_empty() {
                         *search_results = crate::api::search::SearchResults::default();
                         *is_searching = false;
-                    } else {
-                        *is_searching = true;
+                        return Task::none();
+                    }
+                    if let Some(cached) = search_cache.get(&search_cache_key(&query)) {
+                        *search_results = cached.clone();
+                        *is_searching = false;
+                        return Task::batch(search_image_tasks(search_results, loaded_images));
+                    }
+                    // Previous results stay on screen until the new ones arrive.
+                    *is_searching = true;
+                    return Task::perform(
+                        async move {
+                            tokio::time::sleep(SEARCH_DEBOUNCE).await;
+                            query
+                        },
+                        Message::SearchDebounced,
+                    );
+                }
+                Task::none()
+            }
+            Message::SearchDebounced(query) => {
+                if let AppState::Main {
+                    search_query,
+                    spotify_client,
+                    ..
+                } = &self.state
+                {
+                    if *search_query == query {
                         if let Some(client) = spotify_client.clone() {
-                            let q = query;
                             return Task::perform(
-                                async move { crate::api::search::execute_search(&client, &q).await },
-                                Message::SearchResultsFetched,
+                                async move {
+                                    let res =
+                                        crate::api::search::execute_search(&client, &query).await;
+                                    (query, res)
+                                },
+                                |(query, res)| Message::SearchResultsFetched(query, res),
                             );
                         }
                     }
                 }
                 Task::none()
             }
-            Message::SearchResultsFetched(res) => {
-                let mut tasks = Vec::new();
+            Message::SearchResultsFetched(query, res) => {
                 if let AppState::Main {
+                    search_query,
                     search_results,
+                    search_cache,
                     is_searching,
                     loaded_images,
                     ..
                 } = &mut self.state
                 {
-                    *is_searching = false;
-                    if let Ok(results) = res {
-                        tasks.extend(load_image_tasks(
-                            results
-                                .tracks
-                                .iter()
-                                .map(|t| t.image_url.clone())
-                                .chain(results.albums.iter().map(|a| a.image_url.clone()))
-                                .chain(results.artists.iter().map(|a| a.image_url.clone())),
-                            loaded_images,
-                        ));
-                        *search_results = results;
+                    let is_current = *search_query == query;
+                    match res {
+                        Ok(results) => {
+                            search_cache.insert(search_cache_key(&query), results.clone());
+                            // Responses can arrive out of order; only the latest query
+                            // may replace what's on screen.
+                            if is_current {
+                                *search_results = results;
+                                *is_searching = false;
+                                return Task::batch(search_image_tasks(
+                                    search_results,
+                                    loaded_images,
+                                ));
+                            }
+                        }
+                        Err(e) if is_current => {
+                            *is_searching = false;
+                            return self.update(Message::ShowToast(format!("Search failed: {e}")));
+                        }
+                        Err(_) => {}
                     }
                 }
-                if tasks.is_empty() {
-                    Task::none()
-                } else {
-                    Task::batch(tasks)
-                }
+                Task::none()
             }
             Message::SelectPlaylist(playlist_id) => {
                 if let AppState::Main {
@@ -1458,7 +1766,7 @@ impl App {
                             crate::api::local_files::match_and_persist_local_tracks(&mut tracks);
 
                             tasks.extend(load_image_tasks(
-                                tracks.iter().map(|t| t.image_url.clone()),
+                                tracks.iter().take(PLAYLIST_ROWS_PREFETCH).map(|t| t.image_url.clone()),
                                 loaded_images,
                             ));
                             selected.tracks = tracks;
@@ -1580,6 +1888,8 @@ impl App {
             Message::PlayTrack(uri) => {
                 if let AppState::Main {
                     audio_session,
+                    playback_link,
+                    pending_play_uri,
                     playback,
                     user_top_tracks,
                     selected_playlist,
@@ -1715,7 +2025,25 @@ impl App {
                     }
 
                     if let Some(session) = audio_session {
+                        playback.track_loaded = true;
                         let _ = session.cmd_tx.try_send(PlayerCommand::Play(uri));
+                    } else {
+                        // Audio isn't connected yet (still connecting or pairing):
+                        // remember the request and start it once the session is up.
+                        playback.is_playing = false;
+                        *pending_play_uri = Some(uri);
+                        let notice = match playback_link {
+                            PlaybackLink::AwaitingApproval { user_code, .. } => format!(
+                                "Approve Spotifust on spotify.com/pair (code {user_code}) to start playback"
+                            ),
+                            PlaybackLink::Failed(_) => {
+                                "Audio is offline — use Retry in the banner above".to_string()
+                            }
+                            PlaybackLink::Connecting | PlaybackLink::Ready => {
+                                "Connecting to Spotify audio…".to_string()
+                            }
+                        };
+                        tasks.push(Task::done(Message::ShowToast(notice)));
                     }
 
                     if !tasks.is_empty() {
@@ -1730,9 +2058,39 @@ impl App {
                 }
                 Task::none()
             }
-            Message::ImageLoaded(res) => {
-                if let Ok((url, bytes)) = res {
-                    if let AppState::Main { loaded_images, .. } = &mut self.state {
+            Message::RequestImages(urls) => {
+                let mut tasks = Vec::new();
+                if let AppState::Main {
+                    loaded_images,
+                    pending_images,
+                    ..
+                } = &mut self.state
+                {
+                    for url in urls {
+                        if loaded_images.get(&url).is_some() {
+                            continue; // `get` also marks it recently used
+                        }
+                        if pending_images.insert(url.clone()) {
+                            tasks.push(Task::perform(
+                                crate::api::cache::ImageCache::fetch_image_bytes(url.clone()),
+                                move |res| {
+                                    Message::ImageLoaded(url.clone(), res.map(|(_, bytes)| bytes))
+                                },
+                            ));
+                        }
+                    }
+                }
+                Task::batch(tasks)
+            }
+            Message::ImageLoaded(url, res) => {
+                if let AppState::Main {
+                    loaded_images,
+                    pending_images,
+                    ..
+                } = &mut self.state
+                {
+                    pending_images.remove(&url);
+                    if let Ok(bytes) = res {
                         loaded_images.insert(url, iced::widget::image::Handle::from_bytes(bytes));
                     }
                 }
@@ -1753,9 +2111,12 @@ impl App {
                 Task::none()
             }
             Message::AudioSessionConnected(session) => {
+                let mut pending = None;
                 if let AppState::Main {
                     audio_session,
                     playback,
+                    playback_link,
+                    pending_play_uri,
                     ..
                 } = &mut self.state
                 {
@@ -1766,31 +2127,150 @@ impl App {
                     };
                     let _ = session.cmd_tx.try_send(PlayerCommand::Volume(vol));
                     *audio_session = Some(session);
+                    *playback_link = PlaybackLink::Ready;
+                    playback.track_loaded = false;
+                    playback.is_playing = false;
+                    pending = pending_play_uri.take();
+                }
+                match pending {
+                    Some(uri) => self.update(Message::PlayTrack(uri)),
+                    None => Task::none(),
+                }
+            }
+            Message::PlaybackSessionResult(res) => match res {
+                Ok(session) => self.update(Message::AudioSessionConnected(session)),
+                Err(AppError::PlaybackPairing(_)) => {
+                    if let AppState::Main { playback_link, .. } = &mut self.state {
+                        *playback_link = PlaybackLink::Connecting;
+                    }
+                    Task::perform(
+                        crate::audio::credentials::request_pairing(),
+                        Message::PlaybackPairingStarted,
+                    )
+                }
+                Err(e) => {
+                    if let AppState::Main { playback_link, .. } = &mut self.state {
+                        *playback_link = PlaybackLink::Failed(e.to_string());
+                    }
+                    Task::none()
+                }
+            },
+            Message::PlaybackPairingStarted(res) => match res {
+                Ok(request) => {
+                    let mut config = None;
+                    if let AppState::Main {
+                        playback_link,
+                        audio_bitrate,
+                        audio_normalization,
+                        gapless_playback,
+                        ..
+                    } = &mut self.state
+                    {
+                        *playback_link = PlaybackLink::AwaitingApproval {
+                            user_code: request.user_code.clone(),
+                            url: request.url.clone(),
+                        };
+                        config = Some((*audio_bitrate, *audio_normalization, *gapless_playback));
+                    }
+                    let Some((bitrate, normalisation, gapless)) = config else {
+                        return Task::none();
+                    };
+                    open::that_in_background(&request.url);
+                    Task::perform(
+                        async move {
+                            let credentials =
+                                crate::audio::credentials::await_pairing(request).await?;
+                            crate::audio::session::connect_with_credentials(
+                                credentials,
+                                bitrate,
+                                normalisation,
+                                gapless,
+                            )
+                            .await
+                        },
+                        |res| match res {
+                            // A failed pairing must not loop straight back into a new one.
+                            Err(AppError::PlaybackPairing(reason)) => {
+                                Message::PlaybackSessionResult(Err(AppError::Playback(reason)))
+                            }
+                            other => Message::PlaybackSessionResult(other),
+                        },
+                    )
+                }
+                Err(e) => {
+                    if let AppState::Main { playback_link, .. } = &mut self.state {
+                        *playback_link = PlaybackLink::Failed(e.to_string());
+                    }
+                    Task::none()
+                }
+            },
+            Message::RetryPlaybackConnection => {
+                if let AppState::Main {
+                    playback_link,
+                    audio_session,
+                    audio_bitrate,
+                    audio_normalization,
+                    gapless_playback,
+                    ..
+                } = &mut self.state
+                {
+                    if audio_session.is_none() {
+                        *playback_link = PlaybackLink::Connecting;
+                        return connect_playback_task(
+                            *audio_bitrate,
+                            *audio_normalization,
+                            *gapless_playback,
+                        );
+                    }
+                }
+                Task::none()
+            }
+            Message::OpenPlaybackPairingUrl => {
+                if let AppState::Main {
+                    playback_link: PlaybackLink::AwaitingApproval { url, .. },
+                    ..
+                } = &self.state
+                {
+                    open::that_in_background(url);
+                }
+                Task::none()
+            }
+            Message::MainContentScrolled(window) => {
+                if let AppState::Main {
+                    main_scroll,
+                    selected_playlist,
+                    loaded_images,
+                    ..
+                } = &mut self.state
+                {
+                    *main_scroll = window;
+                    if let Some(sp) = selected_playlist {
+                        let (first, last) = crate::ui::main_layout::visible_row_range(
+                            sp.tracks.len(),
+                            crate::ui::main_layout::DETAIL_LIST_TOP,
+                            window,
+                        );
+                        return Task::batch(load_image_tasks(
+                            sp.tracks[first..last].iter().map(|t| t.image_url.clone()),
+                            loaded_images,
+                        ));
+                    }
                 }
                 Task::none()
             }
             Message::PlayerEventReceived(event) => {
                 match &event {
-                    PlayerEvent::Playing {
-                        track_id,
-                        position_ms,
-                        ..
-                    } => {
+                    // Positions in these events are the decoder's, which runs ahead of
+                    // the speakers; progress comes from `PlaybackPositionReceived`.
+                    PlayerEvent::Playing { track_id, .. } => {
                         if let AppState::Main { playback, .. } = &mut self.state {
                             playback.is_playing = true;
-                            playback.progress_ms = *position_ms;
                             playback.current_track_uri = Some(track_id.to_uri());
                         }
                     }
-                    PlayerEvent::Seeked { position_ms, .. } => {
-                        if let AppState::Main { playback, .. } = &mut self.state {
-                            playback.progress_ms = *position_ms;
-                        }
-                    }
-                    PlayerEvent::Paused { position_ms, .. } => {
+                    PlayerEvent::Paused { .. } => {
                         if let AppState::Main { playback, .. } = &mut self.state {
                             playback.is_playing = false;
-                            playback.progress_ms = *position_ms;
                             save_last_playback_state(playback);
                         }
                     }
@@ -1803,7 +2283,6 @@ impl App {
                             selected_album,
                             search_results,
                             loaded_images,
-                            active_right_panel,
                             ..
                         } = &mut self.state
                         {
@@ -1856,7 +2335,6 @@ impl App {
                                 ));
                             }
 
-                            let track_artist = artist.clone();
                             playback.current_track = Some(TrackInfo {
                                 title: audio_item.name.clone(),
                                 artist,
@@ -1867,27 +2345,6 @@ impl App {
                                 explicit: false,
                             });
 
-                            if *active_right_panel == Some(RightPanelTab::Lyrics) {
-                                let t_name = audio_item.name.clone();
-                                let a_name_lyrics = track_artist.clone();
-                                tasks.push(Task::perform(
-                                    async move {
-                                        crate::api::lyrics::fetch_lyrics(&t_name, &a_name_lyrics)
-                                            .await
-                                    },
-                                    Message::LyricsFetched,
-                                ));
-                            }
-
-                            if *active_right_panel == Some(RightPanelTab::NowPlaying) {
-                                let a_name_bio = track_artist.clone();
-                                tasks.push(Task::perform(
-                                    async move {
-                                        crate::api::artist::fetch_artist_bio(&a_name_bio).await
-                                    },
-                                    Message::ArtistBioFetched,
-                                ));
-                            }
                         }
                         if !tasks.is_empty() {
                             return Task::batch(tasks);
@@ -1941,17 +2398,30 @@ impl App {
                     });
                     playback.progress_ms = pos.min(max_dur);
                 }
-                Task::none()
+                self.follow_lyrics()
             }
             Message::SessionExpired => {
-                let _ = self.audio_tx.try_send(AudioCommand::Pause);
-                let _ = crate::api::cache::clear_cache_disk();
-                let _ = crate::api::auth::delete_refresh_token_from_keyring();
-                self.active_error = None;
-                self.state = AppState::Login {
-                    is_loading: false,
-                    error: Some("Spotify session expired. Please log in again.".to_string()),
-                };
+                // The librespot connection dropped; this says nothing about the Web API
+                // login, so reconnect audio quietly instead of logging the user out.
+                if let AppState::Main {
+                    audio_session,
+                    playback,
+                    playback_link,
+                    audio_bitrate,
+                    audio_normalization,
+                    gapless_playback,
+                    ..
+                } = &mut self.state
+                {
+                    *audio_session = None;
+                    playback.is_playing = false;
+                    *playback_link = PlaybackLink::Connecting;
+                    return connect_playback_task(
+                        *audio_bitrate,
+                        *audio_normalization,
+                        *gapless_playback,
+                    );
+                }
                 Task::none()
             }
             Message::LoginFailed(err) => {
@@ -2090,52 +2560,34 @@ impl App {
                 }
                 Task::none()
             }
-            Message::FetchLyrics(title, artist) => {
-                if let AppState::Main {
-                    is_loading_lyrics, ..
-                } = &mut self.state
-                {
-                    *is_loading_lyrics = true;
-                }
-                Task::perform(
-                    async move { crate::api::lyrics::fetch_lyrics(&title, &artist).await },
-                    Message::LyricsFetched,
-                )
-            }
-            Message::LyricsFetched(res) => {
+            Message::LyricsFetched(key, res) => {
                 if let AppState::Main {
                     current_lyrics,
+                    lyrics_key,
                     is_loading_lyrics,
                     ..
                 } = &mut self.state
                 {
-                    *is_loading_lyrics = false;
-                    *current_lyrics = res.ok();
+                    // Ignore answers for a track the user already skipped past.
+                    if lyrics_key.as_deref() == Some(key.as_str()) {
+                        *is_loading_lyrics = false;
+                        *current_lyrics = res.ok();
+                    }
                 }
                 Task::none()
             }
-            Message::FetchArtistBio(artist_name) => {
-                if let AppState::Main {
-                    is_loading_artist_bio,
-                    ..
-                } = &mut self.state
-                {
-                    *is_loading_artist_bio = true;
-                }
-                Task::perform(
-                    async move { crate::api::artist::fetch_artist_bio(&artist_name).await },
-                    Message::ArtistBioFetched,
-                )
-            }
-            Message::ArtistBioFetched(res) => {
+            Message::ArtistBioFetched(key, res) => {
                 if let AppState::Main {
                     current_artist_bio,
+                    bio_key,
                     is_loading_artist_bio,
                     ..
                 } = &mut self.state
                 {
-                    *is_loading_artist_bio = false;
-                    *current_artist_bio = res.ok();
+                    if bio_key.as_deref() == Some(key.as_str()) {
+                        *is_loading_artist_bio = false;
+                        *current_artist_bio = res.ok();
+                    }
                 }
                 Task::none()
             }
@@ -2165,6 +2617,13 @@ impl App {
                     if let Some(session) = audio_session {
                         let cmd = if was_playing {
                             PlayerCommand::Pause
+                        } else if playback.track_loaded {
+                            PlayerCommand::Resume
+                        } else if let Some(track) = &playback.current_track {
+                            // Restored from the last session: nothing is loaded in
+                            // librespot yet, so load it where the user left off.
+                            playback.track_loaded = true;
+                            PlayerCommand::PlayFrom(track.uri.clone(), playback.progress_ms)
                         } else {
                             PlayerCommand::Resume
                         };
@@ -2417,15 +2876,18 @@ impl App {
             } => {
                 if let AppState::Main {
                     active_context_menu,
+                    last_right_click,
                     ..
                 } = &mut self.state
                 {
+                    let anchor = recent_right_click(*last_right_click);
                     *active_context_menu = Some(ContextMenuState {
                         target: ContextMenuTarget::Track {
                             track,
                             from_playlist_id,
                         },
-                        position,
+                        position: anchor.unwrap_or(position),
+                        anchored: anchor.is_some(),
                     });
                 }
                 Task::none()
@@ -2433,12 +2895,15 @@ impl App {
             Message::OpenAlbumContextMenu { album, position } => {
                 if let AppState::Main {
                     active_context_menu,
+                    last_right_click,
                     ..
                 } = &mut self.state
                 {
+                    let anchor = recent_right_click(*last_right_click);
                     *active_context_menu = Some(ContextMenuState {
                         target: ContextMenuTarget::Album(album),
-                        position,
+                        position: anchor.unwrap_or(position),
+                        anchored: anchor.is_some(),
                     });
                 }
                 Task::none()
@@ -2446,12 +2911,15 @@ impl App {
             Message::OpenPlaylistContextMenu { playlist, position } => {
                 if let AppState::Main {
                     active_context_menu,
+                    last_right_click,
                     ..
                 } = &mut self.state
                 {
+                    let anchor = recent_right_click(*last_right_click);
                     *active_context_menu = Some(ContextMenuState {
                         target: ContextMenuTarget::Playlist(playlist),
-                        position,
+                        position: anchor.unwrap_or(position),
+                        anchored: anchor.is_some(),
                     });
                 }
                 Task::none()
@@ -2463,15 +2931,18 @@ impl App {
             } => {
                 if let AppState::Main {
                     active_context_menu,
+                    last_right_click,
                     ..
                 } = &mut self.state
                 {
+                    let anchor = recent_right_click(*last_right_click);
                     *active_context_menu = Some(ContextMenuState {
                         target: ContextMenuTarget::Artist {
                             artist_id,
                             artist_name,
                         },
-                        position,
+                        position: anchor.unwrap_or(position),
+                        anchored: anchor.is_some(),
                     });
                 }
                 Task::none()
@@ -2634,7 +3105,7 @@ impl App {
                                 &uris,
                             )
                             .await?;
-                            Ok("Canciones agregadas a la playlist".to_string())
+                            Ok("Added to playlist".to_string())
                         },
                         Message::OperationFinished,
                     )
@@ -2668,7 +3139,7 @@ impl App {
                                 &[track_uri],
                             )
                             .await?;
-                            Ok("Canción eliminada de la playlist".to_string())
+                            Ok("Removed from playlist".to_string())
                         },
                         Message::OperationFinished,
                     )
@@ -2697,10 +3168,10 @@ impl App {
                         async move {
                             if currently_saved {
                                 crate::api::album::remove_album(&spotify, &album_id).await?;
-                                Ok("Álbum eliminado de tu biblioteca".to_string())
+                                Ok("Removed from Your Library".to_string())
                             } else {
                                 crate::api::album::save_album(&spotify, &album_id).await?;
-                                Ok("Álbum guardado en tu biblioteca".to_string())
+                                Ok("Saved to Your Library".to_string())
                             }
                         },
                         Message::OperationFinished,
@@ -2732,7 +3203,7 @@ impl App {
                                 None,
                             )
                             .await?;
-                            Ok("Playlist actualizada con éxito".to_string())
+                            Ok("Playlist updated".to_string())
                         },
                         Message::OperationFinished,
                     )
@@ -2756,7 +3227,7 @@ impl App {
                     Task::perform(
                         async move {
                             crate::api::playlist::delete_playlist(&spotify, &playlist_id).await?;
-                            Ok("Playlist eliminada".to_string())
+                            Ok("Playlist deleted".to_string())
                         },
                         Message::OperationFinished,
                     )
@@ -2792,7 +3263,7 @@ impl App {
                                 Some(target_public),
                             )
                             .await?;
-                            Ok("Privacidad de la playlist actualizada".to_string())
+                            Ok("Playlist privacy updated".to_string())
                         },
                         Message::OperationFinished,
                     )
@@ -2825,7 +3296,7 @@ impl App {
                                 &uris,
                             )
                             .await?;
-                            Ok("Canciones copiadas a la otra playlist".to_string())
+                            Ok("Songs copied to playlist".to_string())
                         },
                         Message::OperationFinished,
                     )
@@ -2854,10 +3325,10 @@ impl App {
                         async move {
                             if currently_followed {
                                 crate::api::artist::unfollow_artist(&spotify, &artist_id).await?;
-                                Ok("Dejaste de seguir al artista".to_string())
+                                Ok("Unfollowed artist".to_string())
                             } else {
                                 crate::api::artist::follow_artist(&spotify, &artist_id).await?;
-                                Ok("Siguiendo al artista".to_string())
+                                Ok("Following artist".to_string())
                             }
                         },
                         Message::OperationFinished,
@@ -3114,48 +3585,15 @@ impl App {
                 Task::none()
             }
             Message::ToggleRightPanel(tab) => {
-                let mut maybe_fetch = None;
-                let mut maybe_fetch_bio = None;
                 if let AppState::Main {
-                    active_right_panel,
-                    current_lyrics,
-                    current_artist_bio,
-                    playback,
-                    ..
+                    active_right_panel, ..
                 } = &mut self.state
                 {
-                    if *active_right_panel == Some(tab) {
-                        *active_right_panel = None;
+                    *active_right_panel = if *active_right_panel == Some(tab) {
+                        None
                     } else {
-                        *active_right_panel = Some(tab);
-                        if tab == RightPanelTab::Lyrics {
-                            if let Some(track) = &playback.current_track {
-                                let need_fetch = match current_lyrics {
-                                    Some(l) => l.track_name != track.title,
-                                    None => true,
-                                };
-                                if need_fetch {
-                                    maybe_fetch = Some((track.title.clone(), track.artist.clone()));
-                                }
-                            }
-                        } else if tab == RightPanelTab::NowPlaying {
-                            if let Some(track) = &playback.current_track {
-                                let need_fetch = match current_artist_bio {
-                                    Some(b) => b.artist_name != track.artist,
-                                    None => true,
-                                };
-                                if need_fetch {
-                                    maybe_fetch_bio = Some(track.artist.clone());
-                                }
-                            }
-                        }
-                    }
-                }
-                if let Some((title, artist)) = maybe_fetch {
-                    return self.update(Message::FetchLyrics(title, artist));
-                }
-                if let Some(artist) = maybe_fetch_bio {
-                    return self.update(Message::FetchArtistBio(artist));
+                        Some(tab)
+                    };
                 }
                 Task::none()
             }
@@ -3259,7 +3697,7 @@ impl App {
                                         .try_send(PlayerCommand::Play(first.uri.clone()));
                                 }
                                 tasks.extend(load_image_tasks(
-                                    context_queue.iter().map(|t| t.image_url.clone()),
+                                    context_queue.iter().take(24).map(|t| t.image_url.clone()),
                                     loaded_images,
                                 ));
                             }
@@ -3272,9 +3710,32 @@ impl App {
                     Task::batch(tasks)
                 }
             }
-            Message::WindowResized(w) => {
-                if let AppState::Main { window_width, .. } = &mut self.state {
-                    *window_width = w;
+            Message::WindowResized(size) => {
+                if let AppState::Main {
+                    window_width,
+                    window_height,
+                    ..
+                } = &mut self.state
+                {
+                    *window_width = size.width;
+                    *window_height = size.height;
+                }
+                Task::none()
+            }
+            Message::RightClickAt(point) => {
+                if let AppState::Main {
+                    last_right_click,
+                    active_context_menu,
+                    ..
+                } = &mut self.state
+                {
+                    *last_right_click = Some((point, std::time::Instant::now()));
+                    // The widget's "open menu" message usually arrives before this
+                    // event, so anchor a freshly opened menu to the real cursor spot.
+                    if let Some(menu) = active_context_menu.as_mut().filter(|m| !m.anchored) {
+                        menu.position = point;
+                        menu.anchored = true;
+                    }
                 }
                 Task::none()
             }
@@ -3404,6 +3865,7 @@ impl App {
                 context_index,
                 loaded_images,
                 window_width,
+                window_height,
                 active_context_menu,
                 active_modal,
                 toast_notification,
@@ -3423,6 +3885,8 @@ impl App {
                 audio_bitrate,
                 audio_normalization,
                 gapless_playback,
+                main_scroll,
+                playback_link,
                 ..
             } => crate::ui::main_layout::view(
                 nav_item,
@@ -3448,6 +3912,7 @@ impl App {
                 *context_index,
                 loaded_images.inner_map(),
                 *window_width,
+                *window_height,
                 active_context_menu.as_ref(),
                 active_modal.as_ref(),
                 toast_notification.as_ref(),
@@ -3467,6 +3932,8 @@ impl App {
                 *audio_bitrate,
                 *audio_normalization,
                 *gapless_playback,
+                *main_scroll,
+                playback_link,
             ),
         };
 
@@ -3581,21 +4048,54 @@ pub fn load_layout() -> (f32, f32) {
     (default_sidebar, default_right)
 }
 
+/// The cursor position of a right click that happened just now, if any.
+fn recent_right_click(last: Option<(iced::Point, std::time::Instant)>) -> Option<iced::Point> {
+    last.filter(|(_, at)| at.elapsed() < std::time::Duration::from_millis(250))
+        .map(|(point, _)| point)
+}
+
+fn connect_playback_task(
+    bitrate: crate::audio::session::AudioBitrate,
+    normalisation: bool,
+    gapless: bool,
+) -> Task<Message> {
+    Task::perform(
+        crate::audio::session::connect_stored(bitrate, normalisation, gapless),
+        Message::PlaybackSessionResult,
+    )
+}
+
+fn search_image_tasks(
+    results: &crate::api::search::SearchResults,
+    loaded_images: &crate::api::cache::LruCache<String, iced::widget::image::Handle>,
+) -> Vec<Task<Message>> {
+    load_image_tasks(
+        results
+            .tracks
+            .iter()
+            .map(|t| t.image_url.clone())
+            .chain(results.albums.iter().map(|a| a.image_url.clone()))
+            .chain(results.artists.iter().map(|a| a.image_url.clone())),
+        loaded_images,
+    )
+}
+
 fn load_image_tasks(
     urls: impl IntoIterator<Item = Option<String>>,
     loaded_images: &crate::api::cache::LruCache<String, iced::widget::image::Handle>,
 ) -> Vec<Task<Message>> {
-    let mut tasks = Vec::new();
+    let mut wanted: Vec<String> = Vec::new();
     for url in urls.into_iter().flatten() {
-        if !url.is_empty() && !loaded_images.contains_key(&url) {
-            let u = url.clone();
-            tasks.push(Task::perform(
-                async move { crate::api::cache::ImageCache::fetch_image_bytes(u).await },
-                Message::ImageLoaded,
-            ));
+        if !url.is_empty() && !loaded_images.contains_key(&url) && !wanted.contains(&url) {
+            wanted.push(url);
         }
     }
-    tasks
+    if wanted.is_empty() {
+        Vec::new()
+    } else {
+        // Dedup against in-flight downloads happens in `Message::RequestImages`.
+        vec![Task::done(Message::RequestImages(wanted))]
+    }
 }
 
 #[allow(clippy::cast_possible_truncation)]
@@ -3877,15 +4377,17 @@ mod tests {
         assert!((saved_scale - 1.15).abs() < 0.001);
     }
 
-    #[test]
-    fn test_session_expired_transitions_to_login() {
-        let _guard = DISK_TEST_MUTEX.lock().unwrap();
+    fn main_app_for_tests() -> App {
         let (audio_tx, _) = tokio::sync::mpsc::channel(1);
-        let mut app = App {
+        App {
             state: AppState::Main {
                 nav_item: NavigationItem::Home,
                 playback: PlaybackState::default(),
                 audio_session: None,
+                playback_link: PlaybackLink::Connecting,
+                pending_play_uri: None,
+                main_scroll: ScrollWindow::default(),
+                pending_images: std::collections::HashSet::new(),
                 user_profile: None,
                 user_playlists: Vec::new(),
                 user_albums: Vec::new(),
@@ -3895,6 +4397,7 @@ mod tests {
                 search_query: String::new(),
                 search_results: crate::api::search::SearchResults::default(),
                 is_searching: false,
+                search_cache: crate::api::cache::LruCache::new(SEARCH_CACHE_CAPACITY),
                 sidebar_filter: SidebarFilter::All,
                 selected_playlist: None,
                 selected_album: None,
@@ -3916,9 +4419,131 @@ mod tests {
                 dragging_sidebar: false,
                 dragging_right_panel: false,
                 window_width: 1200.0,
+                window_height: 800.0,
+                last_right_click: None,
                 navigation_history: Vec::new(),
                 forward_history: Vec::new(),
                 current_lyrics: None,
+                lyrics_key: None,
+                bio_key: None,
+                lyrics_line: None,
+                is_loading_lyrics: false,
+                current_artist_bio: None,
+                is_loading_artist_bio: false,
+                autoplay_enabled: true,
+                search_category_filter: SearchCategoryFilter::All,
+                cache_size_bytes: 0,
+                allow_explicit_content: true,
+                ui_scale: 1.0,
+                accent_tone: crate::ui::theme::AccentTone::default(),
+                ui_language: UiLanguage::default(),
+                audio_bitrate: crate::audio::session::AudioBitrate::default(),
+                audio_normalization: true,
+                gapless_playback: true,
+            },
+            audio_tx,
+            active_error: None,
+        }
+    }
+
+    fn search_results_named(title: &str) -> crate::api::search::SearchResults {
+        crate::api::search::SearchResults {
+            tracks: vec![crate::api::search::SearchResultTrack {
+                id: "t".to_string(),
+                title: title.to_string(),
+                artist: "a".to_string(),
+                album: "b".to_string(),
+                duration_ms: 1,
+                uri: "spotify:track:t".to_string(),
+                image_url: None,
+                explicit: false,
+            }],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn test_search_ignores_out_of_order_responses_and_caches() {
+        let mut app = main_app_for_tests();
+        let _ = app.update(Message::SearchInputChanged("oa".to_string()));
+        let _ = app.update(Message::SearchInputChanged("oasis".to_string()));
+
+        // The stale "oa" response arrives last: it must not replace the screen.
+        let _ = app.update(Message::SearchResultsFetched(
+            "oasis".to_string(),
+            Ok(search_results_named("Wonderwall")),
+        ));
+        let _ = app.update(Message::SearchResultsFetched(
+            "oa".to_string(),
+            Ok(search_results_named("Stale")),
+        ));
+        let AppState::Main { search_results, is_searching, .. } = &app.state else {
+            panic!("expected main state");
+        };
+        assert_eq!(search_results.tracks[0].title, "Wonderwall");
+        assert!(!is_searching);
+
+        // Going back to an earlier query is answered from the cache instantly.
+        let _ = app.update(Message::SearchInputChanged("OA ".to_string()));
+        let AppState::Main { search_results, is_searching, .. } = &app.state else {
+            panic!("expected main state");
+        };
+        assert_eq!(search_results.tracks[0].title, "Stale");
+        assert!(!is_searching);
+    }
+
+    #[test]
+    fn test_session_expired_reconnects_audio_without_logout() {
+        let _guard = DISK_TEST_MUTEX.lock().unwrap();
+        let (audio_tx, _) = tokio::sync::mpsc::channel(1);
+        let mut app = App {
+            state: AppState::Main {
+                nav_item: NavigationItem::Home,
+                playback: PlaybackState::default(),
+                audio_session: None,
+                playback_link: PlaybackLink::Connecting,
+                pending_play_uri: None,
+                main_scroll: ScrollWindow::default(),
+                pending_images: std::collections::HashSet::new(),
+                user_profile: None,
+                user_playlists: Vec::new(),
+                user_albums: Vec::new(),
+                user_top_tracks: Vec::new(),
+                featured_playlists: Vec::new(),
+                featured_albums: Vec::new(),
+                search_query: String::new(),
+                search_results: crate::api::search::SearchResults::default(),
+                is_searching: false,
+                search_cache: crate::api::cache::LruCache::new(SEARCH_CACHE_CAPACITY),
+                sidebar_filter: SidebarFilter::All,
+                selected_playlist: None,
+                selected_album: None,
+                selected_artist: None,
+                user_queue: Vec::new(),
+                context_queue: Vec::new(),
+                original_context_queue: Vec::new(),
+                context_index: 0,
+                history: Vec::new(),
+                active_context_menu: None,
+                active_modal: None,
+                toast_notification: None,
+                toast_id: 0,
+                loaded_images: crate::api::cache::LruCache::new(IMAGE_CACHE_CAPACITY),
+                spotify_client: None,
+                sidebar_width: 240.0,
+                right_panel_width: 280.0,
+                active_right_panel: None,
+                dragging_sidebar: false,
+                dragging_right_panel: false,
+                window_width: 1200.0,
+                window_height: 800.0,
+                last_right_click: None,
+                navigation_history: Vec::new(),
+                forward_history: Vec::new(),
+                current_lyrics: None,
+                lyrics_key: None,
+                bio_key: None,
+                lyrics_line: None,
                 is_loading_lyrics: false,
                 current_artist_bio: None,
                 is_loading_artist_bio: false,
@@ -3939,13 +4564,16 @@ mod tests {
 
         let _ = app.update(Message::SessionExpired);
 
-        assert!(app.active_error.is_none());
         match app.state {
-            AppState::Login { is_loading, error } => {
-                assert!(!is_loading);
-                assert!(error.is_some());
+            AppState::Main {
+                audio_session,
+                playback_link,
+                ..
+            } => {
+                assert!(audio_session.is_none());
+                assert!(matches!(playback_link, PlaybackLink::Connecting));
             }
-            _ => panic!("Expected transition to AppState::Login"),
+            _ => panic!("Audio session loss must not log the user out"),
         }
     }
 
@@ -4030,6 +4658,10 @@ mod tests {
                     ..Default::default()
                 },
                 audio_session: None,
+                playback_link: PlaybackLink::Connecting,
+                pending_play_uri: None,
+                main_scroll: ScrollWindow::default(),
+                pending_images: std::collections::HashSet::new(),
                 user_profile: None,
                 user_playlists: Vec::new(),
                 user_albums: Vec::new(),
@@ -4039,6 +4671,7 @@ mod tests {
                 search_query: String::new(),
                 search_results: crate::api::search::SearchResults::default(),
                 is_searching: false,
+                search_cache: crate::api::cache::LruCache::new(SEARCH_CACHE_CAPACITY),
                 sidebar_filter: SidebarFilter::All,
                 selected_playlist: None,
                 selected_album: None,
@@ -4060,9 +4693,14 @@ mod tests {
                 dragging_sidebar: false,
                 dragging_right_panel: false,
                 window_width: 1200.0,
+                window_height: 800.0,
+                last_right_click: None,
                 navigation_history: Vec::new(),
                 forward_history: Vec::new(),
                 current_lyrics: None,
+                lyrics_key: None,
+                bio_key: None,
+                lyrics_line: None,
                 is_loading_lyrics: false,
                 current_artist_bio: None,
                 is_loading_artist_bio: false,
