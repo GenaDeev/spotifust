@@ -174,6 +174,8 @@
 - [ ] Spotify development-mode API restrictions: `/artists/{id}/top-tracks`, `/artists/{id}/related-artists` and `/browse/new-releases` return 403 and `/recommendations` returns 404. Artist "Popular" now falls back to search, but "New Releases" and autoplay recommendations need replacement data sources.
 - [ ] Audio settings (bitrate, normalisation, gapless) are persisted but only apply after the audio session reconnects (next launch); rebuild the session when they change.
 - [ ] Localization: UI strings are hard-coded English even though a UI language setting exists; route them through a translation table.
+- [ ] Elm-rule exception: `AudioSession.events` is an `Arc<tokio::sync::Mutex<Receiver>>` stored in the model so `PlayerEventsRecipe` can own the receiver. Replace it with a subscription that owns the channel (e.g. `Subscription::run_with` keyed by a session id) and remove the exception from `AGENTS.md` §1.
+- [ ] Stale architecture docs: `README.md` (Tech Stack "UI Layout: iced canvas", architecture diagram, "Canvas Layout System") and `docs/architecture.md` describe a canvas card engine that doesn't exist. The UI is regular iced widgets in `src/ui/main_layout.rs`. Agents read these files, so rewrite them to match the code.
 
 ## Blocked / Needs Human Decision
 

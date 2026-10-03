@@ -46,14 +46,13 @@ Full prerequisites and environment variables are in the README's [Getting Starte
 
 1. **Fork the repo and branch off `main`.** Branch names aren't strictly enforced, but `feature/short-description` or `fix/short-description` keeps the history legible.
 2. **Check `TODO.md`.** This project tracks state as a checklist, not a changelog. If your change maps to an existing item under **Development Backlog**, reference it. If it's new work, add it under **Architectural Debt** before you start — this applies to you too, not just AI agents.
-3. **Write the change.** Follow the module specs in `AGENTS.md` §4 if you're touching `src/ui/`, `src/audio/`, or `src/api/` — each has specific constraints (bounded channels, fixed OAuth port, keyring-only token storage) that aren't obvious from reading the code alone.
+3. **Write the change.** Follow the module specs in `AGENTS.md` §4 if you're touching `src/ui/`, `src/audio/`, or `src/api/` — each has specific constraints (bounded channels, `spotifust://` OAuth redirect with no local ports, keyring-only token storage) that aren't obvious from reading the code alone. The matching skill under `.agents/skills/` has the details.
 4. **Self-check before opening the PR** — the same checklist `AGENTS.md` §7 asks of an AI agent applies to you:
+   - `rustup update stable`, then `scripts/test.sh` passes (fmt, clippy `-D warnings`, tests, and optional deny/audit/typos/lychee)
    - `cargo build --release` succeeds
-   - `cargo clippy --all-targets -- -D warnings` passes clean
-   - `cargo fmt` applied
    - No pattern from the Forbidden Patterns list (`AGENTS.md` §5) snuck in
    - `TODO.md` updated to reflect what actually got done
-5. **Open the PR.** Describe *what changed* and, more importantly, *why* — a diff without reasoning is much slower to review, especially for anything touching the canvas layout or the audio pipeline.
+5. **Open the PR.** Describe *what changed* and, more importantly, *why* — a diff without reasoning is much slower to review, especially for anything touching the UI layout or the audio pipeline.
 
 ---
 
@@ -61,21 +60,21 @@ Full prerequisites and environment variables are in the README's [Getting Starte
 
 Some choices are deliberately left open in `AGENTS.md` §6 rather than decided unilaterally by whoever gets there first:
 
-- `rodio` vs `cpal` as the final playback backend
-- Changing the fixed OAuth loopback port
 - Any new external dependency
+- Changes to the MVU data flow, the audio pipeline topology, the auth flows, or the error contract
+- Anything that needs a third-party API key or account
 
-If your PR touches one of these, open an issue before writing code. It's not bureaucracy for its own sake — the port decision alone breaks the registered Spotify redirect URI if changed casually, and dependency creep is the single fastest way to blow past the RAM budget this project exists to avoid.
+`rodio` is the settled playback backend (`AGENTS.md` §4.B). If your PR touches one of the items above, open an issue before writing code. It's not bureaucracy for its own sake: auth changes can break the registered Spotify redirect URI or playback pairing, and dependency creep is the single fastest way to blow past the RAM budget this project exists to avoid.
 
 ---
 
 ## Contributing with an AI coding agent
 
-This repo is built to be agent-friendly on purpose — `AGENTS.md` is the shared instruction file read natively by Codex, Cursor, and Claude Code, and `.agents/` vendors a Rust knowledge base your agent can route through (see `AGENTS.md` §8). If you're using one:
+This repo is built to be agent-friendly on purpose. `AGENTS.md` is the shared instruction file read by Codex, Cursor and Claude Code (`CLAUDE.md` imports it). Project-specific skills live in `.agents/skills/` (the path Codex discovers), and `.claude/skills` symlinks to them for Claude Code (see `AGENTS.md` §8). If you're using one:
 
 - Let it read `AGENTS.md` before generating anything — that's the whole point of the file existing.
 - You're still responsible for the PR. "The agent wrote it" isn't a defense for a violated constraint in review; treat agent output the same as your own first draft.
-- If your agent proposes something that conflicts with `AGENTS.md`, the document wins (see §8.4) — that's true for the agent and it's true for you.
+- If your agent proposes something that conflicts with `AGENTS.md`, the document wins (see §8) — that's true for the agent and it's true for you.
 
 ---
 
