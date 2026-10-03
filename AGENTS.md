@@ -1,194 +1,126 @@
-# AGENTS.md — AI Agent Operating Manual
+# AGENTS.md — Spotifust agent guide
 
-Welcome, Agent. You are tasked with developing and maintaining **Spotifust**. These instructions are deterministic and take precedence over generic best-practice defaults you might otherwise apply. Ambiguity in this document is a bug — if you find a case it doesn't cover, add a clarifying note to `TODO.md` under **Architectural Debt** instead of guessing.
+Spotifust is a native Spotify desktop client in Rust: one binary, no web view, no JS runtime. This file is the shared instruction set for every coding agent (Claude Code, Codex/GPT, Cursor, …). It holds the rules that apply everywhere. Subsystem know-how lives in skills under `.agents/skills/` (see §8). Load the matching skill before you touch that subsystem.
 
-Target performance envelope: **< 25MB RAM baseline**, single binary, zero external runtime dependencies (no Node, no bundled browser engine).
+If this file is ambiguous or out of date, fix it in the same change or log the gap in `TODO.md` → **Architectural Debt**. Don't guess silently.
 
----
+## 0. Stack and layout
 
-## 0. Definitions (read before anything else)
-
-To avoid the two most common failure modes — treating an async task as a process, and treating every keystroke as a "task" — the following terms are fixed for the rest of this document:
-
-| Term | Means | Does NOT mean |
+| Area | Choice | Where |
 | :--- | :--- | :--- |
-| **Process** | A separate OS-level process (`std::process::Command`, a sidecar binary, a spawned executable) | A `tokio::spawn`ed async task — those are explicitly required (see §5.B) and run inside the same process/address space |
-| **Atomic task** | One checklist item (`- [ ]`) as it appears in `TODO.md`'s Development Backlog | A single line of code, a single function, or a single file edit |
-| **Phase boundary** | Completion of every item within a numbered Phase in `TODO.md` | Reaching a compilable intermediate state mid-phase |
+| UI | `iced` 0.14, **tiny-skia** (CPU) renderer, pure MVU | `src/app.rs` (model/update), `src/ui/` (views) |
+| Audio | `librespot` (git, 0.8) → custom sink → `rodio` 0.21 | `src/audio/` |
+| Web API | `rspotify` 0.16 (PKCE), `reqwest` 0.12 (rustls + http2) | `src/api/` |
+| Secrets | OS keychain via `keyring` | `src/api/auth.rs`, `src/audio/credentials.rs` |
+| Task list | `TODO.md` (state machine, see §3) | repo root |
 
----
+Performance envelope: target **< 25 MB RSS at idle** (not met yet, see `TODO.md`) and a single process.
 
-## 1. Core Operating Constraints
+Terms used below:
 
-* **No Web Overhead.** Absolute prohibition of web-views, embedded browser engines, or any JS runtime, including for debugging/devtools purposes.
-* **Single-Process Monolith.** No `std::process::Command`, no sidecar binaries, no IPC across process boundaries. `librespot` and `rspotify` are compiled directly into the application. `tokio::spawn` for async tasks inside the same process is not only allowed but required — see §5.B.
-* **The Elm Rule (Pure MVU).** All UI-relevant state changes flow through `Message` → `update()`. Do not introduce `Rc<RefCell<T>>` or `Arc<Mutex<T>>` inside UI-owned structs to shortcut this. Cross-thread communication (e.g., audio task → UI) must go through `tokio::sync::mpsc` channels surfaced as `iced::Subscription`s, never through shared mutable state.
-* **Zero Crashing Policy — with one explicit exception.** See §2.
+- **Process**: an OS process. `tokio::spawn` tasks and threads are *not* processes, and they are expected.
+- **Atomic task**: one `- [ ]` item in `TODO.md`'s backlog.
 
----
+## 1. Core constraints
 
-## 2. Error Handling Contract
+- **No web overhead.** No web views, embedded browsers or JS runtimes, not even for debugging.
+- **Single process.** No `std::process::Command`, no sidecar binaries, no cross-process IPC. `librespot` and `rspotify` are linked in. Async work runs on `tokio::spawn` inside the process.
+- **Elm rule (pure MVU).** UI state changes only through `Message` → `App::update`. Don't put `Rc<RefCell<_>>` or `Arc<Mutex<_>>` in UI-owned state. Background work talks to the UI through bounded `tokio::sync::mpsc` channels surfaced as `iced::Subscription`s. Immutable `OnceLock` caches (e.g. `ui::logo_handle`) are fine. One known exception, logged as debt: `AudioSession.events` is an `Arc<tokio::sync::Mutex<Receiver>>` so the subscription recipe can own it.
+- **Derived side effects belong in the `App::update` wrapper.** It compares `panel_key`/`page_key` before and after `update_inner`, which is how lyrics/bio loading and scroll resets work. Extend that mechanism instead of sprinkling the same logic across message handlers.
 
-* **Inside the running application (after the `iced::Application` loop has started):** `.unwrap()`, `.expect()`, and `panic!()` are forbidden. Every fallible operation returns `Result<T, AppError>`, and errors are surfaced to the user via `Message::ErrorEncountered(AppError)`.
-* **Bootstrap exception (before the event loop exists):** in `main()`, prior to `iced::Application::run()`, fail-fast with a clear `eprintln!` and `std::process::exit(1)` is acceptable — there is no UI yet to route an error message to. Keep this window as small as possible; move config/env loading into the update loop where feasible instead of expanding this exception.
-* **Define one central error type.** Use `thiserror` for `AppError`, with variants per subsystem (`AppError::Auth`, `AppError::Playback`, `AppError::Network`, `AppError::Cache`). Do not let raw `librespot` or `rspotify` error types leak into `Message` variants — wrap them.
-* **Never use `Mutex`/`RwLock` poisoning as a control-flow signal.** If you find yourself calling `.lock().unwrap()`, that's a sign shared-state locking crept in where it shouldn't have (see the Elm Rule) — refactor to message passing instead of handling the poison case.
+## 2. Error-handling contract
 
----
+- After the iced loop starts, `.unwrap()`, `.expect()` and `panic!()` are forbidden in non-test code. Fallible code returns `Result<T, AppError>`, and errors reach the user as `Message::ErrorEncountered(AppError)` or a toast.
+- Bootstrap exception: in `main()`, before `iced::application(...).run()`, failing fast with `eprintln!` + `std::process::exit(1)` is acceptable. Keep that window minimal.
+- `AppError` (`src/error.rs`, `thiserror`) has per-subsystem variants: `Auth`, `Playback`, `PlaybackPairing`, `Network`, `Cache`, `RateLimited`. Wrap third-party errors; never put `librespot`/`rspotify` error types in `Message`.
+- `AppError::Auth` **logs the user out and clears the cache**. Only use it when credentials are truly invalid (HTTP 400/401 on refresh). Offline and 5xx are `Network`.
+- Never use lock poisoning as control flow. `.lock().unwrap()` means shared state crept in; refactor to messages.
 
-## 3. `TODO.md` Synchronization Protocol
+## 3. `TODO.md` protocol
 
-`TODO.md` is the single source of truth for project state. Treat it as a state machine, not a changelog.
+`TODO.md` is the single source of truth for project state. The `spotifust-todo` skill has the full procedure. The essentials:
 
-### 3.1 When to touch it
+- **Session start:** if the user gave a concrete task, do it. Otherwise read `TODO.md`, summarize **Current Focus**, and ask whether to continue with it.
+- **Finishing an atomic task:** tick it in the same change as the code. Then ask before starting the next item.
+- **Only tick verified work.** An item is done when it works end to end and is wired into the UI or runtime, not when code for it merely exists. If a checked item turns out broken, untick it and add an indented `- Audit YYYY-MM-DD:` note saying what is missing.
+- **New work found mid-task** goes into **Architectural Debt** immediately.
+- **Editing:** re-read `TODO.md` right before editing and change only the relevant lines; never regenerate the file from memory. Keep the existing sections: Current Focus, Development Backlog (phases), Architectural Debt, Blocked / Needs Human Decision.
 
-* **On session start:** read `TODO.md`, greet the user with a brief summary of where the project stands, and **ask explicitly whether they want to continue with the next pending task**. If `TODO.md` doesn't exist, create it using the schema in §3.3.
-* **On completing one atomic task** (per the §0 definition — one checklist item): mark it `[x]` in the same edit that completes the corresponding code change. Don't batch multiple completed items into a single later rewrite. After marking it done, **ask the user whether to proceed with the next pending item** before starting anything new.
-* **On discovering new work mid-task** (a missing edge case, a follow-up refactor): append it to **Architectural Debt** immediately, don't just remember it — you won't carry memory into the next session.
-* **Not on every intermediate compile or every function written.** If you're rewriting `TODO.md` more than once per checklist item, you're over-triggering this rule.
+## 4. Subsystem rules (details in skills)
 
-### 3.2 How to update it safely
+### A. UI (`src/app.rs`, `src/ui/`) — skill `spotifust-iced-ui`
 
-Always re-read `TODO.md` immediately before editing it, even if you wrote it earlier in the same session — do not trust a stale in-context copy. Edit surgically (only the relevant checkbox/section); don't regenerate the whole file from memory, since that risks silently dropping items you didn't fully recall.
+- `view()` runs after **every** update, including ~4 playback ticks a second. Keep it cheap: no decoding, no network, no sorting large lists.
+- Never create `image::Handle::from_bytes`/`from_path` inside `view()`. Each call mints a new id and forces a re-decode every frame. Store handles in the model (`loaded_images`) or a `OnceLock`.
+- Long lists are virtualized (`virtual_rows` / `visible_row_range`). Don't nest a vertical scrollable inside another, and don't use horizontal scrollables for shelves (they swallow the mouse wheel; use `card_shelf`).
 
-### 3.3 Mandatory schema
+### B. Audio (`src/audio/`) — skill `spotifust-audio`
 
-```markdown
-# Project State Machine
+- The audio backend is `rodio`. Don't introduce `cpal` directly and don't propose switching.
+- Playback needs credentials issued to Spotify's desktop (keymaster) client id. They come from the one-time device pairing (`spotify.com/pair`) and are stored in the keychain. Tokens from our own Web API client id fail login5 and every track reports `Unavailable`.
+- Every PCM path is bounded: `sync_channel(8)` plus the rodio queue cap. `unbounded_channel` is forbidden here.
+- The UI position comes from `PlaybackClock` (samples actually played), never from `PlayerEvent` `position_ms` or wall clocks.
 
-## Current Focus
-- [ ] Single atomic task currently in progress (must match one item below verbatim)
+### C. Web API (`src/api/`) — skill `spotifust-spotify-api`
 
-## Development Backlog
+- OAuth: Authorization Code **with PKCE**, our own client id, no client secret. The redirect is the `spotifust://callback` custom protocol, with no local ports. It is registered only on Linux today (`TODO.md`).
+- Secrets live only in the OS keychain, under `api::auth::keyring_service()`. Unit tests automatically use a separate service and cache dir, so never hard-code `"spotifust"`.
+- Spotify restricts development-mode apps: several endpoints return 403/404 and some fields are always empty. Check the table in the skill before building on an endpoint.
+- Every request costs ~0.5 s from the developer's network. Batch (`search_multiple`), run independent requests concurrently, and cache.
+- `src/api/cache.rs` is for metadata and images only, never credentials.
 
-### Phase 1: Bootstrapping & Core Architecture
-- [x] Configure Cargo.toml with feature flags for Iced (tiny-skia backend to save RAM), RSpotify, and Librespot
-- [ ] Define central `AppError` enum (thiserror) with per-subsystem variants
-- [ ] Set up base Model-View-Update loop in `src/app.rs`
+### D. Scripts and CI (`scripts/`)
 
-### Phase 2: Custom Canvas Layout Engine
-- [ ] Implement bounding-box tracking struct for responsive cards
-- [ ] Handle PointerPressed / Moved / Released inside `canvas::Program::update`
-- [ ] Wire `canvas::Cache` invalidation to interaction messages only
+- Developer, test and CI scripts live in `scripts/`. The exception is `install.sh`, which stays at the root for end users.
 
-### Phase 3: Audio & Session Pipeline
-- [ ] Spawn librespot session on tokio::spawn, bridged via mpsc → iced::Subscription
-- [ ] Wire rodio sink for decoded PCM playback
+## 5. Forbidden patterns (scan your diff)
 
-### Phase 4: Web API & Auth
-- [ ] Implement PKCE flow with fixed-port loopback TcpListener
-- [ ] Store refresh token via OS keychain (not plaintext)
+- `.unwrap()` / `.expect()` / `panic!()` outside tests and the §2 bootstrap exception.
+- `Rc<RefCell<_>>` / `Arc<Mutex<_>>` in UI-owned state.
+- `std::process::Command` or spawned binaries.
+- `tokio::sync::mpsc::unbounded_channel` (or any unbounded queue) in the audio or decoder path.
+- Plaintext tokens or secrets on disk.
+- Raw `librespot`/`rspotify` error types in `Message` variants.
+- Image handles built in `view()`; `.clone()`/`.to_string()` in the audio callback or other hot paths where a borrow works.
+- UI that pretends: fake stats, placeholder data shown as real, buttons whose action is only a toast. Hide the element instead and log the gap in `TODO.md`.
 
-## Architectural Debt
-- [ ] (Anything discovered mid-implementation that isn't yet in the backlog above)
+## 6. Decisions that need a human
 
-## Blocked / Needs Human Decision
-- [ ] (Anything that isn't safe for the agent to decide unilaterally — see §6)
-```
+Add these to `TODO.md` → **Blocked / Needs Human Decision** instead of choosing yourself:
 
----
+- Any new external dependency, or a new feature flag that pulls in new crates, not implied by the Tech Stack table in `README.md`. Enabling a feature whose crates are already in `Cargo.lock` is fine; say so in the PR.
+- Architectural changes to the MVU data flow, the audio pipeline topology, the auth flows, or the §2 error contract.
+- Anything that needs a third-party API key or account (Genius, Last.fm, …).
 
-## 4. Module-by-Module Specifications
+## 7. Pre-delivery self-check
 
-### A. Card Canvas System (`src/ui/canvas_view.rs`)
+Before you call a task done, run these and confirm they pass. Don't just assert it. The `spotifust-verify` skill has the details.
 
-* Implement a struct satisfying `iced::widget::canvas::Program`. Cards are geometric entities drawn into a single canvas buffer — never real OS windows.
-* Card state (`position`, `size`, `dragging: bool`, `hovered: bool`) lives in the central `Model`, not inside the canvas program struct itself, per the Elm Rule.
-* Use `canvas::Cache` and invalidate it **only** on messages that actually change geometry (drag/resize/add/remove). A hover-only redraw should not bust the cache if it doesn't change layout.
+1. `rustup update stable`. CI runs the latest stable clippy, and new lints appear without warning.
+2. `scripts/test.sh` (fmt check, clippy `-D warnings`, tests, deny, audit, typos, lychee).
+3. `cargo build --release` (slow: LTO, ~6 min).
+4. If any `.md` changed: `markdownlint-cli2 "**/*.md"`. Config: `.markdownlint-cli2.jsonc`.
+5. Scan your diff for §5 patterns, and update `TODO.md` per §3.
+6. For UI or audio changes, run the app (`cargo run --release`) and ask the user to confirm. There is no screenshot tooling for the native window. Don't claim visual results you haven't seen.
 
-### B. Audio & Session Pipeline (`src/audio/`)
+## 8. Skills
 
-* **The audio backend is `rodio`.** This decision is final — do not introduce `cpal` directly or propose switching. The `rodio` crate is already integrated and in use.
-* Run the Spotify session on `tokio::spawn` — this is a task within the same process, not a violation of §1's process rule.
-* Bridge the async task to the UI exclusively via bounded `tokio::sync::mpsc` channels, exposed to `iced` as a `Subscription`. No shared state.
-* Feed decoded PCM arrays directly into a `rodio::Sink`, bypassing any intermediate buffering layer that would add latency versus the system mixer.
-* Bound the channel (`mpsc::channel(N)`, not `unbounded_channel`) — an unbounded channel between a fast producer (decoder) and a slower consumer (UI) is a memory-growth footgun that directly threatens the 25MB baseline.
+Skills live in `.agents/skills/<name>/SKILL.md`, which is the path Codex/GPT discover. `.claude/skills` is a symlink to the same directory for Claude Code. Agents load them automatically by `description`. You can also open the file directly.
 
-### C. Web API Layer (`src/api/`)
+| Skill | Use when |
+| :--- | :--- |
+| `spotifust-iced-ui` | Editing `src/app.rs` or `src/ui/`: views, layout, scrolling, images, performance, glitches |
+| `spotifust-audio` | Editing `src/audio/`: playback, pairing, position or sync, memory of the PCM path |
+| `spotifust-spotify-api` | Editing `src/api/`: endpoints, auth and tokens, latency, lyrics and bio providers, images |
+| `spotifust-verify` | Before finishing any task, or when CI fails |
+| `spotifust-todo` | Reading, ticking, auditing or extending `TODO.md` |
 
-* Implement `rspotify` Authorization Code Flow **with PKCE** — never the implicit or plain Authorization Code flow (no client secret should ever be required for the desktop app's own auth).
-* Intercept the OAuth callback via a **custom protocol handler** (e.g., `spotifust://callback`) registered at the OS level by an installer, guaranteeing cross-platform compatibility without relying on local open ports. Ensure the URL scheme is uniquely identifiable.
-* Extract the auth code directly from the incoming OS invocation arguments.
-* Persist the refresh token via the OS credential store (`keyring` crate: Credential Manager / Keychain / Secret Service) — never as plaintext in `src/api/cache.rs` or any repo-adjacent file.
-* `src/api/cache.rs` is for metadata/image caching only, not credentials.
+Precedence: if a skill conflicts with this file, this file wins. Fix the skill in the same change.
 
-### D. Scripts & CI (`scripts/`)
+When you learn something non-obvious that the next agent would otherwise rediscover the hard way (an API quirk, a renderer pitfall, a debugging recipe), add it to the matching skill in the same PR.
 
-* All developer, testing, and CI scripts MUST be placed inside the `scripts/` directory.
-* The only exception is `install.sh`, which is intended for end-users and must stay at the root so it can be easily included in release `.tar.gz` archives or run directly by users who clone the repo.
+## 9. Delivery style
 
----
-
-## 5. Forbidden Patterns (quick scan before any commit)
-
-* [ ] No `.unwrap()` / `.expect()` / `panic!()` outside the bootstrap exception in §2
-* [ ] No `Rc<RefCell<T>>` or `Arc<Mutex<T>>` inside UI-owned structs
-* [ ] No `std::process::Command` / spawned sidecar binaries anywhere
-* [ ] No `tokio::sync::mpsc::unbounded_channel` for audio-to-UI or decoder pipelines
-* [ ] No plaintext token/secret storage
-* [ ] No raw third-party error types (`librespot::Error`, `rspotify::ClientError`) exposed directly in `Message` variants — wrap in `AppError`
-* [ ] No `.clone()` / `.to_string()` inside canvas render loops or audio callback hot paths where a borrow (`&str`, `&[u8]`) would do
-
----
-
-## 6. Things the Agent Should NOT Decide Alone
-
-Add these to **Blocked / Needs Human Decision** in `TODO.md` instead of picking silently:
-
-* Adding any new external dependency not already implied by the Tech Stack table in `README.md`.
-* Any architectural change that affects the MVU data flow, the audio pipeline topology, or the error-handling contract in §2.
-
----
-
-## 7. Pre-Delivery Self-Check
-
-Before declaring an atomic task complete, confirm all of the following — don't just assert it, actually verify:
-
-1. `cargo build --release` succeeds.
-2. `cargo clippy --all-targets -- -D warnings` passes clean.
-3. The diff contains none of the patterns in §5.
-4. `TODO.md` reflects the completed item as `[x]` and any newly discovered work is logged under Architectural Debt.
-5. If the task touched `src/audio/` or `src/api/`, re-confirm the channel is bounded (§5.B) and no secret is written to disk in plaintext.
-6. If any `.md` files were modified, ensure they strictly follow `markdownlint` rules (e.g., blank lines around fenced code blocks and headings). Do not introduce any formatting violations.
-
----
-
-## 8. Rust Knowledge Base (`.agents/`)
-
-This repository vendors the [actionbook/rust-skills](https://github.com/actionbook/rust-skills) knowledge base directly under `.agents/`. These are plain Markdown files — no plugin runtime, no proprietary loader. **Any agent capable of reading a file and following a pointer can use them**, whether that's Codex, Claude Code, Cursor, or anything else that clones this repo. Treat this section as mandatory routing, not optional reading.
-
-### 8.1 Entry point — always start here
-
-Before writing or modifying any `.rs` file, read `.agents/rust-router/SKILL.md` first. It classifies the task into one of the `m01`–`m15` categories below and tells you which specific skill file to open next. **Do not jump straight to a specialized skill on your own** — the router exists precisely because guessing the right category from a vague task description is what causes agents to load the wrong context and give confidently wrong answers.
-
-### 8.2 Category → Spotifust subsystem map
-
-Use this table to translate a task to the right skill without waiting for a prompt to spell it out:
-
-| When touching... | Consult | Why it matters here |
-| :--- | :--- | :--- |
-| `src/ui/canvas_view.rs`, bounding-box structs | `m01-ownership`, `m03-mutability` | Card state lives in `Model`, not in the canvas struct (§1 Elm Rule) — ownership mistakes here are exactly what reintroduce `Rc<RefCell<T>>` by accident |
-| Any `Result<T, AppError>` / `thiserror` work | `m06-error-handling` | Cross-check against §2 of this document before inventing a new `AppError` variant — this document's error contract wins on conflict (see §8.4) |
-| `src/audio/` (tokio::spawn, mpsc channels) | `m07-concurrency`, `domain-web` (for the session's network calls) | Bounded-channel and cross-task patterns directly affect the 25MB baseline (§4.B) |
-| Any `unsafe` block, FFI into `librespot`/OS audio APIs (`cpal`, `rodio` backends) | `unsafe-checker` (full checklist tree: `checklists/`, `rules/ffi-*`, `rules/mem-*`, `rules/ptr-*`) | This is the highest-stakes category in the whole knowledge base — an `unsafe` mistake here is a memory-safety bug shipped in a desktop binary, not a linter warning |
-| `src/api/` (rspotify, PKCE, TcpListener) | `domain-web` | Covers REST/OAuth-shaped concerns generically; still defer to §4.C of this document for the Spotifust-specific fixed-port and keyring rules |
-| Anything with `Box<dyn Trait>`, generics, trait bounds | `m05-type-driven`, `rust-trait-explorer` | Relevant when abstracting over `rodio` sink types behind a common playback trait |
-| Before adding or bumping any crate version | `rust-learner` + `core-dynamic-skills` | Verifies current crate versions/APIs instead of relying on training-data memory — required before touching any dependency per §6 |
-| Reviewing your own diff before calling a task done | `m15-anti-pattern`, `coding-guidelines/clippy-lints` | Run this *in addition to*, not instead of, the checklist in §7 |
-| Genuinely stuck on which category applies | `meta-cognition-parallel` | Fans out across candidate skills in parallel rather than guessing serially |
-
-### 8.3 What NOT to do with this knowledge base
-
-* Don't dump the entire contents of a `SKILL.md` and its subfolders into context "just in case." Read the router's classification, then open only the specific file(s) it points to.
-* Don't treat `m01`–`m15` as a checklist to run sequentially on every task — they're a lookup table, not a pipeline.
-* Don't use `core-agent-browser` / `core-actionbook` to fetch live documentation for anything covered by this repository's own `AGENTS.md` (architecture, module layout, error contract) — those are internal decisions, not upstream API facts, and this document is authoritative for them.
-
-### 8.4 Precedence
-
-If anything in `.agents/*/SKILL.md` conflicts with a rule stated elsewhere in this `AGENTS.md` (the Elm Rule, the error contract in §2, the module specs in §4, the Forbidden Patterns in §5), **this document wins**. The knowledge base teaches general Rust competence; it does not know Spotifust's specific architectural constraints, and it was not written with this project in mind.
-
----
-
-## 9. Delivery Style
-
-* Idiomatic, strongly-typed Rust. Prefer borrows (`&str`, `&[u8]`) over owned allocations (`.to_string()`, `.clone()`) in hot paths, per §5.
+- Idiomatic, strongly typed Rust. Prefer borrows (`&str`, `&[u8]`) over owned copies in hot paths.
+- Match the surrounding code: comment density, naming, error style.
+- Commits and PRs: Conventional Commits (`fix:`, `feat:`, `perf:`, `docs:`, …). PR bodies follow `.github/PULL_REQUEST_TEMPLATE.md`.

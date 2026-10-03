@@ -6,7 +6,6 @@
     "MD042": false
   },
   "ignores": [
-    ".agents/**",
     "target/**",
     "node_modules/**"
   ]
