@@ -306,6 +306,6 @@ mod tests {
         let spotify = rspotify::AuthCodePkceSpotify::new(creds, oauth);
         let res = fetch_recommendations(&spotify, &[]).await;
         assert!(res.is_ok());
-        assert!(res.unwrap().is_empty());
+        assert_eq!(res.unwrap(), Vec::new());
     }
 }

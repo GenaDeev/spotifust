@@ -223,7 +223,7 @@ mod tests {
         let path = Path::new("/non_existent_spotifust_dir_12345");
         let result = scan_local_directory(path);
         assert!(result.is_ok());
-        assert!(result.unwrap().is_empty());
+        assert_eq!(result.unwrap(), Vec::new());
     }
 
     #[test]

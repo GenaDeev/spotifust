@@ -144,9 +144,9 @@ mod tests {
     #[test]
     fn test_search_results_default() {
         let res = SearchResults::default();
-        assert!(res.tracks.is_empty());
-        assert!(res.albums.is_empty());
-        assert!(res.artists.is_empty());
+        assert_eq!(res.tracks, Vec::new());
+        assert_eq!(res.albums, Vec::new());
+        assert_eq!(res.artists, Vec::new());
     }
 
     #[test]
