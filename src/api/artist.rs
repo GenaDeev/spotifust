@@ -192,10 +192,36 @@ struct WikiSummaryResponse {
 const WIKI_USER_AGENT: &str = "Spotifust/0.1.0 (https://github.com/gefydev/spotifust)";
 
 const MUSIC_KEYWORDS: [&str; 30] = [
-    "singer", "rapper", "band", "musician", "music", "songwriter", "dj", "producer",
-    "duo", "group", "composer", "guitarist", "drummer", "bassist", "vocalist",
-    "pianist", "rock", "pop", "hip hop", "trap", "reggaeton", "orchestra", "artist",
-    "cantante", "banda", "grupo", "músico", "cantautor", "rapero", "compositor",
+    "singer",
+    "rapper",
+    "band",
+    "musician",
+    "music",
+    "songwriter",
+    "dj",
+    "producer",
+    "duo",
+    "group",
+    "composer",
+    "guitarist",
+    "drummer",
+    "bassist",
+    "vocalist",
+    "pianist",
+    "rock",
+    "pop",
+    "hip hop",
+    "trap",
+    "reggaeton",
+    "orchestra",
+    "artist",
+    "cantante",
+    "banda",
+    "grupo",
+    "músico",
+    "cantautor",
+    "rapero",
+    "compositor",
 ];
 
 /// True when a Wikipedia summary is plausibly about a music act, so "Muse" does
@@ -213,9 +239,9 @@ fn looks_like_music_act(description: Option<&str>, extract: &str) -> bool {
             haystack.contains(k)
         } else {
             // Whole words (plus plurals) so "pop" doesn't match "population".
-            words
-                .iter()
-                .any(|w| w == k || w.strip_suffix('s') == Some(k) || w.strip_suffix("es") == Some(k))
+            words.iter().any(|w| {
+                w == k || w.strip_suffix('s') == Some(k) || w.strip_suffix("es") == Some(k)
+            })
         }
     })
 }
@@ -419,7 +445,11 @@ mod live_tests {
             ("Bad Bunny, Jhay Cortez", "Bad Bunny"),
         ] {
             let bio = super::fetch_artist_bio(artist).await;
-            assert_eq!(bio.map(|b| b.title).ok().as_deref(), Some(expected), "{artist}");
+            assert_eq!(
+                bio.map(|b| b.title).ok().as_deref(),
+                Some(expected),
+                "{artist}"
+            );
         }
     }
 }

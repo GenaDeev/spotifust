@@ -87,9 +87,8 @@ pub async fn connect_stored(
     normalisation: bool,
     gapless: bool,
 ) -> Result<AudioSession, AppError> {
-    let credentials = crate::audio::credentials::load_stored_credentials().ok_or_else(|| {
-        AppError::PlaybackPairing("No playback credentials stored".to_string())
-    })?;
+    let credentials = crate::audio::credentials::load_stored_credentials()
+        .ok_or_else(|| AppError::PlaybackPairing("No playback credentials stored".to_string()))?;
     match connect_with_credentials(credentials, bitrate, normalisation, gapless).await {
         Err(AppError::PlaybackPairing(reason)) => {
             crate::audio::credentials::delete_stored_credentials();
@@ -130,8 +129,7 @@ pub async fn connect_with_credentials(
     };
 
     let clock = Arc::new(crate::audio::sink::PlaybackClock::default());
-    let (audio_tx, audio_rx) =
-        std::sync::mpsc::sync_channel::<crate::audio::sink::PcmPacket>(8);
+    let (audio_tx, audio_rx) = std::sync::mpsc::sync_channel::<crate::audio::sink::PcmPacket>(8);
     let rodio_sink = crate::audio::sink::spawn_rodio_thread(audio_rx, Arc::clone(&clock))?;
     let sink_clock = Arc::clone(&clock);
 

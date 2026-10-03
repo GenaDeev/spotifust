@@ -73,7 +73,10 @@ pub async fn execute_search(
                 page.items
                     .into_iter()
                     .map(|track| SearchResultTrack {
-                        id: track.id.as_ref().map_or_else(String::new, ToString::to_string),
+                        id: track
+                            .id
+                            .as_ref()
+                            .map_or_else(String::new, ToString::to_string),
                         uri: track.id.as_ref().map_or_else(String::new, Id::uri),
                         artist: track
                             .artists
@@ -83,8 +86,7 @@ pub async fn execute_search(
                             .join(", "),
                         image_url: crate::api::best_image_url(&track.album.images),
                         album: track.album.name,
-                        duration_ms: u32::try_from(track.duration.num_milliseconds())
-                            .unwrap_or(0),
+                        duration_ms: u32::try_from(track.duration.num_milliseconds()).unwrap_or(0),
                         explicit: track.explicit,
                         title: track.name,
                     })

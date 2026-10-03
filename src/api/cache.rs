@@ -65,11 +65,10 @@ impl ImageCache {
             }
         }
 
-        let resp = image_http_client()
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| AppError::Network(format!("Failed to download image from {url}: {e}")))?;
+        let resp =
+            image_http_client().get(&url).send().await.map_err(|e| {
+                AppError::Network(format!("Failed to download image from {url}: {e}"))
+            })?;
         if !resp.status().is_success() {
             return Err(AppError::Network(format!(
                 "Image download returned status {}",

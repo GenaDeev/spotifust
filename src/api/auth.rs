@@ -179,7 +179,9 @@ pub async fn do_login_flow() -> Result<AuthCodePkceSpotify, AppError> {
 
     drop(token_guard);
     if token.refresh_token.is_none() {
-        return Err(AppError::Auth("Spotify returned no refresh token".to_string()));
+        return Err(AppError::Auth(
+            "Spotify returned no refresh token".to_string(),
+        ));
     }
     save_session_token(&token);
 
