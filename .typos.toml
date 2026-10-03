@@ -1,3 +1,13 @@
 [default.extend-words]
 Seeked = "Seeked"
 seeked = "seeked"
+
+[files]
+# Vendored third-party skills are kept byte-identical to upstream.
+extend-exclude = [
+  ".agents/skills/rust-performance",
+  ".agents/skills/rust-hot-path",
+  ".agents/skills/rust-async-internals",
+  ".agents/skills/cargo-workflows",
+  ".agents/skills/rust-security",
+]

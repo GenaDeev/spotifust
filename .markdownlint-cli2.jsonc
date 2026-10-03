@@ -6,6 +6,14 @@
     "MD042": false
   },
   "ignores": [
+    // Vendored third-party skills: kept byte-identical to upstream (see .agents/skills/VENDORED.md).
+    ".agents/skills/rust-performance/**",
+    ".agents/skills/rust-hot-path/**",
+    ".agents/skills/rust-async-internals/**",
+    ".agents/skills/cargo-workflows/**",
+    ".agents/skills/rust-security/**",
+    // Symlink to .agents/skills; already linted there.
+    ".claude/**",
     "target/**",
     "node_modules/**"
   ]

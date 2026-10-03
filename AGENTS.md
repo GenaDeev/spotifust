@@ -115,7 +115,17 @@ Skills live in `.agents/skills/<name>/SKILL.md`, which is the path Codex/GPT dis
 | `spotifust-verify` | Before finishing any task, or when CI fails |
 | `spotifust-todo` | Reading, ticking, auditing or extending `TODO.md` |
 
-Precedence: if a skill conflicts with this file, this file wins. Fix the skill in the same change.
+Vendored third-party skills, unmodified from po4yka/rust-skills (provenance in `.agents/skills/VENDORED.md`):
+
+| Skill | Use when |
+| :--- | :--- |
+| `rust-performance` | Measuring memory or CPU (DHAT, heaptrack, flamegraph, cargo-bloat), e.g. for the RAM target |
+| `rust-hot-path` | Optimizing a hot spot a profile already identified |
+| `rust-async-internals` | tokio tasks, `select!`, `spawn_blocking`, cancellation and shutdown |
+| `cargo-workflows` | Cargo profiles, features, lockfile, toolchain and CI changes |
+| `rust-security` | `cargo deny` / `cargo audit` findings, vetting a crate |
+
+Precedence: if a skill conflicts with this file, this file wins. Fix project skills in the same change. Don't edit vendored skills; note the conflict here instead. Crates suggested by vendored skills are still a §6 decision.
 
 When you learn something non-obvious that the next agent would otherwise rediscover the hard way (an API quirk, a renderer pitfall, a debugging recipe), add it to the matching skill in the same PR.
 
