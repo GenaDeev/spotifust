@@ -71,9 +71,8 @@ fn virtual_rows<'a>(
         );
     }
     if last < count {
-        col = col.push(Space::new().height(Length::Fixed(
-            (count - last) as f32 * TRACK_ROW_HEIGHT,
-        )));
+        col =
+            col.push(Space::new().height(Length::Fixed((count - last) as f32 * TRACK_ROW_HEIGHT)));
     }
     col.into()
 }
@@ -938,57 +937,57 @@ fn view_main_content<'a>(
                 items.push(AlbumListItem::Track(idx));
             }
 
-            let rows = virtual_rows(items.len(), DETAIL_LIST_TOP, main_scroll, |row| {
-                match items[row] {
-                    AlbumListItem::Disc(disc) => Container::new(
-                        Row::new()
-                            .spacing(8)
-                            .align_y(Alignment::Center)
-                            .push(Icon::Album.view_colored(16.0, theme::TEXT_SECONDARY))
-                            .push(
-                                Text::new(format!("Disc {disc}"))
-                                    .size(13)
-                                    .font(iced::Font {
-                                        weight: iced::font::Weight::Bold,
-                                        ..Default::default()
-                                    })
-                                    .color(theme::TEXT_SECONDARY),
-                            ),
-                    )
-                    .padding([0, 12])
-                    .into(),
-                    AlbumListItem::Track(idx) => {
-                        let track = &sa.tracks[idx];
-                        let info = crate::app::TrackInfo {
-                            title: track.title.clone(),
-                            artist: track.artist.clone(),
-                            album: sa.name.clone(),
+            let rows = virtual_rows(items.len(), DETAIL_LIST_TOP, main_scroll, |row| match items
+                [row]
+            {
+                AlbumListItem::Disc(disc) => Container::new(
+                    Row::new()
+                        .spacing(8)
+                        .align_y(Alignment::Center)
+                        .push(Icon::Album.view_colored(16.0, theme::TEXT_SECONDARY))
+                        .push(
+                            Text::new(format!("Disc {disc}"))
+                                .size(13)
+                                .font(iced::Font {
+                                    weight: iced::font::Weight::Bold,
+                                    ..Default::default()
+                                })
+                                .color(theme::TEXT_SECONDARY),
+                        ),
+                )
+                .padding([0, 12])
+                .into(),
+                AlbumListItem::Track(idx) => {
+                    let track = &sa.tracks[idx];
+                    let info = crate::app::TrackInfo {
+                        title: track.title.clone(),
+                        artist: track.artist.clone(),
+                        album: sa.name.clone(),
+                        duration_ms: track.duration_ms,
+                        image_url: sa.image_url.clone(),
+                        uri: track.uri.clone(),
+                        explicit: false,
+                    };
+                    track_row(
+                        &TrackRowSpec {
+                            index: track.track_number as usize,
+                            title: &track.title,
+                            artist: &track.artist,
+                            album: None,
                             duration_ms: track.duration_ms,
-                            image_url: sa.image_url.clone(),
-                            uri: track.uri.clone(),
-                            explicit: false,
-                        };
-                        track_row(
-                            &TrackRowSpec {
-                                index: track.track_number as usize,
-                                title: &track.title,
-                                artist: &track.artist,
-                                album: None,
-                                duration_ms: track.duration_ms,
-                                cover: CoverSlot::Hidden,
-                                is_current: playing_uri == Some(track.uri.as_str()),
-                                dimmed: false,
-                                badge: None,
-                            },
-                            loaded_images,
-                            Message::PlayTrack(track.uri.clone()),
-                            Message::OpenTrackContextMenu {
-                                track: info,
-                                from_playlist_id: None,
-                                position: iced::Point::new(450.0, 300.0),
-                            },
-                        )
-                    }
+                            cover: CoverSlot::Hidden,
+                            is_current: playing_uri == Some(track.uri.as_str()),
+                            dimmed: false,
+                            badge: None,
+                        },
+                        loaded_images,
+                        Message::PlayTrack(track.uri.clone()),
+                        Message::OpenTrackContextMenu {
+                            track: info,
+                            from_playlist_id: None,
+                            position: iced::Point::new(450.0, 300.0),
+                        },
+                    )
                 }
             });
             Column::new()
@@ -1158,23 +1157,21 @@ fn view_main_content<'a>(
         .push(Space::new().height(Length::Fixed(8.0)));
 
     if !featured_playlists.is_empty() {
-        page = page
-            .push(section_title("Made For You"))
-            .push(made_for_you);
+        page = page.push(section_title("Made For You")).push(made_for_you);
     }
-    page = page
-        .push(section_title("Your Top Tracks"))
-        .push(top_tracks);
+    page = page.push(section_title("Your Top Tracks")).push(top_tracks);
     if !featured_albums.is_empty() {
         page = page
             .push(section_title("New Releases"))
             .push(album_shelf(featured_albums));
     }
-    page = page.push(section_title("Saved Albums")).push(if user_albums.is_empty() {
-        render_skeleton_cards(5)
-    } else {
-        album_shelf(user_albums)
-    });
+    page = page
+        .push(section_title("Saved Albums"))
+        .push(if user_albums.is_empty() {
+            render_skeleton_cards(5)
+        } else {
+            album_shelf(user_albums)
+        });
 
     main_page_frame(page)
 }
@@ -1615,12 +1612,8 @@ fn track_row<'a>(
     .on_press(on_press)
     .style(|_theme, status| iced::widget::button::Style {
         background: match status {
-            iced::widget::button::Status::Hovered => {
-                Some(Background::Color(theme::SURFACE_HOVER))
-            }
-            iced::widget::button::Status::Pressed => {
-                Some(Background::Color(theme::SURFACE_ACTIVE))
-            }
+            iced::widget::button::Status::Hovered => Some(Background::Color(theme::SURFACE_HOVER)),
+            iced::widget::button::Status::Pressed => Some(Background::Color(theme::SURFACE_ACTIVE)),
             _ => None,
         },
         border: Border {
@@ -1729,7 +1722,11 @@ fn view_right_panel<'a>(
                     };
                     // Same size for every line: growing the active line reflowed the
                     // whole column on every tick, which made the text jump around.
-                    let text: &str = if line.text.is_empty() { "♪" } else { &line.text };
+                    let text: &str = if line.text.is_empty() {
+                        "♪"
+                    } else {
+                        &line.text
+                    };
                     let label = Text::new(text)
                         .size(18)
                         .font(iced::Font {
@@ -1839,8 +1836,8 @@ fn view_right_panel<'a>(
                         .color(theme::TEXT_PRIMARY),
                 );
                 if let Some(desc) = &bio.description {
-                    artist_card_col = artist_card_col
-                        .push(Text::new(desc).size(12).color(theme::ACCENT));
+                    artist_card_col =
+                        artist_card_col.push(Text::new(desc).size(12).color(theme::ACCENT));
                 }
                 artist_card_col = artist_card_col
                     .push(
@@ -1849,7 +1846,11 @@ fn view_right_panel<'a>(
                             .line_height(1.4)
                             .color(theme::TEXT_SECONDARY),
                     )
-                    .push(Text::new("Source: Wikipedia").size(11).color(theme::TEXT_MUTED));
+                    .push(
+                        Text::new("Source: Wikipedia")
+                            .size(11)
+                            .color(theme::TEXT_MUTED),
+                    );
             } else {
                 artist_card_col = artist_card_col.push(
                     Text::new("No biography found for this artist.")
@@ -1876,7 +1877,12 @@ fn view_right_panel<'a>(
                 .push(
                     Column::new()
                         .spacing(4)
-                        .push(single_line(track_title_str, 20.0, theme::TEXT_PRIMARY, true))
+                        .push(single_line(
+                            track_title_str,
+                            20.0,
+                            theme::TEXT_PRIMARY,
+                            true,
+                        ))
                         .push(single_line(
                             artist_name_str,
                             14.0,
@@ -2100,19 +2106,16 @@ fn view_right_panel<'a>(
         }
     };
 
-    let content = Column::new()
-        .spacing(16)
-        .push(header)
-        .push(
-            thin_scrollable(Container::new(body).padding(iced::Padding {
-                top: 0.0,
-                right: 10.0,
-                bottom: 16.0,
-                left: 0.0,
-            }))
-            .id(RIGHT_PANEL_SCROLL_ID)
-            .height(Length::Fill),
-        );
+    let content = Column::new().spacing(16).push(header).push(
+        thin_scrollable(Container::new(body).padding(iced::Padding {
+            top: 0.0,
+            right: 10.0,
+            bottom: 16.0,
+            left: 0.0,
+        }))
+        .id(RIGHT_PANEL_SCROLL_ID)
+        .height(Length::Fill),
+    );
 
     Container::new(content)
         .width(Length::Fixed(width))
@@ -2785,13 +2788,18 @@ fn quick_card_with_image<'a>(
         .align_y(Alignment::Center)
         .push(cover)
         .push(
-            Container::new(single_line(title.to_owned(), 14.0, theme::TEXT_PRIMARY, true))
-                .padding(iced::Padding {
-                    top: 0.0,
-                    right: 12.0,
-                    bottom: 0.0,
-                    left: 0.0,
-                }),
+            Container::new(single_line(
+                title.to_owned(),
+                14.0,
+                theme::TEXT_PRIMARY,
+                true,
+            ))
+            .padding(iced::Padding {
+                top: 0.0,
+                right: 12.0,
+                bottom: 0.0,
+                left: 0.0,
+            }),
         );
 
     Button::new(content)
@@ -2835,7 +2843,12 @@ fn media_card_with_image<'a>(
 
     let text_col = Column::new()
         .spacing(4)
-        .push(single_line(title.to_owned(), 15.0, theme::TEXT_PRIMARY, true))
+        .push(single_line(
+            title.to_owned(),
+            15.0,
+            theme::TEXT_PRIMARY,
+            true,
+        ))
         .push(single_line(subtitle, 13.0, theme::TEXT_SECONDARY, false));
 
     let content = Column::new().spacing(12).push(cover).push(text_col);
@@ -2916,7 +2929,12 @@ fn view_artist_detail_page<'a>(
                 })
                 .color(theme::TEXT_SECONDARY),
         )
-        .push(single_line(artist.name.as_str(), 48.0, theme::TEXT_PRIMARY, true));
+        .push(single_line(
+            artist.name.as_str(),
+            48.0,
+            theme::TEXT_PRIMARY,
+            true,
+        ));
 
     // Spotify stopped returning follower counts and genres to development-mode
     // apps; only show them when they're actually present.
@@ -3038,9 +3056,9 @@ fn view_artist_detail_page<'a>(
         }
 
         if !artist.albums.is_empty() {
-            sections = sections
-                .push(section_title("Discography"))
-                .push(card_shelf(artist.albums.len(), move |idx| {
+            sections = sections.push(section_title("Discography")).push(card_shelf(
+                artist.albums.len(),
+                move |idx| {
                     let album = &artist.albums[idx];
                     let year = album.release_date.get(..4).unwrap_or("Album");
                     media_card_with_image(
@@ -3051,7 +3069,8 @@ fn view_artist_detail_page<'a>(
                         Icon::Album,
                         Message::SelectAlbum(album.id.clone()),
                     )
-                }));
+                },
+            ));
         }
 
         if artist.top_tracks.is_empty() && artist.albums.is_empty() {
@@ -3091,15 +3110,14 @@ fn view_search_results<'a>(
             .into()
     };
 
-    let nothing = results.tracks.is_empty() && results.albums.is_empty() && results.artists.is_empty();
+    let nothing =
+        results.tracks.is_empty() && results.albums.is_empty() && results.artists.is_empty();
     if nothing && is_searching {
         // First query only: later queries keep the previous results on screen.
         return main_page_frame(render_skeleton_rows(6));
     }
     if nothing {
-        return main_page_frame(centered_note(
-            "Type to search for songs, artists or albums",
-        ));
+        return main_page_frame(centered_note("Type to search for songs, artists or albums"));
     }
 
     let tracks: Vec<&'a crate::api::search::SearchResultTrack> = results
@@ -3216,7 +3234,12 @@ fn view_search_results<'a>(
                             96.0,
                             theme::RADIUS_MD,
                         ))
-                        .push(single_line(top.title.as_str(), 28.0, theme::TEXT_PRIMARY, true))
+                        .push(single_line(
+                            top.title.as_str(),
+                            28.0,
+                            theme::TEXT_PRIMARY,
+                            true,
+                        ))
                         .push(single_line(
                             format!("Song • {}", top.artist),
                             14.0,

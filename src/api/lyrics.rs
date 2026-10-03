@@ -30,11 +30,15 @@ struct LrcLibRecord {
 
 impl LrcLibRecord {
     fn has_synced(&self) -> bool {
-        self.synced_lyrics.as_deref().is_some_and(|l| !l.trim().is_empty())
+        self.synced_lyrics
+            .as_deref()
+            .is_some_and(|l| !l.trim().is_empty())
     }
 
     fn has_plain(&self) -> bool {
-        self.plain_lyrics.as_deref().is_some_and(|l| !l.trim().is_empty())
+        self.plain_lyrics
+            .as_deref()
+            .is_some_and(|l| !l.trim().is_empty())
     }
 }
 
@@ -144,7 +148,11 @@ fn best_match(records: Vec<LrcLibRecord>, duration_secs: u32) -> Option<LrcLibRe
 }
 
 fn parse_record(record: &LrcLibRecord) -> (Vec<SyncedLyricLine>, bool) {
-    if let Some(synced) = record.synced_lyrics.as_deref().filter(|l| !l.trim().is_empty()) {
+    if let Some(synced) = record
+        .synced_lyrics
+        .as_deref()
+        .filter(|l| !l.trim().is_empty())
+    {
         let lines = parse_lrc(synced);
         if !lines.is_empty() {
             return (lines, true);
@@ -284,7 +292,10 @@ mod tests {
     #[test]
     fn test_primary_artist_and_clean_title() {
         assert_eq!(primary_artist("Daft Punk, Pharrell Williams"), "Daft Punk");
-        assert_eq!(primary_artist("Calvin Harris feat. Rihanna"), "Calvin Harris");
+        assert_eq!(
+            primary_artist("Calvin Harris feat. Rihanna"),
+            "Calvin Harris"
+        );
         assert_eq!(clean_title("Hey Jude - Remastered 2015"), "Hey Jude");
         assert_eq!(clean_title("Song (feat. X)"), "Song");
     }

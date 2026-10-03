@@ -1106,7 +1106,8 @@ impl App {
         let mut task = self.update_inner(message);
         let panels_after = self.panel_key();
         if panels_after != panels_before {
-            let tab_changed = panels_after.as_ref().map(|k| k.1) != panels_before.as_ref().map(|k| k.1);
+            let tab_changed =
+                panels_after.as_ref().map(|k| k.1) != panels_before.as_ref().map(|k| k.1);
             if tab_changed {
                 if let AppState::Main { lyrics_line, .. } = &mut self.state {
                     *lyrics_line = None;
@@ -1766,7 +1767,10 @@ impl App {
                             crate::api::local_files::match_and_persist_local_tracks(&mut tracks);
 
                             tasks.extend(load_image_tasks(
-                                tracks.iter().take(PLAYLIST_ROWS_PREFETCH).map(|t| t.image_url.clone()),
+                                tracks
+                                    .iter()
+                                    .take(PLAYLIST_ROWS_PREFETCH)
+                                    .map(|t| t.image_url.clone()),
                                 loaded_images,
                             ));
                             selected.tracks = tracks;
@@ -2344,7 +2348,6 @@ impl App {
                                 uri: playback.current_track_uri.clone().unwrap_or_default(),
                                 explicit: false,
                             });
-
                         }
                         if !tasks.is_empty() {
                             return Task::batch(tasks);
@@ -4477,7 +4480,12 @@ mod tests {
             "oa".to_string(),
             Ok(search_results_named("Stale")),
         ));
-        let AppState::Main { search_results, is_searching, .. } = &app.state else {
+        let AppState::Main {
+            search_results,
+            is_searching,
+            ..
+        } = &app.state
+        else {
             panic!("expected main state");
         };
         assert_eq!(search_results.tracks[0].title, "Wonderwall");
@@ -4485,7 +4493,12 @@ mod tests {
 
         // Going back to an earlier query is answered from the cache instantly.
         let _ = app.update(Message::SearchInputChanged("OA ".to_string()));
-        let AppState::Main { search_results, is_searching, .. } = &app.state else {
+        let AppState::Main {
+            search_results,
+            is_searching,
+            ..
+        } = &app.state
+        else {
             panic!("expected main state");
         };
         assert_eq!(search_results.tracks[0].title, "Stale");

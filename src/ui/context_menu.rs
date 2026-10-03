@@ -173,7 +173,10 @@ pub fn view_context_menu(
     } else {
         state.position.y
     }
-    .clamp(10.0, (window.height - MENU_HEIGHT_ESTIMATE - 10.0).max(10.0));
+    .clamp(
+        10.0,
+        (window.height - MENU_HEIGHT_ESTIMATE - 10.0).max(10.0),
+    );
 
     let backdrop = Button::new(
         iced::widget::Space::new()
@@ -439,11 +442,9 @@ pub fn view_modal<'a>(
                         .spacing(12)
                         .push(iced::widget::Space::new().width(Length::Fill))
                         .push(
-                            Button::new(
-                                Text::new("Cancel").size(13).color(theme::TEXT_SECONDARY),
-                            )
-                            .on_press(Message::CloseModal)
-                            .style(|_t, _s| iced::widget::button::Style::default()),
+                            Button::new(Text::new("Cancel").size(13).color(theme::TEXT_SECONDARY))
+                                .on_press(Message::CloseModal)
+                                .style(|_t, _s| iced::widget::button::Style::default()),
                         )
                         .push(
                             Button::new(Text::new("Save").size(13).color(theme::TEXT_PRIMARY))
@@ -489,11 +490,9 @@ pub fn view_modal<'a>(
                         .spacing(12)
                         .push(iced::widget::Space::new().width(Length::Fill))
                         .push(
-                            Button::new(
-                                Text::new("Cancel").size(13).color(theme::TEXT_SECONDARY),
-                            )
-                            .on_press(Message::CloseModal)
-                            .style(|_t, _s| iced::widget::button::Style::default()),
+                            Button::new(Text::new("Cancel").size(13).color(theme::TEXT_SECONDARY))
+                                .on_press(Message::CloseModal)
+                                .style(|_t, _s| iced::widget::button::Style::default()),
                         )
                         .push(
                             Button::new(Text::new("Delete").size(13).color(theme::TEXT_PRIMARY))
